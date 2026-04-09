@@ -1,5 +1,3 @@
-# backend/core/pdf_extractor.py
-
 import fitz
 from pathlib import Path
 
