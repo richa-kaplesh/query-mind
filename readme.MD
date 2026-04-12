@@ -457,3 +457,48 @@ We retrieve top 20, not top 5. The reranker then picks the best 5.
 Why is a two-stage approach better than just retrieving top 5 directly with higher quality? What does the reranker know that FAISS doesn't?
 
 Think about it. Then we do reranker.py.
+
+Yes. You're on the right track. Let me sharpen it.
+
+---
+
+FAISS and BM25 look at query and chunk **separately.**
+
+FAISS says — is this chunk's vector close to query vector?
+BM25 says — does this chunk contain query keywords?
+
+Neither of them looks at **query and chunk together as a pair.**
+
+---
+
+Reranker does exactly that.
+
+It takes query + chunk as one combined input and asks — **does this chunk actually answer this specific question?**
+
+---
+
+Concrete example:
+
+Query: **"what are side effects of aspirin?"**
+
+Chunk: **"aspirin is widely used for pain relief and has been studied extensively since 1899"**
+
+FAISS — high score. Vector is close, both about aspirin.
+BM25 — high score. Contains keyword "aspirin".
+
+But does this chunk answer "what are the side effects?" — **No.**
+
+Reranker reads both together and catches this. Scores it low. Drops it.
+
+---
+
+This is why two stages exist.
+
+Retriever casts a wide net — fast, gets 20 candidates.
+Reranker reads carefully — slow, picks best 5.
+
+Fast rough search first. Slow precise scoring second.
+
+---
+
+Now ready for reranker.py?
