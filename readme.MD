@@ -502,3 +502,285 @@ Fast rough search first. Slow precise scoring second.
 ---
 
 Now ready for reranker.py?
+
+
+Good. Both answers first, then code explanation.
+
+---
+
+**On citations — yes you got it.**
+
+From each chunk's metadata you need:
+```
+source    → which file        e.g. "attention_paper.pdf"
+page      → which page        e.g. page 4
+chunk_index → which part      e.g. chunk 7
+```
+
+That's enough to say — *"This answer came from attention_paper.pdf, page 4."*
+
+**On retriever score vs reranker score for citations:**
+
+Use reranker score. It's more accurate. Retriever score was rough — reranker corrected it. Always trust the more careful measurement.
+
+---
+
+Now the code explanation.
+
+---
+
+**pairs line:**
+
+```python
+pairs = [[query, chunk["text"]] for chunk in chunks]
+```
+
+You have 20 chunks. You're creating 20 pairs. Each pair is query + one chunk text together.
+
+```
+pairs = [
+    ["what is attention mechanism", "attention mechanism in transformers..."],
+    ["what is attention mechanism", "neural networks and deep learning..."],
+    ["what is attention mechanism", "recipe for chocolate cake..."],
+    ... 20 pairs total
+]
+```
+
+Cross-encoder reads each pair as one combined input. This is how it understands the relationship between query and chunk directly.
+
+---
+
+**scores line:**
+
+```python
+scores = self.model.predict(pairs)
+```
+
+Model reads all 20 pairs and outputs 20 scores.
+
+```
+scores = [8.2, 3.1, -4.5, 7.8, 2.1, ...]
+```
+
+Notice scores can be negative. Cross-encoder outputs raw logits — not normalized to 0-1 like retriever scores. Higher still means more relevant, but scale is different.
+
+---
+
+**enumerate line:**
+
+```python
+for i, chunk in enumerate(chunks):
+    chunk["rerank_score"] = float(scores[i])
+```
+
+`enumerate` gives you both index and value while looping.
+
+```
+i=0, chunk=first chunk  → chunk["rerank_score"] = 8.2
+i=1, chunk=second chunk → chunk["rerank_score"] = 3.1
+i=2, chunk=third chunk  → chunk["rerank_score"] = -4.5
+```
+
+You're attaching each score back to its chunk so they travel together.
+
+---
+
+**sorted line — this is what you asked about:**
+
+```python
+reranked = sorted(chunks, key=lambda x: x["rerank_score"], reverse=True)
+```
+
+Three parts:
+
+`sorted(chunks, ...)` — creates a new sorted list from chunks. Doesn't modify original.
+
+`key=lambda x: x["rerank_score"]` — tells sorted what to sort by. For each chunk x, use its rerank_score as the sorting value.
+
+Without key it wouldn't know what to compare — chunks are dicts, not simple numbers.
+
+`reverse=True` — sort highest to lowest. Default is lowest to highest.
+
+---
+
+Concrete example with 5 chunks:
+
+```
+Before sorting:
+chunk 0 → rerank_score = 3.1
+chunk 1 → rerank_score = 8.2
+chunk 2 → rerank_score = -4.5
+chunk 3 → rerank_score = 7.8
+chunk 4 → rerank_score = 2.1
+
+After sorted(..., reverse=True):
+chunk 1 → rerank_score = 8.2   ← rank 1
+chunk 3 → rerank_score = 7.8   ← rank 2
+chunk 0 → rerank_score = 3.1   ← rank 3
+chunk 4 → rerank_score = 2.1   ← rank 4
+chunk 2 → rerank_score = -4.5  ← rank 5
+```
+
+`return reranked[:top_k]` — return only top 5.
+
+---
+
+Clear?
+### Step-by-step Walkthrough
+
+**Starting with an empty list:**
+```python
+context_parts = []
+```
+This will collect each formatted chunk as a string, one by one.
+
+---
+
+**Looping with `enumerate`:**
+```python
+for i, chunk in enumerate(chunks):
+```
+`enumerate` gives you both the **index** (`i`) and the **item** (`chunk`) at each iteration. So if `chunks` has 3 items:
+
+```
+i=0 → first chunk
+i=1 → second chunk
+i=2 → third chunk
+```
+
+---
+
+**Unpacking each chunk:**
+```python
+source = chunk["metadata"]["source"]   # e.g. "report.pdf"
+page   = chunk["metadata"]["page"]     # e.g. 4
+text   = chunk["text"]                 # e.g. "AI is transforming..."
+```
+Each chunk is a **nested dictionary**, so you drill into `metadata` to get the source filename and page number, and grab `text` directly.
+
+---
+
+**Building the formatted string:**
+```python
+part = f"[SOURCE {i+1} - {source}, page {page}]\n{text}"
+```
+- `i+1` → makes the label start at 1 (not 0), so it's human-readable
+- `\n` → puts the actual text on a new line below the label
+
+For example, at `i=0` with `source="report.pdf"`, `page=4`, `text="AI is transforming..."`:
+```
+[SOURCE 1 - report.pdf, page 4]
+AI is transforming...
+```
+
+---
+
+**Collecting each part:**
+```python
+context_parts.append(part)
+```
+Each formatted string gets added to the list. After the loop, `context_parts` looks like:
+
+```python
+[
+  "[SOURCE 1 - report.pdf, page 4]\nAI is transforming...",
+  "[SOURCE 2 - notes.pdf, page 12]\nMachine learning is...",
+  "[SOURCE 3 - paper.pdf, page 1]\nThe study found..."
+]
+```
+
+Which then gets joined into one single string by `"\n".join(context_parts)` — ready to be passed into an LLM prompt.
+
+### Step-by-step Walkthrough
+
+---
+
+**Method signature:**
+```python
+def generate(self, query: str, chunks: List[dict]) -> dict:
+```
+Takes the user's **question** and the **retrieved chunks**, returns a **dictionary** with the answer + sources.
+
+---
+
+**Step 1 — Build the context and prompt:**
+```python
+context = self._build_context(chunks)
+prompt  = self.build_prompt(query, context)
+```
+- `_build_context` formats chunks into the labeled `[SOURCE N]` string (as explained before)
+- `build_prompt` likely combines the context + query into a final instruction string like:
+  > *"Using the sources below, answer: {query}\n\n{context}"*
+
+---
+
+**Step 2 — Call the LLM:**
+```python
+response = self.client.chat.completions.create(
+    model=self.model,
+    messages=[
+        {"role": "system", "content": "You are a precise research assistant that always cites sources."},
+        {"role": "user",   "content": prompt}
+    ],
+    temperature=0.1
+)
+```
+
+Two messages are sent:
+
+| Role | Purpose |
+|------|---------|
+| `system` | Sets the LLM's **personality/behavior** — be precise, always cite |
+| `user` | The actual **prompt** with context + question |
+
+`temperature=0.1` keeps the output **focused and factual** — close to 0 means less randomness/creativity, which is ideal for research Q&A.
+
+---
+
+**Step 3 — Extract the answer:**
+```python
+answer = response.choices[0].message.content
+```
+Groq returns a `choices` list. You grab the **first choice's** message text — that's the LLM's actual reply.
+
+---
+
+**Step 4 — Return answer + sources:**
+```python
+return {
+    "answer": answer,
+    "sources": [
+        {
+            "source":       chunk["metadata"]["source"],
+            "pages":        chunk["metadata"]["page"],
+            "text":         chunk["text"],
+            "rerank_score": chunk["rerank_score"]
+        }
+        for chunk in chunks
+    ]
+}
+```
+Returns a clean dictionary with two keys:
+
+- **`answer`** — the LLM's generated response
+- **`sources`** — a list built via a **list comprehension**, pulling key metadata from each chunk so the caller knows exactly *where* the answer came from, and each chunk's `rerank_score` (a relevance score from a reranking step earlier in the pipeline)
+
+---
+
+**The final output looks like:**
+```python
+{
+  "answer": "According to SOURCE 1, AI is transforming...",
+  "sources": [
+    {
+      "source": "report.pdf",
+      "pages": 4,
+      "text": "AI is transforming...",
+      "rerank_score": 0.97
+    },
+    ...
+  ]
+}
+```
+
+This design is clean because the **answer and its evidence travel together**, making it easy to display citations in a UI or verify the LLM's response.
