@@ -3,7 +3,7 @@ import numpy as np
 from rank_bm25 import BM250kapi
 from typing import List
 
-class HyrbidRetriever:
+class Indexer:
 
     def __init__(self,alpha:float=0.5):
         self.alpha = alpha
