@@ -2,6 +2,7 @@
 .venv/
 venv/
 backend/.venv/
+backend/venv/
 
 # Python cache
 _pycache_/
