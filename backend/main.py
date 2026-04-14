@@ -9,7 +9,7 @@ from core.indexer import Indexer
 from core.retriever import HybridRetriever
 from core.reranker import Reranker
 from core.generator import Generator
-from api.router import router
+from api.routes import router
 
 app = FastAPI(title="QueryMind")
 
