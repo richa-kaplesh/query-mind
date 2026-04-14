@@ -3,7 +3,7 @@ from typing import List
 
 class Generator:
 
-    def __init__(self, model:str="llama3-70b-8192"):
+    def __init__(self, model:str="llama-3.3-70b-versatile"):
         self.client = Groq()
         self.model = model
 

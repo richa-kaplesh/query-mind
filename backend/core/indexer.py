@@ -9,7 +9,7 @@ class Indexer:
         self.dimension = dimension         # size of each embedding vector
         self.chunks = []                   # all chunks stored for lookup
         self.bm25 = None                   # keyword search index
-        self.faiss_index = None 
+        self.faiss_index = None
     
 
     def index(self, chunks: List[dict]) -> None:
