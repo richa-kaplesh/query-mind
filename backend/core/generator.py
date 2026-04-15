@@ -61,15 +61,15 @@ ANSWER (with citations):"""
 
         return {
             "answer": answer,
-            "sources":[
-                {
-                    "source": chunk["metadata"]["source"],
-                    "pages": chunk["metadata"]["page"],
-                    "text":chunk["text"],
-                    "rerank_score": chunk["rerank_score"]  
-                }
-                for chunk in chunks
-            ] 
+            "sources": [
+                    {
+                        "source": chunk["metadata"].get("source", "unknown"),
+                        "page": chunk["metadata"].get("page", "N/A"),
+                        "text": chunk["text"],
+                        "rerank_score": chunk["rerank_score"]
+                    }
+                    for chunk in chunks
+                ]                 
         }
 
         

@@ -1,0 +1,77 @@
+[
+  {
+    "question": "How many days per week is this workout plan designed for?",
+    "ground_truth": "The workout plan is designed for 3 days per week.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "How many sets and reps are prescribed for Banded Glute Bridges?",
+    "ground_truth": "Banded Glute Bridges are prescribed for 4 sets of 15 reps.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "What is the recommended rest time between sets?",
+    "ground_truth": "The recommended rest time is 45–60 seconds between sets, which can be increased to 90 seconds as the user gets stronger.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "How long should the Plank hold be held per set on Day 3?",
+    "ground_truth": "The Plank hold should be held for 45 seconds per set.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "What activity is recommended on rest days, and for how long?",
+    "ground_truth": "A 20–30 minute walk is recommended on rest days. Stretching and yoga also count as active recovery.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "According to the document, is it possible to lose fat in just one specific body area like the waist?",
+    "ground_truth": "No. The document explicitly states that spot reduction is not possible. Waist and arm fat reduce only as overall body fat drops.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "What muscles or goals do Wall Angels target?",
+    "ground_truth": "Wall Angels target posture and shoulder blade activation.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "Why does the document recommend walking on rest days instead of more intense cardio?",
+    "ground_truth": "Because walking burns fat without bulking the legs.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "Within what timeframe does the plan expect visible progress?",
+    "ground_truth": "The plan expects visible progress within 4–6 weeks of consistent training.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "Which exercises on Day 2 specifically target hip dips?",
+    "ground_truth": "Banded Side Lying Abductions and Banded Lateral Walks both target hip dips.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "What protein sources does the document recommend?",
+    "ground_truth": "The document recommends eggs, chicken, lentils, and paneer as protein sources.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "How many exercises are in Day 1 — Upper Body + Posture?",
+    "ground_truth": "There are 8 exercises in Day 1: Wide Push Ups, Diamond Push Ups, Pike Push Ups, Superman Holds, Reverse Snow Angels, Tricep Dips, Plank Shoulder Taps, and Wall Angels.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "Does the document specify a daily calorie intake or calorie targets?",
+    "ground_truth": "No. The document does not mention any calorie targets or daily calorie intake. It only advises eating enough protein to support muscle building.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "Does the workout plan require any dumbbells or barbells?",
+    "ground_truth": "No. The plan is designed for home use with bodyweight and resistance bands only. No dumbbells or barbells are mentioned.",
+    "document": "workout_plan.pdf"
+  },
+  {
+    "question": "Does the document include a warm-up or cool-down routine?",
+    "ground_truth": "No. The document does not include a dedicated warm-up or cool-down routine. Stretching and yoga are only mentioned as rest day active recovery options.",
+    "document": "workout_plan.pdf"
+  }
+]

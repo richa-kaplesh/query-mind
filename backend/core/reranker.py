@@ -1,6 +1,6 @@
 from sentence_transformers import CrossEncoder
 from typing import List
-
+import numpy as np
 class Reranker:
 
     def __init__(self, model_name : str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
@@ -12,7 +12,7 @@ class Reranker:
         scores = self.model.predict(pairs)
 
         for i , chunk in enumerate(chunks):
-            chunk["rerank_score"]= float(scores[i])
+            chunk["rerank_score"]= float(1 / (1 + np.exp(-scores[i])))
 
 
         reranked = sorted(chunks, key=lambda x:x["rerank_score"], reverse=True)

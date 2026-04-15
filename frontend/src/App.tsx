@@ -48,6 +48,7 @@ function SourceCard({ source, index }: { source: Source; index: number }) {
   const [expanded, setExpanded] = useState(false);
   const shortName = source.source.replace(/^.*[\\/]/, "");
   const score = Math.round(source.rerank_score * 100);
+  const pageNum = source.page != null ? Number(source.page) : null;
 
   return (
     <div className="source-card" style={{ "--i": index } as React.CSSProperties}>
@@ -60,7 +61,7 @@ function SourceCard({ source, index }: { source: Source; index: number }) {
             </svg>
           </span>
           <span className="source-filename">{shortName}</span>
-          <span className="source-page">p. {source.page}</span>
+          <span className="source-page">{pageNum != null ? `p. ${pageNum}` : "p. —"}</span>
         </div>
         <div className="source-right">
           <span className="source-score">{score}%</span>
