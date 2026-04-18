@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import time
 from groq import Groq
@@ -145,6 +148,9 @@ def run_all_evals():
 
 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PDF_PATH = os.path.join(BASE_DIR, "workout_plan.pdf")
+
 if __name__ == "__main__":
-    setup_pipeline("backend/eval/workout_plan.pdf")
+    setup_pipeline(PDF_PATH)
     averages = run_all_evals()
