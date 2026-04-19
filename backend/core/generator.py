@@ -1,6 +1,8 @@
 from groq import Groq
 from typing import List
 
+from httpx import stream
+
 class Generator:
 
     def __init__(self, model:str="llama-3.3-70b-versatile"):
@@ -72,7 +74,30 @@ ANSWER (with citations):"""
                     for chunk in chunks
                 ]                 
         }
+    def generate_stream(self, query: str, chunks: List[dict]):
+        context = self._build_context(chunks)
+        prompt = self.build_prompt(query, context)
 
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a precise research assistant that always cites sources."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.1,
+            stream=True
+        )
+
+        for chunk in stream:
+            token = chunk.choices[0].delta.content
+            if token is not None:
+              yield token
         
 
         

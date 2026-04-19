@@ -370,13 +370,7 @@ Self-Evaluator   → is context sufficient?
 
 
 
-Streaming is more visible — a user/hiring manager sees it immediately in the demo. LangSmith is more impressive technically — shows you think about observability and production systems.
-I'd do them in this order:
-1. Streaming responses  ← visible impact, frontend work
-2. LangSmith tracing    ← backend observability, portfolio depth
 
-Before we start — quick check on your current stack:
-Your backend is FastAPI, frontend is React/TypeScript. Streaming in this setup means Server-Sent Events (SSE) — FastAPI streams tokens from Groq, frontend consumes the stream and renders word by word.
 
 
 
