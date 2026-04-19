@@ -369,6 +369,195 @@ Self-Evaluator   → is context sufficient?
 **alpha=0.5 default** — equal weight to dense and sparse retrieval. Tune toward sparse for jargon-heavy technical docs, toward dense for conceptual/abstract content.
 
 
-def run_all_evals():
-    print(f"Total chunks indexed: {len(indexer.chunks)}")
-    print(f"Sample chunk: {indexer.chunks[0]['text'][:200]}")
+D:\query-mind\backend\.venv\Lib\site-packages\huggingface_hub\file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+D:\query-mind\backend\.venv\Lib\site-packages\huggingface_hub\file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+Batches: 100%|█████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.50it/s]
+indexed 6 chunks from D:\query-mind\backend\eval\workout_plan.pdf
+
+============================================================
+Running evals on 15 questions...
+============================================================
+
+1/15] How many days per week is this workout plan designed for?...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 1 questions
+============================================================
+  faithfulness           1.000  ████████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         1.000  ████████████████████
+============================================================
+
+2/15] How many sets and reps are prescribed for Banded Glute Bridg...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 2 questions
+============================================================
+  faithfulness           1.000  ████████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         1.000  ████████████████████
+============================================================
+
+3/15] What is the recommended rest time between sets?...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 3 questions
+============================================================
+  faithfulness           1.000  ████████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         1.000  ████████████████████
+============================================================
+
+4/15] How long should the Plank hold be held per set on Day 3?...
+  ✓ Faithfulness: 0.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 0.00
+
+============================================================
+Final Eval Report - 4 questions
+============================================================
+  faithfulness           0.750  ███████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         0.750  ███████████████
+============================================================
+
+5/15] What activity is recommended on rest days, and for how long?...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 5 questions
+============================================================
+  faithfulness           0.800  ████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         0.800  ████████████████
+============================================================
+
+6/15] According to the document, is it possible to lose fat in jus...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 6 questions
+============================================================
+  faithfulness           0.833  ████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         0.833  ████████████████
+============================================================
+
+7/15] What muscles or goals do Wall Angels target?...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 7 questions
+============================================================
+  faithfulness           0.857  █████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         0.857  █████████████████
+============================================================
+
+8/15] Why does the document recommend walking on rest days instead...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 8 questions
+============================================================
+  faithfulness           0.875  █████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         0.875  █████████████████
+============================================================
+
+9/15] Within what timeframe does the plan expect visible progress?...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 9 questions
+============================================================
+  faithfulness           0.889  █████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         0.889  █████████████████
+============================================================
+
+10/15] Which exercises on Day 2 specifically target hip dips?...
+  ✓ Faithfulness: 0.50 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 10 questions
+============================================================
+  faithfulness           0.850  █████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         0.900  ██████████████████
+============================================================
+
+11/15] What protein sources does the document recommend?...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 11 questions
+============================================================
+  faithfulness           0.864  █████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         0.909  ██████████████████
+============================================================
+
+12/15] How many exercises are in Day 1 â€” Upper Body + Posture?...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 12 questions
+============================================================
+  faithfulness           0.875  █████████████████
+  answer_relevancy       1.000  ████████████████████
+  context_precision      1.000  ████████████████████
+  context_recall         0.917  ██████████████████
+============================================================
+
+13/15] Does the document specify a daily calorie intake or calorie ...
+  ✓ Faithfulness: 0.00 | Relevancy: 0.00 | Precision: 0.00 | Recall: 0.00
+
+============================================================
+Final Eval Report - 13 questions
+============================================================
+  faithfulness           0.808  ████████████████
+  answer_relevancy       0.923  ██████████████████
+  context_precision      0.923  ██████████████████
+  context_recall         0.846  ████████████████
+============================================================
+
+14/15] Does the workout plan require any dumbbells or barbells?...
+  ✓ Faithfulness: 1.00 | Relevancy: 1.00 | Precision: 1.00 | Recall: 1.00
+
+============================================================
+Final Eval Report - 14 questions
+============================================================
+  faithfulness           0.821  ████████████████
+  answer_relevancy       0.929  ██████████████████
+  context_precision      0.929  ██████████████████
+  context_recall         0.857  █████████████████
+============================================================
+
+15/15] Does the document include a warm-up or cool-down routine?...
+  ✓ Faithfulness: 0.00 | Relevancy: 0.00 | Precision: 0.80 | Recall: 0.80
+
+============================================================
+Final Eval Report - 15 questions
+============================================================
+  faithfulness           0.767  ███████████████
+  answer_relevancy       0.867  █████████████████
+  context_precision      0.920  ██████████████████
+  context_recall         0.853  █████████████████
+============================================================
+
+(.venv) PS D:\query-mind\backend> 
