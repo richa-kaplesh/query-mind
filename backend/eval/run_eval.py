@@ -152,6 +152,7 @@ def run_all_evals():
 
         result = run_query(question)
         answer = result["answer"]
+        print(f"  💬 Answer: {answer[:150]}...")
         chunks= result["chunks"]
 
         scores = score_with_llm(question, ground_truth , answer, chunks)
