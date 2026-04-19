@@ -368,6 +368,79 @@ Self-Evaluator   → is context sufficient?
 
 **alpha=0.5 default** — equal weight to dense and sparse retrieval. Tune toward sparse for jargon-heavy technical docs, toward dense for conceptual/abstract content.
 
+## Recent Updates
+
+### Streaming Responses (SSE)
+
+Added token-by-token streaming so answers appear word by word instead of waiting for the full response.
+
+**New endpoint:** `POST /query/stream`
+
+**How it works:**
+```
+Groq generates token by token
+    ↓
+generator.generate_stream() yields each token
+    ↓
+event_stream() wraps each token as SSE event
+    ↓
+StreamingResponse pushes to browser continuously
+    ↓
+Frontend appends each token to UI as it arrives
+```
+
+**Why SSE and not WebSockets:**
+SSE is one-directional (server → client) and works over regular HTTP. WebSockets are bidirectional and require a persistent connection. For streaming text responses, SSE is simpler and sufficient — no need for the overhead of WebSockets.
+
+**Stream event format:**
+```
+data: {"type": "token", "content": "The"}       ← one per word
+data: {"type": "token", "content": " workout"}
+data: {"type": "sources", "content": [...]}      ← sent once at end
+data: [DONE]                                     ← stream finished
+```
+
+Sources are sent after `[DONE]` so citations only render once the full answer is visible.
+
+**Files changed:**
+- `core/generator.py` — added `generate_stream()` method alongside existing `generate()`. Non-streaming queries unaffected.
+- `api/routes.py` — added `/query/stream` endpoint using FastAPI's `StreamingResponse`
+
+---
+
+### Eval Harness (`backend/eval/run_eval.py`)
+
+Built a full LLM-as-judge evaluation pipeline against a golden dataset.
+
+**What it does:**
+Runs all 15 golden dataset questions through the full RAG pipeline, scores each answer on 4 metrics using Groq as judge, prints a live report as questions complete.
+
+**4 metrics scored (0.0 → 1.0):**
+
+| Metric | What it measures |
+|---|---|
+| Faithfulness | Every claim in the answer is grounded in retrieved context |
+| Answer Relevancy | Answer actually addresses the question asked |
+| Context Precision | Retrieved chunks were relevant to the question |
+| Context Recall | Retrieved chunks contained enough info to answer completely |
+
+**Abstention handling:**
+If the document genuinely doesn't contain the answer and the system correctly says "I cannot find this", the judge scores Faithfulness and Answer Relevancy as 1.0 — not 0. Without this, correct abstentions were penalized as failures.
+
+**Final scores on workout_plan.pdf:**
+```
+Faithfulness        1.000  ████████████████████
+Answer Relevancy    1.000  ████████████████████
+Context Precision   0.960  ███████████████████
+Context Recall      1.000  ████████████████████
+```
+
+**To run:**
+```bash
+cd backend
+python eval/run_eval.py
+```
+```
 
 
 
