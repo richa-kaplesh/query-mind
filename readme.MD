@@ -367,3 +367,8 @@ Self-Evaluator   → is context sufficient?
 **Why top_k=20 in retriever, not 5** — retriever is fast and rough; reranker is slow and precise. Cast wide net first, sharpen focus second. Retrieving only 5 risks missing the best answer entirely.
 
 **alpha=0.5 default** — equal weight to dense and sparse retrieval. Tune toward sparse for jargon-heavy technical docs, toward dense for conceptual/abstract content.
+
+
+def run_all_evals():
+    print(f"Total chunks indexed: {len(indexer.chunks)}")
+    print(f"Sample chunk: {indexer.chunks[0]['text'][:200]}")
