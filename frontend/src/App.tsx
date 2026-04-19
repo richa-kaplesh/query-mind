@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { useStream, Source } from "./hooks/useStream";
+import { useState, useRef, useEffect } from "react";
+import { useStream, type Source } from "./hooks/useStream";
 import "./App.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
