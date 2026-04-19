@@ -79,9 +79,14 @@ Retrieved Context:{context}
      
 Score the following 4 metrics from 0.0 to 1.0:
 1. Faithfulness - is every claim in the generated answer supported by the retrieved context?
+   IMPORTANT: If the generated answer correctly says the information is not in the document,
+   and the context indeed lacks that information, score Faithfulness as 1.0.
 2. Answer Relevancy - does the generated answer actually address the question asked?
+   IMPORTANT: If the question asks about something not in the document and the answer 
+   correctly states this, score Answer Relevancy as 1.0.
 3. Context Precision - were the retrieved chunks relevant to the question?
-4. Context Recall - did the retrieved chunks contain enough information to answer the question completely?
+4. Context Recall - did the retrieved chunks contain enough information to answer completely?
+   IMPORTANT: If the document genuinely does not contain the answer, score Context Recall as 1.0.
 
 Return ONLY a JSON object like this, nothing else:
 
