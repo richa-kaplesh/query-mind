@@ -12,6 +12,11 @@ from core.retriever import HybridRetriever
 from core.reranker import Reranker
 from core.generator import Generator
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PDF_PATH = os.path.join(BASE_DIR, "workout_plan.pdf")
+DATASET_PATH = os.path.join(BASE_DIR, "golden_dataset.json")  # Add this
+
+
 embedder = Embedder()
 indexer = Indexer()
 retriever = HybridRetriever(indexer = indexer)
@@ -35,8 +40,10 @@ def setup_pipeline(pdf_path: str):
 
     print(f"indexed {len(all_chunks)} chunks from {pdf_path}")
 
-
-
+def run_all_evals():
+    print(f"Total chunks indexed: {len(indexer.chunks)}")
+    print(f"Sample chunk: {indexer.chunks[0]['text'][:200]}")
+    
 def run_query(question:str)-> dict:
     query_embedding = embedder.embed_query(question)
 
@@ -72,17 +79,11 @@ Retrieved Context:{context}
      
 Score the following 4 metrics from 0.0 to 1.0:
 1. Faithfulness - is every claim in the generated answer supported by the retrieved context?
-   IMPORTANT: If the generated answer correctly says the information is not in the document,
-   and the context indeed lacks that information, score Faithfulness as 1.0.
 2. Answer Relevancy - does the generated answer actually address the question asked?
-   IMPORTANT: If the question asks about something not in the document and the answer 
-   correctly states this, score Answer Relevancy as 1.0.
 3. Context Precision - were the retrieved chunks relevant to the question?
-4. Context Recall - did the retrieved chunks contain enough information to answer completely?
-   IMPORTANT: If the document genuinely does not contain the answer, score Context Recall as 1.0.
+4. Context Recall - did the retrieved chunks contain enough information to answer the question completely?
 
-   
-Return ONLY a JSON object like this , nothing else:
+Return ONLY a JSON object like this, nothing else:
 
 {{
     "faithfulness":0.0,
@@ -90,6 +91,7 @@ Return ONLY a JSON object like this , nothing else:
     "context_precision":0.0,
     "context_recall":0.0
 }}"""
+    
     response = groq_client.chat.completions.create(
         model = "llama-3.3-70b-versatile",
         messages=[
@@ -98,16 +100,37 @@ Return ONLY a JSON object like this , nothing else:
                 "content":prompt
             }
         ],
-        temperature=0.0
+        temperature=0.0,
+        response_format={"type": "json_object"}  # Force JSON output
     )
 
     raw = response.choices[0].message.content
-    scores = json.loads(raw)
+    
+    # Strip markdown code blocks if present
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    raw = raw.strip()
+    
+    try:
+        scores = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"\n❌ JSON Parse Error: {e}")
+        print(f"Raw response: {raw[:200]}...")
+        # Return default scores on error
+        scores = {
+            "faithfulness": 0.0,
+            "answer_relevancy": 0.0,
+            "context_precision": 0.0,
+            "context_recall": 0.0
+        }
 
     return scores
 
 def run_all_evals():
-    with open("backend/eval/golden_dataset.json","r") as f:
+    with open(DATASET_PATH, "r") as f:
         golden_data = json.load(f)
 
     results = []
@@ -152,12 +175,6 @@ def run_all_evals():
         print(f"{'='*60}\n")
 
     return averages
-
-
-
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PDF_PATH = os.path.join(BASE_DIR, "workout_plan.pdf")
 
 if __name__ == "__main__":
     setup_pipeline(PDF_PATH)
