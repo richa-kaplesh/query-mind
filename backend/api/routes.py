@@ -6,6 +6,7 @@ import shutil
 import logging
 import time
 import json
+from typing import List
 
 from core.pdf_extractor import PDFExtractor
 from core.chunker import TextChunker
@@ -65,30 +66,33 @@ async def ingest_document(file_path: str, filename: str, request: Request):
 @router.post("/upload")
 async def upload_document(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),  # "files", List
     request: Request = None
 ):
-    log.info(f"[UPLOAD] Received file: {file.filename}")
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    uploaded = []
+    
+    for file in files:
+        log.info(f"[UPLOAD] Received file: {file.filename}")
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
 
-    with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-    log.info(f"[UPLOAD] Saved to disk: {file_path}")
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        log.info(f"[UPLOAD] Saved to disk: {file_path}")
 
-    documents[file.filename] = "processing"
-    background_tasks.add_task(
-        ingest_document,
-        file_path=file_path,
-        filename=file.filename,
-        request=request
-    )
+        documents[file.filename] = "processing"
+        background_tasks.add_task(
+            ingest_document,
+            file_path=file_path,
+            filename=file.filename,
+            request=request
+        )
+        uploaded.append(file.filename)
 
     return {
-        "message": "document received, processing started",
-        "filename": file.filename,
+        "message": "documents received, processing started",
+        "files": uploaded,  # frontend expects data.files
         "status": "processing"
     }
-
 
 @router.get("/documents")
 async def get_documents():
