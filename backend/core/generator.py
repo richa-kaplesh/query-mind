@@ -20,14 +20,16 @@ class Generator:
 
         return "\n".join(context_parts)
     
-    def build_prompt(self, query: str , context: str) -> str:
-        return f"""You are a reasearch assistant. Answer the user's ONLY the context provided below.
-    
-        Rules:
-- Only use information from the provided sources
+    def build_prompt(self, query: str, context: str) -> str:
+          return f"""You are a research assistant. Answer using ONLY the context provided below.
+
+Rules:
+- Only use information explicitly stated in the provided sources
 - Always cite which SOURCE number your answer came from
-- If the answer is not in the context, say "I cannot find this in the provided documents"
-- Never make up information
+- If the context mentions a related topic but does NOT directly answer the question, 
+  say "The document mentions [topic] but does not directly address [question]"
+- If the answer is completely absent, say "I cannot find this in the provided documents"
+- Never infer, extrapolate, or assume beyond what is written
 
 CONTEXT:
 {context}
@@ -36,7 +38,6 @@ QUESTION:
 {query}
 
 ANSWER (with citations):"""
-    
     def generate(self , query: str, chunks: List[dict]) -> dict:
         context = self._build_context(chunks)
         prompt =  self.build_prompt(query, context)
