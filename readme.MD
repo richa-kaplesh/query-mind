@@ -1,4 +1,4 @@
-# QueryMind 🔍
+# QueryMind 
 
 > Upload your own PDFs. Ask questions across all of them. Get answers with pinpoint citations — not just "page 4", but the exact passage, highlighted.
 
