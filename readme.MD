@@ -117,22 +117,6 @@ Because chunks overlap (chunk_overlap is intentional — preserves context acros
 | Semantic chunking | Embeds sentences, groups by meaning | Best, most expensive |
 | Structure-aware | Uses headers/sections as natural boundaries | Great for formal docs |
 
-
-
-**Why `all_chunks.extend(chunks)` not `.append()`:**
-
-```python
-# append → adds the list as ONE nested item
-all_chunks.append([c1, c2, c3])
-# result: [[c1, c2, c3]]  ← broken — embedder receives a list, not a chunk dict
-
-# extend → flattens into the parent list
-all_chunks.extend([c1, c2, c3])
-# result: [c1, c2, c3]  ← correct — embedder can loop over individual chunks
-```
-
-After processing 3 PDFs, `all_chunks` is one flat list of all chunks from all documents. The next step (`embedder.encode(all_chunks)`) expects to loop over individual chunk dicts — nested lists would crash it.
-
 ---
 
 ### 3. Embedding (`embedder.py`)
