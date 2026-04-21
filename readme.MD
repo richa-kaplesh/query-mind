@@ -117,7 +117,7 @@ Because chunks overlap (chunk_overlap is intentional — preserves context acros
 | Semantic chunking | Embeds sentences, groups by meaning | Best, most expensive |
 | Structure-aware | Uses headers/sections as natural boundaries | Great for formal docs |
 
-We start simple intentionally. Upgrading the chunker strategy and demonstrating RAGAS score improvement is a concrete eval-driven improvement — a good interview talking point.
+
 
 **Why `all_chunks.extend(chunks)` not `.append()`:**
 
