@@ -191,3 +191,32 @@ async def query_document_stream(body: QueryRequest, request: Request):
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+@router.delete("/documents/{filename}")
+async def delete_document(filename: str, request: Request):
+    indexer = request.app.state.indexer
+
+    # Remove chunks belonging to this file
+    indexer.chunks = [
+        chunk for chunk in indexer.chunks
+        if chunk["metadata"]["source"] != filename
+    ]
+
+    # Rebuild both indexes without deleted chunks
+    if indexer.chunks:
+        tokenized = [chunk["text"].lower().split() for chunk in indexer.chunks]
+        indexer.bm25 = BM25Okapi(tokenized)
+
+        embeddings = np.array([chunk["embedding"] for chunk in indexer.chunks]).astype("float32")
+        indexer.faiss_index = faiss.IndexFlatIP(indexer.dimension)
+        faiss.normalize_L2(embeddings)
+        indexer.faiss_index.add(embeddings)
+    else:
+        # No docs left — reset everything
+        indexer.bm25 = None
+        indexer.faiss_index = None
+
+    # Remove from documents dict
+    documents.pop(filename, None)
+
+    return {"message": f"{filename} deleted", "remaining": list(documents.keys())}

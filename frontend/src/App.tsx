@@ -330,7 +330,7 @@ export default function App() {
           <div className="topbar-actions">
             <div className="model-tag" title="AI Model">
               <div className="model-tag-icon">✨</div>
-              Claude Sonnet
+              RAG
             </div>
             <button
               className="topbar-btn"
