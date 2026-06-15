@@ -13,7 +13,7 @@ class Indexer:
     
 
     def index(self, chunks: List[dict]) -> None:
-        self.chunks.extend(chunks)             # ✅ append, don't overwrite
+        self.chunks.extend(chunks)             
 
         # rebuild BM25 over ALL chunks
         tokenized = [chunk["text"].lower().split() for chunk in self.chunks]
