@@ -2,18 +2,26 @@ import { useState, useRef, useCallback } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ConversationTurn {
+export interface ConversationTurn {
   role: "user" | "assistant";
   content: string;
 }
 
+export interface Source {
+  source: string;
+  page: string | number;
+  text: string;
+  rerank_score: number;
+}
+
 interface StreamEvent {
-  type: "token";
-  content: string;
+  type: "token" | "sources";
+  content: string | Source[];
 }
 
 interface UseStreamReturn {
   streamedAnswer: string;
+  streamedSources: Source[];
   isStreaming: boolean;
   startStream: (question: string, conversationHistory?: ConversationTurn[]) => Promise<void>;
   reset: () => void;
@@ -23,6 +31,7 @@ interface UseStreamReturn {
 
 export function useStream(apiBase: string): UseStreamReturn {
   const [streamedAnswer, setStreamedAnswer] = useState("");
+  const [streamedSources, setStreamedSources] = useState<Source[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -30,6 +39,7 @@ export function useStream(apiBase: string): UseStreamReturn {
   const reset = useCallback(() => {
     abortRef.current?.abort();
     setStreamedAnswer("");
+    setStreamedSources([]);
     setIsStreaming(false);
   }, []);
 
@@ -39,6 +49,7 @@ export function useStream(apiBase: string): UseStreamReturn {
       abortRef.current = new AbortController();
 
       setStreamedAnswer("");
+      setStreamedSources([]);
       setIsStreaming(true);
 
       try {
@@ -65,7 +76,7 @@ export function useStream(apiBase: string): UseStreamReturn {
 
           buffer += decoder.decode(value, { stream: true });
 
-          // Split on newlines, keep incomplete last line in buffer
+          // Split on double-newline SSE boundaries
           const lines = buffer.split("\n");
           buffer = lines.pop() ?? "";
 
@@ -89,6 +100,8 @@ export function useStream(apiBase: string): UseStreamReturn {
 
             if (event.type === "token" && typeof event.content === "string") {
               setStreamedAnswer((prev) => prev + event.content);
+            } else if (event.type === "sources" && Array.isArray(event.content)) {
+              setStreamedSources(event.content as Source[]);
             }
           }
         }
@@ -102,7 +115,7 @@ export function useStream(apiBase: string): UseStreamReturn {
     [apiBase]
   );
 
-  return { streamedAnswer, isStreaming, startStream, reset };
+  return { streamedAnswer, streamedSources, isStreaming, startStream, reset };
 }
 
 // ─── Non-streaming query (POST /query) ────────────────────────────────────────

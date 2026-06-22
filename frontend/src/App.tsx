@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useStream, useQuery } from "./hooks/useStream";
+import type { Source } from "./hooks/useStream";
 import "./App.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -18,6 +19,8 @@ interface Message {
   timestamp: Date;
   toolUsed?: string | null;
   attachments?: string[];
+  sources?: Source[];
+  isUploadEvent?: boolean;  // true → render as upload-receipt card
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -111,7 +114,7 @@ export default function App() {
   }, [error]);
 
   // Stream hook — handles /query/stream (token-by-token SSE)
-  const { streamedAnswer, isStreaming, startStream, reset: resetStream } = useStream(API_BASE);
+  const { streamedAnswer, streamedSources, isStreaming, startStream, reset: resetStream } = useStream(API_BASE);
   // Query hook — hits /query to get tool_used for the badge
   const { toolUsed, sendQuery, reset: resetQuery } = useQuery(API_BASE);
 
@@ -256,6 +259,18 @@ export default function App() {
         // Error already shown in banner; do not proceed to query
         return;
       }
+
+      // ✅ Always inject an upload-receipt card so user gets proof the bot
+      // received the files — even when no text message accompanies them.
+      const uploadReceiptMsg: Message = {
+        id: `upload_${Date.now()}`,
+        role: "user",
+        content: "",
+        timestamp: new Date(),
+        attachments: attachedNames,
+        isUploadEvent: true,
+      };
+      setMessages((prev) => [...prev, uploadReceiptMsg]);
     }
 
     if (!question) return;
@@ -265,7 +280,7 @@ export default function App() {
       role: "user",
       content: question,
       timestamp: new Date(),
-      attachments: attachedNames.length ? attachedNames : undefined,
+      // attachments omitted — upload receipt card already shows them
     };
     setMessages((prev) => [...prev, userMsg]);
     setInputValue("");
@@ -294,10 +309,11 @@ export default function App() {
           content: streamedAnswer,
           timestamp: new Date(),
           toolUsed: toolUsed ?? null,
+          sources: streamedSources.length > 0 ? streamedSources : undefined,
         },
       ]);
     }
-  }, [isStreaming, streamedAnswer, toolUsed]);
+  }, [isStreaming, streamedAnswer, toolUsed, streamedSources]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -379,7 +395,7 @@ export default function App() {
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.txt,.md,.doc,.docx"
+        accept=".pdf,.txt,.md,.doc,.docx,.csv"
         style={{ display: "none" }}
         onChange={(e) => handleFileSelect(e.target.files)}
       />
@@ -482,23 +498,51 @@ export default function App() {
           </div>
         ) : (
           <div className="messages">
-            {messages.map((msg) => (
+            {messages.map((msg) => {
+              // ── Upload-receipt card (centred system event) ──────────────────
+              if (msg.isUploadEvent && msg.attachments?.length) {
+                return (
+                  <div key={msg.id} className="upload-receipt-row">
+                    <div className="upload-receipt-card">
+                      <div className="upload-receipt-header">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                          <polyline points="12 18 12 12 9.5 14.5"/>
+                          <polyline points="12 12 14.5 14.5"/>
+                        </svg>
+                        <span>Document{msg.attachments.length > 1 ? "s" : ""} uploaded &amp; indexing…</span>
+                        <span className="upload-receipt-badge">
+                          <span className="upload-receipt-dot" />
+                          Processing
+                        </span>
+                      </div>
+                      <div className="upload-receipt-files">
+                        {msg.attachments.map((name) => (
+                          <div key={name} className="upload-receipt-file">
+                            <FileIcon />
+                            <span>{name}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="upload-receipt-note">
+                        QueryMind received your file{msg.attachments.length > 1 ? "s" : ""}. You can now ask questions about the content.
+                      </div>
+                    </div>
+                    <div className="upload-receipt-time">
+                      {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                );
+              }
+
+              // ── Regular message bubble ──────────────────────────────────────
+              return (
               <div key={msg.id} className={`msg-row ${msg.role}`}>
                 {msg.role === "assistant" && (
                   <div className="avatar ai-av">QM</div>
                 )}
                 <div className="msg-body">
-                  {/* Attachments shown above the bubble */}
-                  {msg.attachments && msg.attachments.length > 0 && (
-                    <div className="msg-attachments">
-                      {msg.attachments.map((name) => (
-                        <div key={name} className="msg-attach-chip">
-                          <FileIcon />
-                          <span>{name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                   <div className="msg-bubble">{msg.content}</div>
 
                   {/* Tool badge — shows which backend tool was selected */}
@@ -522,6 +566,39 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Sources panel */}
+                  {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
+                    <div className="sources-panel">
+                      <button
+                        className="sources-toggle"
+                        onClick={() => toggleSource(msg.id)}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        {msg.sources.length} source{msg.sources.length > 1 ? "s" : ""}
+                        <span className={`sources-chevron ${expandedSources.has(msg.id) ? "open" : ""}`}>
+                          <ChevronIcon />
+                        </span>
+                      </button>
+                      {expandedSources.has(msg.id) && (
+                        <div className="sources-list">
+                          {msg.sources.map((src, i) => (
+                            <div key={i} className="source-item">
+                              <div className="source-header">
+                                <FileIcon />
+                                <span className="source-name">{src.source}</span>
+                                {src.page !== "N/A" && (
+                                  <span className="source-page">p.{src.page}</span>
+                                )}
+                                <span className="source-score">{(src.rerank_score * 100).toFixed(0)}%</span>
+                              </div>
+                              <p className="source-text">{src.text.slice(0, 220)}{src.text.length > 220 ? "…" : ""}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="msg-time">
                     {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </div>
@@ -530,7 +607,8 @@ export default function App() {
                   <div className="avatar user-av">U</div>
                 )}
               </div>
-            ))}
+              );
+            })}
 
             {/* Streaming */}
             {isStreaming && (
@@ -578,7 +656,7 @@ export default function App() {
             ref={attachBtnRef}
             className="attach-btn"
             onClick={() => fileInputRef.current?.click()}
-            title="Attach files (PDF, TXT, MD, DOC)"
+            title="Attach files (PDF, TXT, MD, DOC, CSV)"
             disabled={isStreaming}
           >
             <PaperclipIcon />
@@ -606,7 +684,7 @@ export default function App() {
         </div>
 
         <div className="input-footer">
-          <span className="input-hint">Enter to send · Shift+Enter for new line · Attach PDF, TXT, MD, DOC</span>
+          <span className="input-hint">Enter to send · Shift+Enter for new line · Attach PDF, TXT, MD, DOC, CSV</span>
         </div>
       </div>
     </div>

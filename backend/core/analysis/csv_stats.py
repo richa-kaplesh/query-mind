@@ -1,12 +1,10 @@
 import pandas as pd
 import numpy as np
 from scipy import stats as scipy_stats
-from groq import Groq
-from config import settings
 import json
 
+
 def clean_for_json(obj):
-    """Recursively convert numpy/pandas types to native Python types for JSON serialization"""
     if isinstance(obj, dict):
         return {key: clean_for_json(value) for key, value in obj.items()}
     elif isinstance(obj, list):
@@ -22,17 +20,18 @@ def clean_for_json(obj):
     else:
         return obj
 
-def detect_problem_type(df:pd.DataFrame, target_col:str) -> str:
-    target = df[target_col]
-    unique_ratio = target.nunique()/ len(target)
 
-    if target.dtype == 'object' or target.nunique()<=10:
+def detect_problem_type(df: pd.DataFrame, target_col: str) -> str:
+    target = df[target_col]
+    unique_ratio = target.nunique() / len(target)
+
+    if target.dtype == 'object' or target.nunique() <= 10:
         return "classification"
     elif unique_ratio > 0.05:
         return "regression"
     else:
         return "classification"
-    
+
 
 def compute_numerical_stats(series: pd.Series) -> dict:
     q1 = series.quantile(0.25)
@@ -68,6 +67,8 @@ def compute_numerical_stats(series: pd.Series) -> dict:
         "missing": int(series.isnull().sum()),
         "missing_pct": round(series.isnull().sum() / len(series) * 100, 2)
     }
+
+
 def compute_categorical_stats(series: pd.Series) -> dict:
     value_counts = series.value_counts()
     return {
@@ -79,13 +80,14 @@ def compute_categorical_stats(series: pd.Series) -> dict:
         "high_cardinality": series.nunique() > 50
     }
 
+
 def compute_correlation_matrix(df: pd.DataFrame) -> dict:
     numerical_cols = df.select_dtypes(include=[np.number]).columns
     corr_matrix = df[numerical_cols].corr()
-    
+
     high_corr_pairs = []
     for i in range(len(corr_matrix.columns)):
-        for j in range(i+1, len(corr_matrix.columns)):
+        for j in range(i + 1, len(corr_matrix.columns)):
             corr_val = corr_matrix.iloc[i, j]
             if abs(corr_val) > 0.85:
                 high_corr_pairs.append({
@@ -100,17 +102,19 @@ def compute_correlation_matrix(df: pd.DataFrame) -> dict:
         "multicollinearity_warning": len(high_corr_pairs) > 0
     }
 
+
 def compute_imbalance(target: pd.Series) -> dict:
     value_counts = target.value_counts()
     majority = value_counts.iloc[0]
     minority = value_counts.iloc[-1]
     imbalance_ratio = round(majority / minority, 2)
-    
+
     return {
         "class_distribution": value_counts.to_dict(),
         "imbalance_ratio": imbalance_ratio,
         "imbalance_warning": imbalance_ratio > 10
     }
+
 
 def compute_categorical_vs_target(df: pd.DataFrame, target_col: str, target: pd.Series) -> dict:
     results = {}
@@ -125,6 +129,7 @@ def compute_categorical_vs_target(df: pd.DataFrame, target_col: str, target: pd.
                 "significant": p_value < 0.05
             }
     return results
+
 
 def compute_numerical_vs_target(df: pd.DataFrame, target_col: str, target: pd.Series) -> dict:
     results = {}
@@ -151,9 +156,10 @@ def compute_numerical_vs_target(df: pd.DataFrame, target_col: str, target: pd.Se
             }
     return results
 
+
 def compute_target_analysis(df: pd.DataFrame, target_col: str, problem_type: str) -> dict:
     target = df[target_col]
-    
+
     if problem_type == "classification":
         return {
             **compute_imbalance(target),
@@ -167,6 +173,7 @@ def compute_target_analysis(df: pd.DataFrame, target_col: str, problem_type: str
             "log_transform_recommended": abs(target.skew()) > 1
         }
 
+
 def compute_dataset_overview(df: pd.DataFrame) -> dict:
     return {
         "rows": len(df),
@@ -179,20 +186,24 @@ def compute_dataset_overview(df: pd.DataFrame) -> dict:
         "categorical_columns": list(df.select_dtypes(exclude=[np.number]).columns)
     }
 
-def run_full_statistics(df: pd.DataFrame, problem_statement: str, target_col: str) -> dict:
+
+def run_full_statistics(df: pd.DataFrame, problem_statement: str, target_col: str = None) -> dict:
+    if target_col is None:
+        target_col = df.columns[-1]
+
     problem_type = detect_problem_type(df, target_col)
     overview = compute_dataset_overview(df)
-    
+
     column_stats = {}
     for col in df.columns:
         if df[col].dtype in [np.float64, np.int64]:
             column_stats[col] = compute_numerical_stats(df[col])
         else:
             column_stats[col] = compute_categorical_stats(df[col])
-    
+
     correlation = compute_correlation_matrix(df)
     target_analysis = compute_target_analysis(df, target_col, problem_type)
-    
+
     result = {
         "problem_type": problem_type,
         "target_column": target_col,

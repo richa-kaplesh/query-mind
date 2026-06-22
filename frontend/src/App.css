@@ -674,58 +674,71 @@ button:disabled { cursor: not-allowed; }
 }
 
 /* ─── Sources ──────────────────────────────────────────────────────────────── */
-.sources {
-  margin-top: 14px;
+.sources-panel {
+  margin-top: 10px;
 }
 
-.sources-header {
+.sources-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-mid);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.sources-toggle:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent-text);
+}
+
+.sources-chevron {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  transition: transform 0.2s;
 }
 
-.sources-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  font-family: var(--font-mono);
-}
+.sources-chevron.open { transform: rotate(180deg); }
 
-.sources-line {
-  flex: 1;
-  height: 1px;
-  background: var(--border);
+.sources-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeUp 0.2s ease both;
 }
 
 .source-item {
-  display: flex;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--bg-surface);
+  background: var(--bg-subtle);
   border: 1px solid var(--border);
   border-radius: 10px;
-  margin-bottom: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  animation: fadeUp 0.3s ease both;
+  padding: 10px 12px;
+  transition: all 0.18s;
 }
 
 .source-item:hover {
   border-color: var(--accent);
   background: var(--accent-glow);
-  transform: translateX(2px);
 }
 
-.source-item-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-
-.source-row1 { display: flex; align-items: center; gap: 8px; }
+.source-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
 
 .source-name {
-  font-size: 12.5px;
+  flex: 1;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
@@ -733,46 +746,30 @@ button:disabled { cursor: not-allowed; }
   text-overflow: ellipsis;
 }
 
-.source-pg {
+.source-page {
   font-size: 10.5px;
   font-family: var(--font-mono);
-  color: var(--accent-text);
   background: var(--accent-glow);
   border: 1px solid rgba(14,116,144,0.2);
-  padding: 1px 7px;
+  color: var(--accent-text);
+  padding: 1px 6px;
   border-radius: 5px;
-  font-weight: 600;
   white-space: nowrap;
 }
 
-.source-excerpt {
+.source-score {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-tertiary);
+}
+
+.source-text {
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.55;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.source-excerpt.expanded {
-  -webkit-line-clamp: unset;
-  display: block;
-}
-
-.source-score {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.score-num {
-  font-size: 12px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--accent-text);
+  margin: 0;
+  word-break: break-word;
 }
 
 .score-bar {
@@ -789,17 +786,6 @@ button:disabled { cursor: not-allowed; }
   border-radius: 3px;
   transition: width 0.4s ease;
 }
-
-.source-chevron {
-  display: flex;
-  align-items: center;
-  color: var(--text-tertiary);
-  transition: transform 0.2s;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.source-chevron.open { transform: rotate(180deg); }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    INPUT AREA  —  ChatGPT / Claude style
@@ -977,6 +963,105 @@ button:disabled { cursor: not-allowed; }
   color: var(--text-tertiary);
   font-family: var(--font-mono);
   letter-spacing: 0.05px;
+}
+
+/* ─── Upload receipt card ─────────────────────────────────────────────────── */
+.upload-receipt-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: fadeUp 0.3s ease both;
+}
+
+.upload-receipt-card {
+  max-width: 480px;
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1.5px solid rgba(14, 116, 144, 0.3);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 16px var(--accent-glow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upload-receipt-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.upload-receipt-header > span:first-of-type {
+  flex: 1;
+}
+
+.upload-receipt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(217, 119, 6, 0.1);
+  border: 1px solid rgba(217, 119, 6, 0.28);
+  color: var(--warning);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  padding: 2px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.upload-receipt-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+  flex-shrink: 0;
+  animation: pulse-amber 1.4s ease-in-out infinite;
+}
+
+.upload-receipt-files {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.upload-receipt-file {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.upload-receipt-file span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-receipt-note {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.upload-receipt-time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
 }
 
 /* ─── Animations ──────────────────────────────────────────────────────────── */

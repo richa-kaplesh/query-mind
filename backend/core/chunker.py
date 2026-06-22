@@ -1,18 +1,18 @@
 from core.models import ExtractedPage
 
 class TextChunker:
-    def __init__(self, chunk_size:int = 500, chunk_overlap:int = 50):
+    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 50):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-    
-    def chunk_pages(self, pages: list[ExtractedPage]) ->list[dict]:
+
+    def chunk_pages(self, pages: list[ExtractedPage]) -> list[dict]:
         all_chunks = []
         for page in pages:
             chunks = self.chunk_text(page.text, page.metadata.model_dump())
             all_chunks.extend(chunks)
         return all_chunks
-    
-    def chunk_text(self, text: str, metadata: dict = {}) ->list[dict]:
+
+    def chunk_text(self, text: str, metadata: dict = {}) -> list[dict]:
         chunks = []
         start = 0
 
@@ -29,3 +29,7 @@ class TextChunker:
                     "end_char": end
                 }
             })
+
+            start = end - self.chunk_overlap
+
+        return chunks

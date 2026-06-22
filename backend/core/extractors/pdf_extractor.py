@@ -6,6 +6,7 @@ import io
 from core.models import ExtractedPage, PageMetadata
 from core.extractors.base_extractor import BaseExtractor
 
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 class PDFExtractor(BaseExtractor):
     
     def extract(self, file_path: str) -> list[ExtractedPage]:
@@ -55,15 +56,16 @@ class PDFExtractor(BaseExtractor):
         text = pytesseract.image_to_string(img)
         return text.strip()
     
-    def _build_page(self , text:str, page_num: int , file_path: str, total_pages: int , warnings : list[str]) -> ExtractedPage:
-        metadata = PageMetadata(
-            page_number = page_num+1,
-            total_pages = total_pages,
-            file_path = file_path,
-            has_warnings=len(warnings)> 0
-        )
-        return ExtractedPage(
-            text=text,
-            metadata = metadata,
-            warnings=warnings
-        )
+    def _build_page(self, text: str, page_num: int, file_path: str, total_pages: int, warnings: list[str]) -> ExtractedPage:
+       metadata = PageMetadata(
+           source=file_path,
+           file_type="pdf",
+           page=page_num + 1,
+           total_pages=total_pages,
+           warnings=warnings
+       )
+       return ExtractedPage(
+           text=text,
+           metadata=metadata,
+           warnings=warnings
+       )   
