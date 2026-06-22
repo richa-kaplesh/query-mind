@@ -42,14 +42,70 @@ async def ingest_document(file_path: str, filename: str, request: Request):
 async def query_document(body: QueryRequest, request: Request):
     log.info(f"[QUERY] Question: '{body.question}'")
     t0 = time.time()
+
     try:
+        embedder = request.app.state.embedder
+        retriever = request.app.state.retriever
+        reranker = request.app.state.reranker
         generator = request.app.state.generator
-        result = generator.generate(query=body.question)
+
+        chunks = []
+        has_documents = any(v.get("status") == "ready" for v in documents.values())
+
+        if has_documents:
+            log.info("[QUERY] Documents found, running retrieval...")
+            query_embedding = embedder.embed_query(body.question)
+            chunks = retriever.retrieve(query=body.question, query_embedding=query_embedding, top_k=20)
+            chunks = reranker.rerank(query=body.question, chunks=chunks, top_k=5)
+            log.info(f"[QUERY] Retrieved {len(chunks)} chunks")
+
+        result = generator.generate(query=body.question, chunks=chunks)
         log.info(f"[QUERY] ✓ Done in {(time.time()-t0):.2f}s | tool used: {result['tool_used']}")
         return result
+
     except Exception as e:
         log.error(f"[QUERY] ✗ Failed: {e}", exc_info=True)
         raise
+
+
+@router.post("/query/stream")
+async def query_document_stream(body: QueryRequest, request: Request):
+    log.info(f"[STREAM] Question: '{body.question}'")
+
+    embedder = request.app.state.embedder
+    retriever = request.app.state.retriever
+    reranker = request.app.state.reranker
+    generator = request.app.state.generator
+
+    chunks = []
+    has_documents = any(v.get("status") == "ready" for v in documents.values())
+
+    if has_documents:
+        query_embedding = embedder.embed_query(body.question)
+        chunks = retriever.retrieve(query=body.question, query_embedding=query_embedding, top_k=20)
+        chunks = reranker.rerank(query=body.question, chunks=chunks, top_k=5)
+
+    sources = [
+        {
+            "source": chunk["metadata"].get("source", "unknown"),
+            "page": chunk["metadata"].get("page", "N/A"),
+            "text": chunk["text"],
+            "rerank_score": chunk.get("rerank_score", 0)
+        }
+        for chunk in chunks
+    ]
+
+    def event_stream():
+        for token in generator.generate_stream(body.question, chunks):
+            data = json.dumps({"type": "token", "content": token})
+            yield f"data: {data}\n\n"
+
+        data = json.dumps({"type": "sources", "content": sources})
+        yield f"data: {data}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @router.post("/upload")
 async def upload_document(

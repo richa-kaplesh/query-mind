@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useStream, type Source } from "./hooks/useStream";
+import { useStream, useQuery } from "./hooks/useStream";
 import "./App.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -16,9 +16,8 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  sources?: Source[];
-  toolUsed?: string;
-  attachments?: string[]; // filenames attached with this message
+  toolUsed?: string | null;
+  attachments?: string[];
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -91,6 +90,8 @@ export default function App() {
   const [inputValue, setInputValue] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [backendDown, setBackendDown] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [docsOpen, setDocsOpen] = useState(false);
@@ -101,7 +102,27 @@ export default function App() {
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const attachBtnRef = useRef<HTMLButtonElement>(null);
 
-  const { streamedAnswer, sources, toolUsed, isStreaming, startStream, reset } = useStream(API_BASE);
+  // ─── Auto-dismiss errors after 5 s ────────────────────────────────────────
+  useEffect(() => {
+    if (!error) return;
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setError(null), 5000);
+    return () => { if (errorTimerRef.current) clearTimeout(errorTimerRef.current); };
+  }, [error]);
+
+  // Stream hook — handles /query/stream (token-by-token SSE)
+  const { streamedAnswer, isStreaming, startStream, reset: resetStream } = useStream(API_BASE);
+  // Query hook — hits /query to get tool_used for the badge
+  const { toolUsed, sendQuery, reset: resetQuery } = useQuery(API_BASE);
+
+  const reset = useCallback(() => { resetStream(); resetQuery(); }, [resetStream, resetQuery]);
+
+  // ─── Backend health check on mount ──────────────────────────────────────
+  useEffect(() => {
+    fetch(`${API_BASE}/documents`, { signal: AbortSignal.timeout(4000) })
+      .then((r) => { if (!r.ok) throw new Error(); setBackendDown(false); })
+      .catch(() => setBackendDown(true));
+  }, []);
 
   // ─── Poll /documents ───────────────────────────────────────────────────────
   const fetchDocuments = useCallback(async () => {
@@ -147,7 +168,7 @@ export default function App() {
     if (chatAreaRef.current) {
       chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
     }
-  }, [messages, streamedAnswer]);
+  }, [messages, streamedAnswer, isStreaming]);
 
   // ─── Auto-resize textarea ──────────────────────────────────────────────────
   useEffect(() => {
@@ -166,11 +187,23 @@ export default function App() {
     try {
       const formData = new FormData();
       files.forEach((f) => formData.append("files", f));
-      const res = await fetch(`${API_BASE}/upload`, { method: "POST", body: formData });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: "Upload failed" }));
-        throw new Error(err.detail || `Upload failed: ${res.status}`);
+
+      let res: Response;
+      try {
+        res = await fetch(`${API_BASE}/upload`, { method: "POST", body: formData });
+      } catch {
+        // fetch() itself threw — backend is unreachable
+        setBackendDown(true);
+        throw new Error(`Cannot reach backend at ${API_BASE} — is the server running?`);
       }
+
+      setBackendDown(false);
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ detail: `Server returned ${res.status}` }));
+        throw new Error(errBody.detail || `Upload failed: ${res.status}`);
+      }
+
       const data = await res.json();
       const newDocs: Document[] = (data.files || []).map((filename: string) => ({
         id: `${Date.now()}_${filename}`,
@@ -186,19 +219,19 @@ export default function App() {
       setPendingFiles([]);
     } catch (err) {
       setError((err as Error).message);
+      throw err; // re-throw so handleSubmit stops on failure
     } finally {
       setUploading(false);
     }
   }, [fetchDocuments]);
 
-  const handleFileSelect = async (files: FileList | null) => {
+  const handleFileSelect = (files: FileList | null) => {
     if (!files || !files.length) return;
     const arr = Array.from(files);
     setPendingFiles((prev) => {
       const names = new Set(prev.map((f) => f.name));
       return [...prev, ...arr.filter((f) => !names.has(f.name))];
     });
-    // Reset the input so same file can be picked again
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -211,9 +244,19 @@ export default function App() {
     const question = inputValue.trim();
     if ((!question && !pendingFiles.length) || isStreaming) return;
 
-    // Upload pending files first
-    const attachedNames = pendingFiles.map((f) => f.name);
-    if (pendingFiles.length) await uploadFiles(pendingFiles);
+    // Snapshot pending files before any state changes
+    const filesToUpload = [...pendingFiles];
+    const attachedNames = filesToUpload.map((f) => f.name);
+
+    // Upload first — stop everything if it fails (uploadFiles re-throws)
+    if (filesToUpload.length) {
+      try {
+        await uploadFiles(filesToUpload);
+      } catch {
+        // Error already shown in banner; do not proceed to query
+        return;
+      }
+    }
 
     if (!question) return;
 
@@ -230,7 +273,11 @@ export default function App() {
 
     const history = messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
     try {
-      await startStream(question, history);
+      // Fire both in parallel: stream gives tokens, query gives tool_used
+      await Promise.all([
+        startStream(question, history),
+        sendQuery(question, history),
+      ]);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -246,12 +293,11 @@ export default function App() {
           role: "assistant",
           content: streamedAnswer,
           timestamp: new Date(),
-          sources: sources.length ? sources : undefined,
-          toolUsed: toolUsed || undefined,
+          toolUsed: toolUsed ?? null,
         },
       ]);
     }
-  }, [isStreaming, streamedAnswer, sources, toolUsed]);
+  }, [isStreaming, streamedAnswer, toolUsed]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -308,7 +354,6 @@ export default function App() {
 
   // ─── Derived ──────────────────────────────────────────────────────────────
   const canSend = (inputValue.trim().length > 0 || pendingFiles.length > 0) && !isStreaming;
-  const readyDocs = documents.filter((d) => d.status === "ready");
   const processingDocs = documents.filter((d) => d.status === "processing");
 
   return (
@@ -397,7 +442,16 @@ export default function App() {
         </div>
       )}
 
-      {/* ─── Error banner ─────────────────────────────────────────────────── */}
+      {/* ─── Backend offline banner (persistent, no auto-dismiss) ─────────── */}
+      {backendDown && (
+        <div className="error-banner backend-down-banner">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+          Backend unreachable at <code style={{fontFamily:"monospace", margin:"0 4px"}}>{API_BASE}</code> — make sure the FastAPI server is running.
+          <button className="error-dismiss" onClick={() => setBackendDown(false)}>×</button>
+        </div>
+      )}
+
+      {/* ─── Error banner (auto-dismisses after 5 s) ──────────────────────── */}
       {error && (
         <div className="error-banner">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
@@ -447,51 +501,24 @@ export default function App() {
                   )}
                   <div className="msg-bubble">{msg.content}</div>
 
-                  {/* Tool badge */}
+                  {/* Tool badge — shows which backend tool was selected */}
                   {msg.role === "assistant" && msg.toolUsed && (
                     <div className="tool-badge">
-                      {msg.toolUsed === "rag" ? (
-                        <><FileIcon /> Document RAG</>
-                      ) : msg.toolUsed === "web_search" ? (
+                      {msg.toolUsed === "search_documents" ? (
+                        <><FileIcon /> Document Search</>
+                      ) : msg.toolUsed === "search_web" ? (
                         <>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
                           Web Search
                         </>
+                      ) : msg.toolUsed === "get_csv_stats" ? (
+                        <>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+                          CSV Analysis
+                        </>
                       ) : (
                         msg.toolUsed
                       )}
-                    </div>
-                  )}
-
-                  {/* Sources */}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="sources">
-                      <div className="sources-header">
-                        <span className="sources-label">Sources</span>
-                        <div className="sources-line" />
-                      </div>
-                      {msg.sources.map((src, idx) => {
-                        const key = `${msg.id}_${idx}`;
-                        const open = expandedSources.has(key);
-                        return (
-                          <div key={key} className="source-item" onClick={() => toggleSource(key)}>
-                            <div className="source-item-left">
-                              <div className="source-row1">
-                                <span className="source-name">{src.source}</span>
-                                <span className="source-pg">p.{src.page}</span>
-                              </div>
-                              <div className={`source-excerpt ${open ? "expanded" : ""}`}>{src.text}</div>
-                            </div>
-                            <div className="source-score">
-                              <span className="score-num">{(src.rerank_score * 100).toFixed(0)}%</span>
-                              <div className="score-bar">
-                                <div className="score-fill" style={{ width: `${src.rerank_score * 100}%` }} />
-                              </div>
-                            </div>
-                            <div className={`source-chevron ${open ? "open" : ""}`}><ChevronIcon /></div>
-                          </div>
-                        );
-                      })}
                     </div>
                   )}
 

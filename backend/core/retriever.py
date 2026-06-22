@@ -9,8 +9,11 @@ class HybridRetriever:
     def __init__(self , indexer:Indexer, alpha:float=0.5):
         self.indexer = indexer
         self.alpha = alpha
+    
 #faiss search
     def retrieve(self , query:str , query_embedding:np.ndarray , top_k: int = 20) -> List[dict]:
+        if self.indexer.faiss_index is None:
+           return []
         query_embedding = query_embedding.astype("float32").reshape(1,-1)
         faiss.normalize_L2(query_embedding)
         dense_scores, dense_indices = self.indexer.faiss_index.search(query_embedding, top_k)

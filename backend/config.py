@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # LLM
     groq_api_key: str
-    model_name: str = "llama-3.3-70b-versatile"
+    model_name: str = "llama-3.1-8b-instant"
     temperature: float = 0.1
 
     # Embedder

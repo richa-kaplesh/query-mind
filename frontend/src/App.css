@@ -345,6 +345,26 @@ button:disabled { cursor: not-allowed; }
   border-bottom: 1px solid rgba(220,38,38,0.15);
   animation: slideDown 0.2s ease;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Red bar that shrinks to zero in 5 s — mirrors the JS auto-dismiss timer */
+.error-banner::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--danger);
+  opacity: 0.6;
+  animation: error-countdown 5s linear forwards;
+}
+
+@keyframes error-countdown {
+  from { width: 100%; }
+  to   { width: 0%; }
 }
 
 .error-dismiss {
@@ -357,6 +377,7 @@ button:disabled { cursor: not-allowed; }
   font-size: 12px;
   font-weight: 600;
   transition: all 0.15s;
+  flex-shrink: 0;
 }
 
 .error-dismiss:hover { background: var(--danger); color: #fff; }

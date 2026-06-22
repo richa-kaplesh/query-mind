@@ -33,22 +33,32 @@ class Generator:
                 }
             }
             for tool in self.tools.values()
+            if tool.name != "search_documents"  # RAG handled explicitly
         ]
 
-    def _build_system_prompt(self) -> str:
-        return """You are a research assistant with access to the following tools:
-
-- search_documents: Use this when the user asks questions about uploaded documents, files, or any content they have provided.
-- get_csv_stats: Use this when the user asks analytical, statistical, or ML-related questions about a CSV dataset (correlations, distributions, target column analysis).
-- search_web: Use this when the user asks about current events, general knowledge, or anything not present in uploaded documents.
-
+    def _build_system_prompt(self, has_chunks: bool = False) -> str:
+        if has_chunks:
+            return """You are a research assistant. Answer the user's question using ONLY the context provided below.
 Rules:
-- Always pick the most appropriate tool based on the query.
-- If the query is about uploaded content, prefer search_documents.
-- If the query is analytical about a CSV, prefer get_csv_stats.
-- If the query requires outside knowledge, use search_web.
-- Always cite your sources in the final answer.
-- If you can answer directly without a tool, do so."""
+- Only use information from the provided context.
+- Always cite which source your answer came from.
+- If the answer is not in the context, say "I cannot find this in the provided documents"."""
+        
+        return """You are a helpful research assistant with access to the following tools:
+
+- get_csv_stats: Use this when the user asks analytical, statistical, or ML-related questions about a CSV dataset.
+- search_web: Use this for questions about current events, specific companies, people, or anything requiring up to date information. When in doubt, search.
+
+For general knowledge questions you can answer directly without tools."""
+
+    def _build_context(self, chunks: List[dict]) -> str:
+        context_parts = []
+        for i, chunk in enumerate(chunks):
+            source = chunk["metadata"].get("source", "unknown")
+            page = chunk["metadata"].get("page", "N/A")
+            text = chunk["text"]
+            context_parts.append(f"[SOURCE {i+1} - {source}, page {page}]\n{text}")
+        return "\n\n".join(context_parts)
 
     def _run_tool(self, tool_name: str, query: str) -> str:
         tool = self.tools.get(tool_name)
@@ -57,9 +67,38 @@ Rules:
         result = tool.run(query)
         return json.dumps(result)
 
-    def generate(self, query: str) -> dict:
+    def generate(self, query: str, chunks: List[dict] = []) -> dict:
+        has_chunks = len(chunks) > 0
+
+        if has_chunks:
+            context = self._build_context(chunks)
+            prompt = f"CONTEXT:\n{context}\n\nQUESTION:\n{query}\n\nANSWER (with citations):"
+            messages = [
+                {"role": "system", "content": self._build_system_prompt(has_chunks=True)},
+                {"role": "user", "content": prompt}
+            ]
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature
+            )
+            return {
+                "answer": response.choices[0].message.content,
+                "tool_used": "search_documents",
+                "sources": [
+                    {
+                        "source": c["metadata"].get("source", "unknown"),
+                        "page": c["metadata"].get("page", "N/A"),
+                        "text": c["text"],
+                        "rerank_score": c.get("rerank_score", 0)
+                    }
+                    for c in chunks
+                ]
+            }
+
+        # no chunks - use tools or own knowledge
         messages = [
-            {"role": "system", "content": self._build_system_prompt()},
+            {"role": "system", "content": self._build_system_prompt(has_chunks=False)},
             {"role": "user", "content": query}
         ]
 
@@ -94,21 +133,44 @@ Rules:
 
             return {
                 "answer": final_response.choices[0].message.content,
-                "tool_used": tool_name
+                "tool_used": tool_name,
+                "sources": []
             }
 
         return {
             "answer": message.content,
-            "tool_used": None
+            "tool_used": None,
+            "sources": []
         }
 
-    def generate_stream(self, query: str):
+    def generate_stream(self, query: str, chunks: List[dict] = []):
+        has_chunks = len(chunks) > 0
+
+        if has_chunks:
+            context = self._build_context(chunks)
+            prompt = f"CONTEXT:\n{context}\n\nQUESTION:\n{query}\n\nANSWER (with citations):"
+            messages = [
+                {"role": "system", "content": self._build_system_prompt(has_chunks=True)},
+                {"role": "user", "content": prompt}
+            ]
+            stream = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                stream=True
+            )
+            for chunk in stream:
+                token = chunk.choices[0].delta.content
+                if token is not None:
+                    yield token
+            return
+
+        # no chunks - tool calling then stream
         messages = [
-            {"role": "system", "content": self._build_system_prompt()},
+            {"role": "system", "content": self._build_system_prompt(has_chunks=False)},
             {"role": "user", "content": query}
         ]
 
-        # first call - tool selection, not streamed
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
@@ -132,7 +194,6 @@ Rules:
                 "content": tool_result
             })
 
-        # second call - stream final answer
         stream = self.client.chat.completions.create(
             model=self.model,
             messages=messages,

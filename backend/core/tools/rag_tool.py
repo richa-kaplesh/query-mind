@@ -26,6 +26,8 @@ class RAGTool(BaseTool):
         return "Search through uploaded documents to answer questions based on their content"
 
     def run(self, query: str) -> dict:
+        if self.retriever.indexer.faiss_index is None:
+            return {"chunks": [], "message": "No documents uploaded yet"}
         query_embedding = self.embedder.embed_query(query)
         chunks = self.retriever.retrieve(query, query_embedding)
         reranked = self.reranker.rerank(query, chunks)
