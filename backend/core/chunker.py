@@ -1,4 +1,4 @@
-from models import ExtractedPage
+from core.models import ExtractedPage
 
 class TextChunker:
     def __init__(self, chunk_size:int = 500, chunk_overlap:int = 50):

@@ -1,4 +1,4 @@
-from backend.core.tools.base_tool import BaseTool
+from core.tools.base_tool import BaseTool
 from duckduckgo_search import DDGS
 
 class WebSearchTool(BaseTool):

@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
-from backend.core.models import ExtractedPage, PageMetadata
-from backend.core.extractors.base_extractor import BaseExtractor
+from core.models import ExtractedPage, PageMetadata
+from core.extractors.base_extractor import BaseExtractor
 
 
 class CSVExtractor(BaseExtractor):

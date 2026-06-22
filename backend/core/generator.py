@@ -1,6 +1,6 @@
 from groq import Groq
 from typing import List
-from backend.core.tools.base_tool import BaseTool
+from core.tools.base_tool import BaseTool
 from config import settings
 import json
 
@@ -59,14 +59,8 @@ Rules:
 
     def generate(self, query: str) -> dict:
         messages = [
-            {
-                "role": "system",
-                "content": self._build_system_prompt()
-            },
-            {
-                "role": "user",
-                "content": query
-            }
+            {"role": "system", "content": self._build_system_prompt()},
+            {"role": "user", "content": query}
         ]
 
         response = self.client.chat.completions.create(
@@ -83,7 +77,6 @@ Rules:
             tool_call = message.tool_calls[0]
             tool_name = tool_call.function.name
             tool_args = json.loads(tool_call.function.arguments)
-
             tool_result = self._run_tool(tool_name, tool_args.get("query", query))
 
             messages.append({"role": "assistant", "content": None, "tool_calls": message.tool_calls})
@@ -108,3 +101,46 @@ Rules:
             "answer": message.content,
             "tool_used": None
         }
+
+    def generate_stream(self, query: str):
+        messages = [
+            {"role": "system", "content": self._build_system_prompt()},
+            {"role": "user", "content": query}
+        ]
+
+        # first call - tool selection, not streamed
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=self._build_tools_schema(),
+            tool_choice="auto",
+            temperature=self.temperature
+        )
+
+        message = response.choices[0].message
+
+        if message.tool_calls:
+            tool_call = message.tool_calls[0]
+            tool_name = tool_call.function.name
+            tool_args = json.loads(tool_call.function.arguments)
+            tool_result = self._run_tool(tool_name, tool_args.get("query", query))
+
+            messages.append({"role": "assistant", "content": None, "tool_calls": message.tool_calls})
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": tool_result
+            })
+
+        # second call - stream final answer
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=self.temperature,
+            stream=True
+        )
+
+        for chunk in stream:
+            token = chunk.choices[0].delta.content
+            if token is not None:
+                yield token

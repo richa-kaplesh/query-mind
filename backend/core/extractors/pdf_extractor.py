@@ -3,8 +3,8 @@ import pytesseract
 from pathlib import Path
 from PIL import Image
 import io
-from backend.core.models import ExtractedPage, PageMetadata
-from backend.core.extractors.base_extractor import BaseExtractor
+from core.models import ExtractedPage, PageMetadata
+from core.extractors.base_extractor import BaseExtractor
 
 class PDFExtractor(BaseExtractor):
     

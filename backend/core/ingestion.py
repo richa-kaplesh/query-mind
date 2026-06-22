@@ -1,8 +1,8 @@
-from backend.core.extractors.pdf_extractor import PDFExtractor
-from backend.core.extractors.csv_extractor import CSVExtractor
-from backend.core.chunker import TextChunker
-from backend.core.embedder import Embedder
-from backend.core.indexer import Indexer
+from core.extractors.pdf_extractor import PDFExtractor
+from core.extractors.csv_extractor import CSVExtractor
+from core.chunker import TextChunker
+from core.embedder import Embedder
+from core.indexer import Indexer
 from pathlib import Path
 
 

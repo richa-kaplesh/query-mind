@@ -1,13 +1,13 @@
-from backend.core.tools.base_tool import BaseTool
-from backend.core.embedder import Embedder
-from backend.core.retriever import HybridRetriever
-from backend.core.reranker import Reranker
+from core.tools.base_tool import BaseTool
+from core.embedder import Embedder
+from core.retriever import HybridRetriever
+from core.reranker import Reranker
 from typing import List
 
-from backend.core.tools.base_tool import BaseTool
-from backend.core.embedder import Embedder
-from backend.core.retriever import HybridRetriever
-from backend.core.reranker import Reranker
+from core.tools.base_tool import BaseTool
+from core.embedder import Embedder
+from core.retriever import HybridRetriever
+from core.reranker import Reranker
 from typing import List
 
 class RAGTool(BaseTool):

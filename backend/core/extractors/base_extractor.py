@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from backend.core.models import ExtractedPage
+from core.models import ExtractedPage
 
 class BaseExtractor(ABC):
     

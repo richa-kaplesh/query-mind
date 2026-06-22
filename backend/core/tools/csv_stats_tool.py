@@ -1,5 +1,5 @@
-from backend.core.tools.base_tool import BaseTool
-from backend.core.analysis.csv_stats import run_full_statistics
+from core.tools.base_tool import BaseTool
+from core.analysis.csv_stats import run_full_statistics
 import pandas as pd
 
 class CSVStatsTool(BaseTool):
