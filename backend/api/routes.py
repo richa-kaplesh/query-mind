@@ -8,7 +8,7 @@ import time
 import json
 from typing import List
 
-from core.pdf_extractor import PDFExtractor
+from backend.core.extractors.pdf_extractor import PDFExtractor
 from core.chunker import TextChunker
 
 log = logging.getLogger("routes")
@@ -29,39 +29,27 @@ class QueryRequest(BaseModel):
 async def ingest_document(file_path: str, filename: str, request: Request):
     log.info(f"[INGEST] Starting ingestion for: {filename}")
     t0 = time.time()
-
-    embedder = request.app.state.embedder
-    indexer = request.app.state.indexer
-
     try:
-        log.info(f"[INGEST] Extracting text from PDF...")
-        extractor = PDFExtractor()
-        chunker = TextChunker()
-        pages = extractor.extract(file_path)
-        log.info(f"[INGEST] Extracted {len(pages)} pages")
-
-        log.info(f"[INGEST] Chunking text...")
-        all_chunks = []
-        for page in pages:
-            chunks = chunker.chunk_text(page["text"], metadata=page["metadata"])
-            all_chunks.extend(chunks)
-        log.info(f"[INGEST] Total chunks created: {len(all_chunks)}")
-
-        log.info(f"[INGEST] Embedding chunks...")
-        all_chunks = embedder.embed_chunks(all_chunks)
-        log.info(f"[INGEST] Embedding done")
-
-        log.info(f"[INGEST] Indexing chunks...")
-        indexer.index(all_chunks)
-        log.info(f"[INGEST] Indexing done")
-
+        pipeline = request.app.state.ingestion
+        result = pipeline.ingest(file_path)
         documents[filename] = "ready"
-        log.info(f"[INGEST] ✓ Done in {(time.time()-t0):.2f}s | {filename} is ready")
-
+        log.info(f"[INGEST] ✓ Done in {(time.time()-t0):.2f}s | {result['chunks']} chunks")
     except Exception as e:
         documents[filename] = "failed"
-        log.error(f"[INGEST] ✗ Failed for {filename}: {e}", exc_info=True)
+        log.error(f"[INGEST] ✗ Failed: {e}", exc_info=True)
 
+@router.post("/query")
+async def query_document(body: QueryRequest, request: Request):
+    log.info(f"[QUERY] Question: '{body.question}'")
+    t0 = time.time()
+    try:
+        generator = request.app.state.generator
+        result = generator.generate(query=body.question)
+        log.info(f"[QUERY] ✓ Done in {(time.time()-t0):.2f}s | tool used: {result['tool_used']}")
+        return result
+    except Exception as e:
+        log.error(f"[QUERY] ✗ Failed: {e}", exc_info=True)
+        raise
 
 @router.post("/upload")
 async def upload_document(

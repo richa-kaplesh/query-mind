@@ -8,10 +8,10 @@ from pathlib import Path
 
 class IngestionPipeline:
 
-    def __init__(self):
+    def __init__(self, embedder: Embedder, indexer: Indexer):
         self.chunker = TextChunker()
-        self.embedder = Embedder()
-        self.indexer = Indexer()
+        self.embedder = embedder
+        self.indexer = indexer
 
     def ingest(self, file_path: str) -> dict:
         ext = Path(file_path).suffix.lower()
