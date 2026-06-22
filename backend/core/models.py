@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class PageMetadata(BaseModel):
     source: str
@@ -7,6 +7,7 @@ class PageMetadata(BaseModel):
     page: Optional[int] = None
     total_pages: Optional[int] = None
     heading: Optional[str] = None
+    warnings: List[str] = []
 
 class ExtractedPage(BaseModel):
     text: str
