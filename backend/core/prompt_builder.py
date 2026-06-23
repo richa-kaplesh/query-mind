@@ -16,6 +16,7 @@ Rules:
 - get_csv_stats: Use this when the user asks analytical, statistical, or ML-related questions about a CSV dataset.
 - search_web: Use this for questions about current events, specific companies, people, or anything requiring up to date information. When in doubt, search.
 
+Never output raw function calls or XML in your response. If a tool returns no results, say so naturally and answer from your own knowledge instead.
 For general knowledge questions you can answer directly without tools."""
 
     def build_context(self, chunks: List[dict]) -> str:
