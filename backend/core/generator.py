@@ -20,16 +20,24 @@ class Generator:
     def tools(self):
         return self.registry.tools
 
-    def generate(self, query: str, chunks: List[dict] = []) -> dict:
+    def _build_messages(self, query: str, system_prompt: str, conversation_history: list, prompt: str = None) -> list:
+        messages = [{"role": "system", "content": system_prompt}]
+        messages.extend(conversation_history)
+        messages.append({"role": "user", "content": prompt if prompt else query})
+        return messages
+
+    def generate(self, query: str, chunks: List[dict] = [], conversation_history: list = []) -> dict:
         has_chunks = len(chunks) > 0
 
         if has_chunks:
             context = self.prompt_builder.build_context(chunks)
             prompt = self.prompt_builder.build_rag_prompt(query, context)
-            messages = [
-                {"role": "system", "content": self.prompt_builder.build_system_prompt(has_chunks=True)},
-                {"role": "user", "content": prompt}
-            ]
+            messages = self._build_messages(
+                query=query,
+                system_prompt=self.prompt_builder.build_system_prompt(has_chunks=True),
+                conversation_history=conversation_history,
+                prompt=prompt
+            )
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -49,10 +57,11 @@ class Generator:
                 ]
             }
 
-        messages = [
-            {"role": "system", "content": self.prompt_builder.build_system_prompt(has_chunks=False)},
-            {"role": "user", "content": query}
-        ]
+        messages = self._build_messages(
+            query=query,
+            system_prompt=self.prompt_builder.build_system_prompt(has_chunks=False),
+            conversation_history=conversation_history
+        )
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -95,16 +104,18 @@ class Generator:
             "sources": []
         }
 
-    def generate_stream(self, query: str, chunks: List[dict] = []):
+    def generate_stream(self, query: str, chunks: List[dict] = [], conversation_history: list = []):
         has_chunks = len(chunks) > 0
 
         if has_chunks:
             context = self.prompt_builder.build_context(chunks)
             prompt = self.prompt_builder.build_rag_prompt(query, context)
-            messages = [
-                {"role": "system", "content": self.prompt_builder.build_system_prompt(has_chunks=True)},
-                {"role": "user", "content": prompt}
-            ]
+            messages = self._build_messages(
+                query=query,
+                system_prompt=self.prompt_builder.build_system_prompt(has_chunks=True),
+                conversation_history=conversation_history,
+                prompt=prompt
+            )
             stream = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -117,10 +128,11 @@ class Generator:
                     yield token
             return
 
-        messages = [
-            {"role": "system", "content": self.prompt_builder.build_system_prompt(has_chunks=False)},
-            {"role": "user", "content": query}
-        ]
+        messages = self._build_messages(
+            query=query,
+            system_prompt=self.prompt_builder.build_system_prompt(has_chunks=False),
+            conversation_history=conversation_history
+        )
 
         response = self.client.chat.completions.create(
             model=self.model,

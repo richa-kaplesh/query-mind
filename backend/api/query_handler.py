@@ -21,7 +21,7 @@ def retrieve_chunks(request, query: str) -> List[dict]:
     return chunks
 
 
-def resolve_query(request, query: str, documents: dict) -> dict:
+def resolve_query(request, query: str, documents: dict, conversation_history: list = []) -> tuple:
     generator = request.app.state.generator
     current_file = get_current_file(documents)
     is_csv = current_file and current_file.get("file_type") == ".csv"
@@ -29,14 +29,14 @@ def resolve_query(request, query: str, documents: dict) -> dict:
     if current_file and not is_csv:
         log.info("[QUERY] PDF path — running retrieval...")
         chunks = retrieve_chunks(request, query)
-        return generator.generate(query=query, chunks=chunks), chunks
+        return generator.generate(query=query, chunks=chunks, conversation_history=conversation_history), chunks
 
     if is_csv:
         log.info("[QUERY] CSV path — registering stats tool...")
         generator.registry.register(CSVStatsTool(current_file["file_path"]))
-        return generator.generate(query=query, chunks=[]), []
+        return generator.generate(query=query, chunks=[], conversation_history=conversation_history), []
 
-    return generator.generate(query=query, chunks=[]), []
+    return generator.generate(query=query, chunks=[], conversation_history=conversation_history), []
 
 
 def build_sources(chunks: List[dict]) -> List[dict]:

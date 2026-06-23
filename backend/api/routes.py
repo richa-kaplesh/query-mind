@@ -90,7 +90,7 @@ async def query_document(body: QueryRequest, request: Request):
     log.info(f"[QUERY] Question: '{body.question}'")
     t0 = time.time()
     try:
-        result, chunks = resolve_query(request, body.question, documents)
+        result, chunks = resolve_query(request, body.question, documents, body.conversation_history)
         log.info(f"[QUERY] ✓ Done in {(time.time()-t0):.2f}s | tool used: {result['tool_used']}")
         return result
     except Exception as e:
@@ -103,11 +103,11 @@ async def query_document_stream(body: QueryRequest, request: Request):
     log.info(f"[STREAM] Question: '{body.question}'")
     generator = request.app.state.generator
 
-    result, chunks = resolve_query(request, body.question, documents)
+    result, chunks = resolve_query(request, body.question, documents, body.conversation_history)
     sources = build_sources(chunks)
 
     def event_stream():
-        for token in generator.generate_stream(body.question, chunks):
+        for token in generator.generate_stream(body.question, chunks, body.conversation_history):
             data = json.dumps({"type": "token", "content": token})
             yield f"data: {data}\n\n"
 
@@ -118,6 +118,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
 
 @router.post("/reset")
 async def reset(request: Request):
