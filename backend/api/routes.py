@@ -137,7 +137,7 @@ async def query_document(body: QueryRequest, request: Request):
         elif is_csv:
             log.info("[QUERY] CSV found, adding stats tool...")
             from core.tools.csv_stats_tool import CSVStatsTool
-            generator.tools["get_csv_stats"] = CSVStatsTool(current_file["file_path"])
+            generator.registry.register(CSVStatsTool(...)) = CSVStatsTool(current_file["file_path"])
             result = generator.generate(query=body.question, chunks=[])
 
         else:
@@ -172,7 +172,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
 
     elif is_csv:
         from core.tools.csv_stats_tool import CSVStatsTool
-        generator.tools["get_csv_stats"] = CSVStatsTool(current_file["file_path"])
+        generator.registry.register(CSVStatsTool(...)) = CSVStatsTool(current_file["file_path"])
 
     sources = [
         {
