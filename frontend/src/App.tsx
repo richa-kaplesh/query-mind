@@ -400,9 +400,14 @@ export default function App() {
     });
   };
 
-  const handleClearChat = () => {
-    if (messages.length === 0) return;
-    if (confirm("Clear conversation?")) { setMessages([]); reset(); }
+  const handleNewConversation = async () => {
+    setMessages([]);
+    reset();
+    try {
+      await fetch(`${API_BASE}/reset`, { method: "POST" });
+    } catch {
+      // best-effort
+    }
   };
 
   // ─── Drag-over whole page ──────────────────────────────────────────────────
@@ -486,12 +491,11 @@ export default function App() {
             </button>
           )}
           <button
-            className="topbar-action-btn"
-            onClick={handleClearChat}
-            disabled={messages.length === 0}
-            title="Clear conversation"
+            className="topbar-action-btn new-conversation-btn"
+            onClick={handleNewConversation}
+            title="New conversation"
           >
-            <TrashIcon />
+            <span>+</span> New Conversation
           </button>
         </div>
       </header>

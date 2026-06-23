@@ -247,7 +247,6 @@ button:disabled { cursor: not-allowed; }
 }
 
 .topbar-action-btn {
-  width: 34px;
   height: 34px;
   display: flex;
   align-items: center;
@@ -266,6 +265,28 @@ button:disabled { cursor: not-allowed; }
 }
 
 .topbar-action-btn:disabled { opacity: 0.3; }
+
+.new-conversation-btn {
+  width: auto;
+  padding: 0 12px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.new-conversation-btn span {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.new-conversation-btn:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
 /* ─── Docs tray ────────────────────────────────────────────────────────────── */
 .docs-tray {
