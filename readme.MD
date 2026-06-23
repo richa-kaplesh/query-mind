@@ -7,13 +7,13 @@ An agentic RAG system that goes beyond simple document retrieval. QueryMind v2 i
 ## Demo
 
 **Conversation Memory — QueryMind remembers context across turns**
-![Conversation Memory](D:\query-mind\screenshots\image.png)
+![Conversation Memory](screenshots/image.png)
 
 **CSV Statistical Analysis — Upload a dataset and get a full stats report**
-![CSV Stats](D:\query-mind\screenshots\image1.png)
+![CSV Stats](screenshots/image1.png)
 
 **PDF Query — Upload a document and ask questions with source citations**
-![PDF Query](D:\query-mind\screenshots\image2.png)
+![PDF Query](screenshots/image2.png)
 
 ---
 
