@@ -6,4 +6,4 @@ services:
     env_file:
       - .env
     volumes:
-      - ./uploads:/app/uploads
+      - ./uploads:/app/uploadsgit commit -m "feat: complete v2 backend with tools, conversation history, SOLID refactor"

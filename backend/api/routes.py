@@ -115,6 +115,12 @@ async def query_document_stream(body: QueryRequest, request: Request):
             data = json.dumps({"type": "sources", "content": sources})
             yield f"data: {data}\n\n"
 
+        # Emit tool_used so the frontend doesn't need a separate POST /query call
+        tool_used = result.get("tool_used")
+        if tool_used:
+            data = json.dumps({"type": "tool_used", "content": tool_used})
+            yield f"data: {data}\n\n"
+
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

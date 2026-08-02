@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useStream, useQuery } from "./hooks/useStream";
+import { useStream } from "./hooks/useStream";
 import type { Source } from "./hooks/useStream";
 import "./App.css";
 
@@ -156,11 +156,8 @@ export default function App() {
   }, [error]);
 
   // Stream hook — handles /query/stream (token-by-token SSE)
-  const { streamedAnswer, streamedSources, isStreaming, startStream, reset: resetStream } = useStream(API_BASE);
-  // Query hook — hits /query to get tool_used for the badge
-  const { toolUsed, sendQuery, reset: resetQuery } = useQuery(API_BASE);
-
-  const reset = useCallback(() => { resetStream(); resetQuery(); }, [resetStream, resetQuery]);
+  // tool_used is now delivered via a SSE event in the same stream, no second call needed
+  const { streamedAnswer, streamedSources, toolUsed, isStreaming, startStream, reset } = useStream(API_BASE);
 
   // ─── Backend health check on mount ──────────────────────────────────────
   useEffect(() => {
@@ -280,17 +277,27 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // ─── Load a bundled sample file into pendingFiles ──────────────────────────
+  // ─── Load a bundled sample file and immediately upload it ─────────────────
   const loadSampleFile = async (sample: typeof SAMPLE_FILES[number]) => {
     try {
       const res = await fetch(sample.path);
       if (!res.ok) throw new Error(`Could not fetch ${sample.name}`);
       const blob = await res.blob();
       const file = new File([blob], sample.name, { type: sample.type });
-      setPendingFiles((prev) => {
-        const names = new Set(prev.map((f) => f.name));
-        return names.has(file.name) ? prev : [...prev, file];
-      });
+
+      // Upload directly to the backend right away
+      await uploadFiles([file]);
+
+      // Show an upload-receipt card in the chat
+      const uploadReceiptMsg: Message = {
+        id: `upload_${Date.now()}`,
+        role: "user",
+        content: "",
+        timestamp: new Date(),
+        attachments: [file.name],
+        isUploadEvent: true,
+      };
+      setMessages((prev) => [...prev, uploadReceiptMsg]);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -346,11 +353,8 @@ export default function App() {
 
     const history = messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
     try {
-      // Fire both in parallel: stream gives tokens, query gives tool_used
-      await Promise.all([
-        startStream(question, history),
-        sendQuery(question, history),
-      ]);
+      // Only one call — tool_used arrives as a SSE event inside the stream
+      await startStream(question, history);
     } catch (err) {
       setError((err as Error).message);
     }
