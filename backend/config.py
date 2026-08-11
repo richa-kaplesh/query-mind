@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     # Web search
     web_search_max_results: int = 5
 
+    tesseract_path: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
     class Config:
         env_file = ".env"
 
