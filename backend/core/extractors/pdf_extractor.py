@@ -5,10 +5,13 @@ from PIL import Image
 import io
 from core.models import ExtractedPage, PageMetadata
 from core.extractors.base_extractor import BaseExtractor
+from config import settings
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 class PDFExtractor(BaseExtractor):
-    
+
+    def __init__(self):
+        pytesseract.pytesseract.tesseract_cmd = settings.tesseract_path
+
     def extract(self, file_path: str) -> list[ExtractedPage]:
         self.validate_file(file_path)
         doc = fitz.open(file_path)
@@ -36,10 +39,9 @@ class PDFExtractor(BaseExtractor):
         if has_text and has_images:
             warnings.append("This page contains images or charts which were skipped")
             for i , img in enumerate(images):
-                bbox = page.get_image_rects(img[0])
                 annotation = f"\n[IMAGE_{i+1}: page {page_num+1}]\n"
                 text += annotation
-            return self.build_page(text, page_num, file_path, total_pages , warnings)
+            return self._build_page(text, page_num, file_path, total_pages , warnings)
         
         if not has_text and has_images:
             ocr_text = self._run_ocr(page)
@@ -67,5 +69,4 @@ class PDFExtractor(BaseExtractor):
        return ExtractedPage(
            text=text,
            metadata=metadata,
-           warnings=warnings
        )   
