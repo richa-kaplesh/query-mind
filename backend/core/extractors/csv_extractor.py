@@ -6,6 +6,22 @@ from core.extractors.base_extractor import BaseExtractor
 
 class CSVExtractor:
 
+    def extract(self, file_path:str) ->list[ExtractedPage]:
+        df = self._load(file_path)
+
+        schema_dict = self._generate_schema(df, file_path)
+        schema_text = self._format_schema_to_text(schema_dict)
+        metadata = PageMetadata(
+            source=file_path,
+            file_path="csv"
+        )
+        page = ExtractedPage(
+            text=schema_text,
+            metadata = metadata
+        )
+
+        return [page]
+
 
     def _load_file(self, file_path:str):
         try:
@@ -34,7 +50,7 @@ class CSVExtractor:
             column_meta["first_3_columns"]=df[col_name].dropna().head(3).tolist()
 
             if pd.api.types.is_numeric_dtype(df[col_name]):
-                column_meta["minimum_value"]=float=(df[col_name].min())
+                column_meta["minimum_value"]=float(df[col_name].min())
                 column_meta["maximum_value"]=float(df[col_name].max())
                 column_meta["mean"]=float(df[col_name].mean())
             else:
@@ -44,5 +60,15 @@ class CSVExtractor:
             meta["data"].append(column_meta)
         return meta 
                     
-
-            
+    
+    def _format_schema_to_text(self, meta):
+        lines = []
+       
+        lines.append(f"File: {meta['file_name']} | Rows:{meta['total_row_count']} | Cols:{meta['total_column_count']}")
+        for data in meta["data"]:
+            lines.append(f" Col_name: {data['column_name']} | dtype: {data['dtype']} | Null_count: {data['null_count']} | First 3 Columns:{data['first_3_columns"']}")
+            if "minimum_value" in data:
+                lines.append(f" Minimum Value: {data['minimum_value']} | Maximum Value: {data['maximum_value']} | Mean: {data['mean']}")
+            else:
+                lines.append(f" Unique Values Count:{data['unique_values_counts']}")
+        return "\n".join(lines)
