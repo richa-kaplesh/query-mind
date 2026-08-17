@@ -4,36 +4,45 @@ from core.models import ExtractedPage, PageMetadata
 from core.extractors.base_extractor import BaseExtractor
 
 
-class CSVExtractor(BaseExtractor):
+class CSVExtractor:
 
-    def extract(self, file_path: str) -> list[ExtractedPage]:
-        self.validate_file(file_path)
-        df = self._load(file_path)
-        pages = []
 
-        for idx, row in df.iterrows():
-            text = self._row_to_text(row)
-            page = self._build_page(text, file_path)
-            pages.append(page)
-
-        return pages
-
-    def _load(self, file_path: str) -> pd.DataFrame:
+    def _load_file(self, file_path:str):
         try:
-            return pd.read_csv(file_path)
+            df = pd.read_csv(file_path,low_memory=False)
+            return df
+        except UnicodeDecodeError:
+            df = pd.read_csv(file_path, encoding = "latin-1",low_memory=False)
+            return df
         except Exception as e:
             raise ValueError(f"Failed to load CSV: {e}")
 
-    def _row_to_text(self, row: pd.Series) -> str:
-        parts = [f"{col}: {val}" for col, val in row.items()]
-        return " | ".join(parts)
+    def _generate_schema(self , df, file_path):
+        meta = {
+            "file_name":file_path,
+            "total_row_count": len(df),
+            "total_column_count":df.shape[1],
+            "data":[]
+        }
 
-    def _build_page(self, text: str, file_path: str) -> ExtractedPage:
-        metadata = PageMetadata(
-            source=file_path,
-            file_type="csv"
-        )
-        return ExtractedPage(
-            text=text,
-            metadata=metadata
-        )
+        
+        for col_name in df:
+            column_meta = {}
+            column_meta["column_name"]= col_name
+            column_meta["dtype"]= str(df[col_name].dtype)
+            column_meta["null_count"]= int(df[col_name].isna().sum())
+            column_meta["first_3_columns"]=df[col_name].dropna().head(3).tolist()
+
+            if pd.api.types.is_numeric_dtype(df[col_name]):
+                column_meta["minimum_value"]=float=(df[col_name].min())
+                column_meta["maximum_value"]=float(df[col_name].max())
+                column_meta["mean"]=float(df[col_name].mean())
+            else:
+                column_meta["unique_values_count"]=df[col_name].nunique()
+                if column_meta["unique_values_count"] < 10:
+                    column_meta["unique_values"]=df[col_name].unique().tolist()
+            meta["data"].append(column_meta)
+        return meta 
+                    
+
+            
