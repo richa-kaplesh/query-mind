@@ -13,7 +13,7 @@ class CSVExtractor:
         schema_text = self._format_schema_to_text(schema_dict)
         metadata = PageMetadata(
             source=file_path,
-            file_path="csv"
+            file_type="csv"
         )
         page = ExtractedPage(
             text=schema_text,
@@ -23,7 +23,7 @@ class CSVExtractor:
         return [page]
 
 
-    def _load_file(self, file_path:str):
+    def _load(self, file_path:str):
         try:
             df = pd.read_csv(file_path,low_memory=False)
             return df
@@ -54,8 +54,8 @@ class CSVExtractor:
                 column_meta["maximum_value"]=float(df[col_name].max())
                 column_meta["mean"]=float(df[col_name].mean())
             else:
-                column_meta["unique_values_count"]=df[col_name].nunique()
-                if column_meta["unique_values_count"] < 10:
+                column_meta["unique_values_counts"]=df[col_name].nunique()
+                if column_meta["unique_values_counts"] < 10:
                     column_meta["unique_values"]=df[col_name].unique().tolist()
             meta["data"].append(column_meta)
         return meta 
@@ -66,9 +66,9 @@ class CSVExtractor:
        
         lines.append(f"File: {meta['file_name']} | Rows:{meta['total_row_count']} | Cols:{meta['total_column_count']}")
         for data in meta["data"]:
-            lines.append(f" Col_name: {data['column_name']} | dtype: {data['dtype']} | Null_count: {data['null_count']} | First 3 Columns:{data['first_3_columns"']}")
+            lines.append(f" Col_name: {data['column_name']} | dtype: {data['dtype']} | Null_count: {data['null_count']} | First 3 Columns:{data['first_3_columns']}")
             if "minimum_value" in data:
                 lines.append(f" Minimum Value: {data['minimum_value']} | Maximum Value: {data['maximum_value']} | Mean: {data['mean']}")
             else:
-                lines.append(f" Unique Values Count:{data['unique_values_counts']}")
+                lines.append(f"Unique Values Count:{data['unique_values_counts']}")
         return "\n".join(lines)
