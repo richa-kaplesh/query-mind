@@ -34,6 +34,25 @@ const SUGGESTED_QUERIES = [
   "What insights can you find?",
 ];
 
+const SAMPLE_FILES = [
+  {
+    name: "titanic.csv",
+    label: "Titanic Dataset",
+    description: "891 passengers · survival analysis",
+    type: "text/csv",
+    path: "/samples/titanic.csv",
+    tag: "CSV",
+  },
+  {
+    name: "sample_report.pdf",
+    label: "AI Adoption Report",
+    description: "3-page research report · 2024",
+    type: "application/pdf",
+    path: "/samples/sample_report.pdf",
+    tag: "PDF",
+  },
+] as const;
+
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
 const SendIcon = () => (
@@ -598,7 +617,7 @@ export default function App() {
             disabled={messages.length === 0}
             title="Delete this conversation"
           >
-            <TrashIcon />
+            <span>+</span> New Conversation
           </button>
         </div>
       </header>
@@ -689,6 +708,35 @@ export default function App() {
                 <button key={i} className="chip" onClick={() => setInputValue(q)}>{q}</button>
               ))}
             </div>
+
+            {/* ── Sample-file quick-load cards ── */}
+            <div className="sample-files-section">
+              <div className="sample-files-label">
+                <FlashIcon />
+                <span>Try a sample file</span>
+              </div>
+              <div className="sample-files-row">
+                {SAMPLE_FILES.map((sf) => (
+                  <button
+                    key={sf.name}
+                    className="sample-file-card"
+                    onClick={() => loadSampleFile(sf)}
+                    title={`Load ${sf.label} into pending files`}
+                  >
+                    <div className="sample-file-icon">
+                      {sf.tag === "CSV" ? <CsvIcon /> : <PdfIcon />}
+                    </div>
+                    <div className="sample-file-info">
+                      <span className="sample-file-name">{sf.label}</span>
+                      <span className="sample-file-desc">{sf.description}</span>
+                    </div>
+                    <span className={`sample-file-tag tag-${sf.tag.toLowerCase()}`}>
+                      {sf.tag}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -701,7 +749,7 @@ export default function App() {
               if (msg.isUploadEvent && msg.fileName) {
                 return (
                   <div key={msg.id} className="upload-receipt-row">
-                    <div className="upload-receipt-card">
+                    <div className={`upload-receipt-card status-${cardStatus}`}>
                       <div className="upload-receipt-header">
                         <CheckCircleIcon />
                         <span>{msg.fileType === "pdf" ? "PDF uploaded & indexed" : "CSV uploaded & schema extracted"}</span>

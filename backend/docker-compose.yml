@@ -1,0 +1,9 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/app/uploadsgit commit -m "feat: complete v2 backend with tools, conversation history, SOLID refactor"

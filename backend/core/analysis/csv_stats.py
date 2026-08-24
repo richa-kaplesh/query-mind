@@ -141,18 +141,73 @@ def compute_numerical_vs_target(df: pd.DataFrame, target_col: str, target: pd.Se
             if num_classes == 2:
                 group1 = df[df[target_col] == classes[0]][col].dropna()
                 group2 = df[df[target_col] == classes[1]][col].dropna()
+
+                # Need at least 2 observations per group for a meaningful t-test
+                if len(group1) < 2 or len(group2) < 2:
+                    results[col] = {
+                        "test": "t-test",
+                        "statistic": None,
+                        "p_value": None,
+                        "significant": None,
+                        "skipped": True,
+                        "skip_reason": (
+                            f"Insufficient data: group sizes are "
+                            f"{len(group1)} and {len(group2)} (need ≥ 2 each)"
+                        )
+                    }
+                    continue
+
                 stat, p_value = scipy_stats.ttest_ind(group1, group2)
                 test_name = "t-test"
             else:
-                groups = [df[df[target_col] == c][col].dropna() for c in classes]
+                # Build groups and drop any with fewer than 2 valid samples
+                all_groups = {c: df[df[target_col] == c][col].dropna() for c in classes}
+                valid_groups = {c: g for c, g in all_groups.items() if len(g) >= 2}
+
+                if len(valid_groups) < 2:
+                    excluded = [
+                        f"{c!r} (n={len(g)})" for c, g in all_groups.items() if len(g) < 2
+                    ]
+                    results[col] = {
+                        "test": "anova",
+                        "statistic": None,
+                        "p_value": None,
+                        "significant": None,
+                        "skipped": True,
+                        "skip_reason": (
+                            f"Fewer than 2 valid groups after removing groups with < 2 samples. "
+                            f"Excluded: {', '.join(excluded)}"
+                        )
+                    }
+                    continue
+
+                groups = list(valid_groups.values())
                 stat, p_value = scipy_stats.f_oneway(*groups)
                 test_name = "anova"
 
+                # Note any groups that were excluded from this test
+                excluded_groups = [
+                    f"{c!r} (n={len(g)})" for c, g in all_groups.items() if len(g) < 2
+                ]
+                results[col] = {
+                    "test": test_name,
+                    "statistic": round(float(stat), 4),
+                    "p_value": round(float(p_value), 4),
+                    "significant": bool(p_value < 0.05),
+                }
+                if excluded_groups:
+                    results[col]["excluded_groups"] = excluded_groups
+                    results[col]["exclusion_note"] = (
+                        f"Groups excluded from ANOVA due to < 2 valid samples: "
+                        f"{', '.join(excluded_groups)}"
+                    )
+                continue
+
             results[col] = {
                 "test": test_name,
-                "statistic": round(stat, 4),
-                "p_value": round(p_value, 4),
-                "significant": p_value < 0.05
+                "statistic": round(float(stat), 4),
+                "p_value": round(float(p_value), 4),
+                "significant": bool(p_value < 0.05)
             }
     return results
 

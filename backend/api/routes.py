@@ -147,7 +147,7 @@ async def upload_document(
         }
 
         background_tasks.add_task(
-            ingest_document,
+            run_ingestion,
             file_path=file_path,
             filename=file.filename,
             app_state=request.app.state,
