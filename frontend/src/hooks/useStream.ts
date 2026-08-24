@@ -15,13 +15,14 @@ export interface Source {
 }
 
 interface StreamEvent {
-  type: "token" | "sources";
+  type: "token" | "sources" | "tool";
   content: string | Source[];
 }
 
 interface UseStreamReturn {
   streamedAnswer: string;
   streamedSources: Source[];
+  streamedTool: string | null;
   isStreaming: boolean;
   startStream: (question: string, conversationHistory?: ConversationTurn[]) => Promise<void>;
   reset: () => void;
@@ -32,6 +33,7 @@ interface UseStreamReturn {
 export function useStream(apiBase: string): UseStreamReturn {
   const [streamedAnswer, setStreamedAnswer] = useState("");
   const [streamedSources, setStreamedSources] = useState<Source[]>([]);
+  const [streamedTool, setStreamedTool] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -40,6 +42,7 @@ export function useStream(apiBase: string): UseStreamReturn {
     abortRef.current?.abort();
     setStreamedAnswer("");
     setStreamedSources([]);
+    setStreamedTool(null);
     setIsStreaming(false);
   }, []);
 
@@ -50,6 +53,7 @@ export function useStream(apiBase: string): UseStreamReturn {
 
       setStreamedAnswer("");
       setStreamedSources([]);
+      setStreamedTool(null);
       setIsStreaming(true);
 
       try {
@@ -76,7 +80,7 @@ export function useStream(apiBase: string): UseStreamReturn {
 
           buffer += decoder.decode(value, { stream: true });
 
-          // Split on double-newline SSE boundaries
+          // Split on newline SSE boundaries
           const lines = buffer.split("\n");
           buffer = lines.pop() ?? "";
 
@@ -102,6 +106,8 @@ export function useStream(apiBase: string): UseStreamReturn {
               setStreamedAnswer((prev) => prev + event.content);
             } else if (event.type === "sources" && Array.isArray(event.content)) {
               setStreamedSources(event.content as Source[]);
+            } else if (event.type === "tool" && typeof event.content === "string") {
+              setStreamedTool(event.content);
             }
           }
         }
@@ -115,75 +121,5 @@ export function useStream(apiBase: string): UseStreamReturn {
     [apiBase]
   );
 
-  return { streamedAnswer, streamedSources, isStreaming, startStream, reset };
-}
-
-// ─── Non-streaming query (POST /query) ────────────────────────────────────────
-
-interface QueryResponse {
-  answer: string;
-  tool_used: string | null;
-}
-
-interface UseQueryReturn {
-  answer: string;
-  toolUsed: string | null;
-  isLoading: boolean;
-  sendQuery: (question: string, conversationHistory?: ConversationTurn[]) => Promise<void>;
-  reset: () => void;
-}
-
-export function useQuery(apiBase: string): UseQueryReturn {
-  const [answer, setAnswer] = useState("");
-  const [toolUsed, setToolUsed] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const abortRef = useRef<AbortController | null>(null);
-
-  const reset = useCallback(() => {
-    abortRef.current?.abort();
-    setAnswer("");
-    setToolUsed(null);
-    setIsLoading(false);
-  }, []);
-
-  const sendQuery = useCallback(
-    async (question: string, conversationHistory: ConversationTurn[] = []) => {
-      abortRef.current?.abort();
-      abortRef.current = new AbortController();
-
-      setAnswer("");
-      setToolUsed(null);
-      setIsLoading(true);
-
-      try {
-        const res = await fetch(`${apiBase}/query`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            question,
-            conversation_history: conversationHistory,
-          }),
-          signal: abortRef.current.signal,
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ detail: `Query failed: ${res.status}` }));
-          throw new Error(err.detail || `Query failed: ${res.status}`);
-        }
-
-        const data: QueryResponse = await res.json();
-        setAnswer(data.answer ?? "");
-        setToolUsed(data.tool_used ?? null);
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return;
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [apiBase]
-  );
-
-  return { answer, toolUsed, isLoading, sendQuery, reset };
+  return { streamedAnswer, streamedSources, streamedTool, isStreaming, startStream, reset };
 }

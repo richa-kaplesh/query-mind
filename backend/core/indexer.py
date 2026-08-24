@@ -2,10 +2,11 @@ import faiss
 import numpy as np
 from rank_bm25 import BM25Okapi
 from typing import List
+from config import settings
 
 class Indexer:
 
-    def __init__(self, dimension: int = 384):
+    def __init__(self, dimension: int = settings.embedding_dimension):
         self.dimension = dimension         # size of each embedding vector
         self.chunks = []                   # all chunks stored for lookup
         self.bm25 = None                   # keyword search index

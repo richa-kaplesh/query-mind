@@ -1,74 +1,161 @@
 import pandas as pd
 from pathlib import Path
-from core.models import ExtractedPage, PageMetadata
+
+from core.models import CSVSchema, ColumnSchema, ExtractedPage, PageMetadata
 from core.extractors.base_extractor import BaseExtractor
 
 
-class CSVExtractor:
+class CSVExtractor(BaseExtractor):
+    """
+    Extracts a structured CSVSchema from a CSV file.
 
-    def extract(self, file_path:str) ->list[ExtractedPage]:
-        df = self._load(file_path)
+    Public API
+    ----------
+    extract_schema(file_path)  → CSVSchema          ← primary method
+    extract(file_path)         → list[ExtractedPage] ← keeps BaseExtractor contract;
+                                                       delegates to extract_schema and
+                                                       serialises via to_prompt_string()
+    """
 
-        schema_dict = self._generate_schema(df, file_path)
-        schema_text = self._format_schema_to_text(schema_dict)
+    # ── BaseExtractor contract ────────────────────────────────────────────────
+
+    def extract(self, file_path: str) -> list[ExtractedPage]:
+        """
+        Satisfies BaseExtractor.extract().
+        Internally calls extract_schema(), then converts the CSVSchema to a
+        prompt-ready string and wraps it in a single ExtractedPage so that
+        the existing routes/_extract_schema_sync() call still works unchanged.
+        """
+        schema = self.extract_schema(file_path)
         metadata = PageMetadata(
-            source=file_path,
-            file_type="csv"
+            source=schema.source,
+            file_type="csv",
         )
-        page = ExtractedPage(
-            text=schema_text,
-            metadata = metadata
+        return [ExtractedPage(text=schema.to_prompt_string(), metadata=metadata)]
+
+    # ── Primary method ────────────────────────────────────────────────────────
+
+    def extract_schema(self, file_path: str) -> CSVSchema:
+        """
+        Load the CSV and return a fully populated CSVSchema instance.
+        Warnings are appended for:
+          - files with 0 rows
+          - columns that are entirely null
+        """
+        self.validate_file(file_path)
+        df       = self._load(file_path)
+        filename = Path(file_path).name
+        warnings: list[str] = []
+
+        if len(df) == 0:
+            warnings.append("File has 0 rows — dataset is empty.")
+
+        columns = self._build_columns(df, warnings)
+
+        return CSVSchema(
+            source   = filename,
+            columns  = columns,
+            row_count= len(df),
+            warnings = warnings,
         )
 
-        return [page]
+    # ── Helpers ───────────────────────────────────────────────────────────────
 
+    # Encodings tried in order; first UnicodeDecodeError moves to the next.
+    _ENCODINGS = ["utf-8", "utf-8-sig", "latin-1", "cp1252"]
 
-    def _load(self, file_path:str):
-        try:
-            df = pd.read_csv(file_path,low_memory=False)
-            return df
-        except UnicodeDecodeError:
-            df = pd.read_csv(file_path, encoding = "latin-1",low_memory=False)
-            return df
-        except Exception as e:
-            raise ValueError(f"Failed to load CSV: {e}")
+    def _load(self, file_path: str) -> pd.DataFrame:
+        """
+        Robustly load a CSV regardless of encoding or delimiter.
 
-    def _generate_schema(self , df, file_path):
-        meta = {
-            "file_name":file_path,
-            "total_row_count": len(df),
-            "total_column_count":df.shape[1],
-            "data":[]
-        }
+        Phase 1 — delimiter detection:
+          Read the first 8 KB of the file (trying each encoding) and pass it
+          to csv.Sniffer to detect the real separator (comma, semicolon, tab,
+          pipe, etc.).  Falls back to ',' if sniffing raises an error.
 
-        
-        for col_name in df:
-            column_meta = {}
-            column_meta["column_name"]= col_name
-            column_meta["dtype"]= str(df[col_name].dtype)
-            column_meta["null_count"]= int(df[col_name].isna().sum())
-            column_meta["first_3_columns"]=df[col_name].dropna().head(3).tolist()
+        Phase 2 — full load:
+          Try pd.read_csv with the detected separator, iterating encodings.
+          on_bad_lines='warn' skips isolated malformed rows instead of aborting.
+        """
+        import csv as _csv
 
-            if pd.api.types.is_numeric_dtype(df[col_name]):
-                column_meta["minimum_value"]=float(df[col_name].min())
-                column_meta["maximum_value"]=float(df[col_name].max())
-                column_meta["mean"]=float(df[col_name].mean())
+        sep = self._sniff_separator(file_path)
+
+        last_error: Exception = RuntimeError("No encodings tried")
+        for enc in self._ENCODINGS:
+            try:
+                return pd.read_csv(
+                    file_path,
+                    sep=sep,
+                    encoding=enc,
+                    low_memory=False,
+                    on_bad_lines="warn",   # skip malformed rows, don't crash
+                )
+            except UnicodeDecodeError as e:
+                last_error = e
+                continue
+            except Exception as e:
+                raise ValueError(f"Failed to load CSV ({enc}): {e}") from e
+
+        raise ValueError(
+            f"Failed to load CSV — tried encodings {self._ENCODINGS}: {last_error}"
+        )
+
+    def _sniff_separator(self, file_path: str) -> str:
+        """
+        Use csv.Sniffer on the first 8 KB to detect the actual delimiter.
+        Returns ',' as a safe fallback if sniffing fails for any reason.
+        """
+        import csv as _csv
+
+        for enc in self._ENCODINGS:
+            try:
+                with open(file_path, "r", encoding=enc, errors="replace") as fh:
+                    sample = fh.read(8192)
+                dialect = _csv.Sniffer().sniff(sample, delimiters=",;\t|")
+                return dialect.delimiter
+            except UnicodeDecodeError:
+                continue
+            except _csv.Error:
+                break   # sniffer failed on content — fall through to default
+
+        return ","  # safe default
+
+    def _build_columns(
+        self, df: pd.DataFrame, warnings: list[str]
+    ) -> list[ColumnSchema]:
+        columns: list[ColumnSchema] = []
+
+        for col_name in df.columns:
+            series     = df[col_name]
+            null_count = int(series.isna().sum())
+
+            # Warn if the entire column is null
+            if null_count == len(df) and len(df) > 0:
+                warnings.append(f"Column '{col_name}' is entirely null.")
+
+            # First 3 non-null values → always stored as strings for the LLM
+            samples: list[str] = [
+                str(v) for v in series.dropna().head(3).tolist()
+            ]
+
+            col = ColumnSchema(
+                name       = col_name,
+                dtype      = str(series.dtype),
+                null_count = null_count,
+                samples    = samples,
+            )
+
+            if pd.api.types.is_numeric_dtype(series):
+                col.min  = float(series.min())
+                col.max  = float(series.max())
+                col.mean = float(series.mean())
             else:
-                column_meta["unique_values_counts"]=df[col_name].nunique()
-                if column_meta["unique_values_counts"] < 10:
-                    column_meta["unique_values"]=df[col_name].unique().tolist()
-            meta["data"].append(column_meta)
-        return meta 
-                    
-    
-    def _format_schema_to_text(self, meta):
-        lines = []
-       
-        lines.append(f"File: {meta['file_name']} | Rows:{meta['total_row_count']} | Cols:{meta['total_column_count']}")
-        for data in meta["data"]:
-            lines.append(f" Col_name: {data['column_name']} | dtype: {data['dtype']} | Null_count: {data['null_count']} | First 3 Columns:{data['first_3_columns']}")
-            if "minimum_value" in data:
-                lines.append(f" Minimum Value: {data['minimum_value']} | Maximum Value: {data['maximum_value']} | Mean: {data['mean']}")
-            else:
-                lines.append(f"Unique Values Count:{data['unique_values_counts']}")
-        return "\n".join(lines)
+                unique_count = int(series.nunique())
+                col.unique_count = unique_count
+                if unique_count < 10:
+                    col.unique_values = [str(v) for v in series.unique().tolist()]
+
+            columns.append(col)
+
+        return columns

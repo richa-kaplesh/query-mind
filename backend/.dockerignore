@@ -1,0 +1,45 @@
+# ── Python artefacts ──────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Secrets — NEVER bake into the image ───────────────────────────────────────
+.env
+.env.*
+
+# ── Uploaded user files — mount as a volume instead ───────────────────────────
+uploads/
+
+# ── Development / local artefacts ─────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+
+# ── Tests and evaluation ──────────────────────────────────────────────────────
+eval/
+verify.py
+test_data.csv
+*_test.py
+
+# ── Editor / OS noise ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# ── Docs and notebooks (not needed at runtime) ────────────────────────────────
+*.md
+*.ipynb
+docs/
+notebooks/

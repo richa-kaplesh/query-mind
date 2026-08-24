@@ -3,16 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 import time
 
+from core.generator import Generator
+from core.tracer import TraceStore
 from core.embedder import Embedder
 from core.indexer import Indexer
 from core.retriever import HybridRetriever
 from core.reranker import Reranker
-from core.generator import Generator
-from core.ingestion import IngestionPipeline
-from core.tools.rag_tool import RAGTool
-from core.tools.csv_stats_tool import CSVStatsTool
-from core.tools.web_search_tool import WebSearchTool
 from api.routes import router
+from api.dashboard_routes import router as dashboard_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,11 +19,13 @@ logging.basicConfig(
 )
 log = logging.getLogger("main")
 
-app = FastAPI(title="QueryMind")
+app = FastAPI(title="QueryMind - CSV Engine")
 
+# CORS setup for frontend connectivity
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
 )
@@ -41,32 +41,28 @@ async def log_requests(request, call_next):
 
 log.info("Loading components...")
 
-log.info("  [1/5] Loading Embedder...")
-embedder = Embedder()
+# ── Shared stateless components ───────────────────────────────────────────────
 
-log.info("  [2/5] Loading Indexer...")
-indexer = Indexer()
-
-log.info("  [3/5] Loading HybridRetriever...")
-retriever = HybridRetriever(indexer=indexer)
-
-log.info("  [4/5] Loading Reranker...")
-reranker = Reranker()
-
-log.info("  [5/5] Loading Generator with tools...")
-rag_tool = RAGTool(retriever=retriever, embedder=embedder, reranker=reranker)
-web_tool = WebSearchTool()
-generator = Generator(tools=[rag_tool, web_tool])
-
-log.info("All components loaded ✓")
-
-app.state.embedder = embedder
-app.state.indexer = indexer
-app.state.retriever = retriever
-app.state.reranker = reranker
+# CSV path: tool-calling generator
+generator = Generator(tools=[])
 app.state.generator = generator
-app.state.ingestion = IngestionPipeline(embedder=embedder, indexer=indexer)
+
+# PDF path: retrieval stack (embedder → indexer → retriever → reranker)
+embedder  = Embedder()
+indexer   = Indexer()
+retriever = HybridRetriever(indexer=indexer)
+reranker  = Reranker()
+
+app.state.embedder  = embedder
+app.state.indexer   = indexer
+app.state.retriever = retriever
+app.state.reranker  = reranker
+
+# Global trace store for the debug dashboard
+trace_store = TraceStore()
+app.state.trace_store = trace_store
 
 log.info("All components loaded ✓")
 
 app.include_router(router)
+app.include_router(dashboard_router)
