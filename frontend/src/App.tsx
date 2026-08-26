@@ -18,6 +18,9 @@ interface Message {
   isUploadEvent?: boolean;
   fileName?: string;       // generic: works for CSV and PDF
   fileType?: "csv" | "pdf";
+  // Attachment chip rendered inside the user bubble on send
+  attachedFileName?: string;
+  attachedFileType?: "csv" | "pdf";
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -27,42 +30,22 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 // Poll interval while a doc is still "processing" (ms)
 const STATUS_POLL_MS = 1500;
 
-const SUGGESTED_QUERIES = [
-  "What are the column names and data types?",
-  "Show me summary statistics",
-  "Are there any missing values?",
-  "What insights can you find?",
-];
-
-const SAMPLE_FILES = [
-  {
-    name: "titanic.csv",
-    label: "Titanic Dataset",
-    description: "891 passengers · survival analysis",
-    type: "text/csv",
-    path: "/samples/titanic.csv",
-    tag: "CSV",
-  },
-  {
-    name: "sample_report.pdf",
-    label: "AI Adoption Report",
-    description: "3-page research report · 2024",
-    type: "application/pdf",
-    path: "/samples/sample_report.pdf",
-    tag: "PDF",
-  },
-] as const;
-
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 
 const SendIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
     <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
   </svg>
 );
 
+const PaperclipIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+  </svg>
+);
+
 const TrashIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6" />
     <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
     <path d="M10 11v6M14 11v6" />
@@ -71,14 +54,14 @@ const TrashIcon = () => (
 );
 
 const PlusIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
     <line x1="12" y1="5" x2="12" y2="19" />
     <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
 const LogsIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="7" height="9" rx="1"/>
     <rect x="14" y="3" width="7" height="5" rx="1"/>
     <rect x="14" y="12" width="7" height="9" rx="1"/>
@@ -94,14 +77,14 @@ const SpinnerIcon = ({ size = 16 }: { size?: number }) => (
 );
 
 const FileIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
     <polyline points="14 2 14 8 20 8" />
   </svg>
 );
 
 const UploadCloudIcon = () => (
-  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="16 16 12 12 8 16" />
     <line x1="12" y1="12" x2="12" y2="21" />
     <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3" />
@@ -109,14 +92,14 @@ const UploadCloudIcon = () => (
 );
 
 const CsvIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="18" height="18" rx="2" />
     <path d="M3 9h18M3 15h18M9 3v18" />
   </svg>
 );
 
 const PdfIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
     <polyline points="14 2 14 8 20 8" />
     <line x1="9" y1="13" x2="15" y2="13" />
@@ -143,13 +126,13 @@ const ChartIcon = () => (
 );
 
 const ChevronIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
     <polyline points="6 9 12 15 18 9" />
   </svg>
 );
 
 const CheckCircleIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
     <polyline points="22 4 12 14.01 9 11.01" />
   </svg>
@@ -187,6 +170,39 @@ function ToolBadge({ tool }: { tool: string }) {
   );
 }
 
+// ─── Confirm Popover ──────────────────────────────────────────────────────────
+
+function ConfirmPopover({
+  message,
+  confirmLabel = "Confirm",
+  danger = false,
+  onConfirm,
+  onCancel,
+}: {
+  message: string;
+  confirmLabel?: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="confirm-popover">
+      <p className="confirm-popover-msg">{message}</p>
+      <div className="confirm-popover-actions">
+        <button className="confirm-popover-cancel" onClick={onCancel}>
+          Cancel
+        </button>
+        <button
+          className={`confirm-popover-ok ${danger ? "confirm-popover-ok--danger" : ""}`}
+          onClick={onConfirm}
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -207,10 +223,16 @@ export default function App() {
   const [docName, setDocName] = useState<string | null>(null);
   const [docType, setDocType] = useState<"csv" | "pdf" | null>(null);
 
+  // ── Tracks whether the active doc has already been sent in a message bubble ─
+  // When true, the composer chip is hidden (file has been "consumed" into a bubble)
+  const [composerFileConsumed, setComposerFileConsumed] = useState(false);
+
   // ── Concurrent upload + query queue ────────────────────────────────────
-  // Stores a question typed while doc is still processing, auto-submitted on ready
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Confirmation popover state ────────────────────────────────────────
+  const [confirmPopover, setConfirmPopover] = useState<"new" | "delete" | null>(null);
 
   // ── Refs ─────────────────────────────────────────────────────────────────
   const dragCounter = useRef(0);
@@ -282,8 +304,6 @@ export default function App() {
   }, [isStreaming, streamedAnswer, streamedTool, streamedSources]);
 
   // ── Document status polling ───────────────────────────────────────────
-  // When a doc is in "processing", poll every STATUS_POLL_MS.
-  // When it flips to "ready", stop polling and auto-fire any pendingQuery.
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current) {
       clearInterval(pollTimerRef.current);
@@ -303,12 +323,11 @@ export default function App() {
         if (status === "ready") {
           stopPolling();
           setDocStatus("ready");
-          setSuccessToast(`"${targetFilename}" ready — you can now ask questions!`);
+          setSuccessToast(`"${targetFilename}" ready`);
 
           // Auto-fire queued query
           setPendingQuery((queued) => {
             if (queued) {
-              // Fire after a tick so state is settled
               setTimeout(() => fireQuery(queued), 50);
             }
             return null;
@@ -335,11 +354,15 @@ export default function App() {
       return;
     }
 
+    // Fix 3: Single-doc replacement — detect if there was a previous active doc
+    const previousDocName = docName;
+
     setUploading(true);
     setError(null);
     setDocStatus("processing");
     setDocName(file.name);
     setDocType(ext as "csv" | "pdf");
+    setComposerFileConsumed(false); // new file should show in composer
     stopPolling();
 
     try {
@@ -361,17 +384,10 @@ export default function App() {
         throw new Error(errBody.detail || `Upload failed: ${res.status}`);
       }
 
-      // Inject upload event card into chat immediately
-      const uploadMsg: Message = {
-        id: `upload_${Date.now()}`,
-        role: "user",
-        content: "",
-        timestamp: new Date(),
-        isUploadEvent: true,
-        fileName: file.name,
-        fileType: ext as "csv" | "pdf",
-      };
-      setMessages((prev) => [...prev, uploadMsg]);
+      // Fix 3: If a previous doc was active, show replacement notice
+      if (previousDocName && previousDocName !== file.name) {
+        setSuccessToast(`"${previousDocName}" replaced → "${file.name}" now active`);
+      }
 
       // Start polling for status transition (processing → ready)
       startPolling(file.name);
@@ -382,7 +398,7 @@ export default function App() {
     } finally {
       setUploading(false);
     }
-  }, [stopPolling, startPolling]);
+  }, [docName, stopPolling, startPolling]);
 
   const handleFileSelect = (files: FileList | null) => {
     if (!files || !files.length) return;
@@ -390,16 +406,38 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleRemoveFile = useCallback(async () => {
+    if (docName) {
+      try {
+        await fetch(`${API_BASE}/documents/${encodeURIComponent(docName)}`, { method: "DELETE" });
+      } catch {
+        // best-effort
+      }
+    }
+    setDocStatus("idle");
+    setDocName(null);
+    setDocType(null);
+    setPendingQuery(null);
+    setComposerFileConsumed(false);
+    stopPolling();
+  }, [docName, stopPolling]);
+
   // ── Submit / fireQuery ────────────────────────────────────────────────
-  const fireQuery = useCallback(async (question: string) => {
+  // Fix 1: Capture the currently attached doc before firing, so we can embed
+  // it as an attachment chip inside the user message bubble and clear the composer.
+  const fireQuery = useCallback(async (question: string, attachFileName?: string, attachFileType?: "csv" | "pdf") => {
     const userMsg: Message = {
       id: `user_${Date.now()}`,
       role: "user",
       content: question,
       timestamp: new Date(),
+      attachedFileName: attachFileName,
+      attachedFileType: attachFileType,
     };
     setMessages((prev) => [...prev, userMsg]);
     setInputValue("");
+    // Mark the composer file as consumed so the chip disappears from the composer
+    if (attachFileName) setComposerFileConsumed(true);
     resetStream();
 
     const history = messages
@@ -417,16 +455,24 @@ export default function App() {
     const question = inputValue.trim();
     if (!question || isStreaming) return;
 
-    if (docStatus === "processing") {
-      // Queue the query — it fires automatically when doc becomes ready
-      setPendingQuery(question);
-      setInputValue("");
-      // Show inline feedback via the input placeholder (handled in render)
+    if (docStatus === "idle") {
+      setError("Please attach a CSV or PDF file to analyze.");
       return;
     }
 
-    if (docStatus !== "ready") return;
-    await fireQuery(question);
+    if (docStatus === "processing") {
+      // Queue query — fires when doc is ready
+      setPendingQuery(question);
+      setInputValue("");
+      return;
+    }
+
+    if (docStatus === "ready") {
+      // Fix 1: Pass the attached file only on the first send after upload
+      const attachFile = !composerFileConsumed ? docName ?? undefined : undefined;
+      const attachType = !composerFileConsumed ? docType ?? undefined : undefined;
+      await fireQuery(question, attachFile, attachType);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -445,8 +491,10 @@ export default function App() {
     setDocStatus("idle");
     setDocName(null);
     setDocType(null);
+    setComposerFileConsumed(false);
     setError(null);
     setSuccessToast(null);
+    setConfirmPopover(null);
     stopPolling();
     resetStream();
   }, [stopPolling, resetStream]);
@@ -459,21 +507,25 @@ export default function App() {
     }
   }, []);
 
-  /** New Conversation: reset state + backend, start fresh */
-  const handleNewConversation = useCallback(async () => {
+  const handleNewConversation = useCallback(() => {
     if (messages.length === 0 && docStatus === "idle") return;
-    if (!confirm("Start a new conversation? Current chat will be cleared.")) return;
-    await callServerReset();
-    resetClientState();
-  }, [messages.length, docStatus, callServerReset, resetClientState]);
+    setConfirmPopover("new");
+  }, [messages.length, docStatus]);
 
-  /** Delete Conversation: clear chat, return to upload state */
-  const handleDeleteConversation = useCallback(async () => {
-    if (messages.length === 0) return;
-    if (!confirm("Delete this conversation?")) return;
+  const confirmNew = useCallback(async () => {
     await callServerReset();
     resetClientState();
-  }, [messages.length, callServerReset, resetClientState]);
+  }, [callServerReset, resetClientState]);
+
+  const handleDeleteConversation = useCallback(() => {
+    if (messages.length === 0) return;
+    setConfirmPopover("delete");
+  }, [messages.length]);
+
+  const confirmDelete = useCallback(async () => {
+    await callServerReset();
+    resetClientState();
+  }, [callServerReset, resetClientState]);
 
   const handleChangeFile = () => fileInputRef.current?.click();
 
@@ -508,26 +560,20 @@ export default function App() {
   const isDocReady = docStatus === "ready";
   const isDocProcessing = docStatus === "processing";
 
-  // Send is enabled when: we have text, not currently streaming, and doc is ready
   const canSend = inputValue.trim().length > 0 && !isStreaming && isDocReady;
-  // Queue is allowed when: we have text, not streaming, doc is still processing
   const canQueue = inputValue.trim().length > 0 && !isStreaming && isDocProcessing;
-
-  const showUploadZone = docStatus === "idle";
-  const showEmptyState = isDocReady && messages.length === 0 && !isStreaming;
 
   const docIcon = docType === "pdf" ? <PdfIcon /> : <CsvIcon />;
   const docLabel = docType === "pdf" ? "PDF" : "CSV";
 
-  // Input placeholder logic
   const inputPlaceholder = (() => {
     if (isDocProcessing && pendingQuery)
       return `Queued: "${pendingQuery}" — waiting for document…`;
     if (isDocProcessing)
-      return "Type a question — it will be sent once the document is ready";
-    if (isDocReady)
-      return "Ask anything about your document…";
-    return "Upload a CSV or PDF to start chatting";
+      return "Type a question — will send once document is ready…";
+    if (isDocReady && docName)
+      return `Ask anything about ${docName}…`;
+    return "Ask QueryMind or attach a CSV/PDF dataset…";
   })();
 
   // ─────────────────────────────────────────────────────────────────────
@@ -544,12 +590,12 @@ export default function App() {
         <div className="drag-overlay">
           <div className="drag-overlay-inner">
             <UploadCloudIcon />
-            <span>Drop your CSV or PDF to {isDocReady ? "replace dataset" : "get started"}</span>
+            <span>Drop your CSV or PDF to attach dataset</span>
           </div>
         </div>
       )}
 
-      {/* Hidden file input — accepts CSV and PDF */}
+      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -560,16 +606,17 @@ export default function App() {
 
       {/* ── Topbar ──────────────────────────────────────────────────────── */}
       <header className="topbar">
+        {/* Brand — subtle text only */}
         <div className="topbar-brand">
-          <div className="brand-logo">QM</div>
           <span className="brand-name">QueryMind</span>
         </div>
 
+        {/* Center — active document chip */}
         <div className="topbar-center">
           {docName && (isDocReady || isDocProcessing) && (
             <div className={`csv-active-chip ${isDocProcessing ? "csv-active-chip--processing" : ""}`}>
               {isDocProcessing
-                ? <SpinnerIcon size={12} />
+                ? <SpinnerIcon size={11} />
                 : <span className="csv-active-dot" />}
               {docIcon}
               <span className="csv-active-name" title={docName}>{docName}</span>
@@ -580,6 +627,7 @@ export default function App() {
           )}
         </div>
 
+        {/* Right actions */}
         <div className="topbar-right">
           {/* Navigate to /logs page */}
           <button
@@ -600,25 +648,47 @@ export default function App() {
           )}
 
           {/* New Conversation */}
-          <button
-            className="topbar-action-btn"
-            onClick={handleNewConversation}
-            disabled={messages.length === 0 && docStatus === "idle"}
-            title="New conversation"
-          >
-            <PlusIcon />
-            <span>New</span>
-          </button>
+          <div className="topbar-btn-wrap">
+            <button
+              className="topbar-action-btn"
+              onClick={handleNewConversation}
+              disabled={messages.length === 0 && docStatus === "idle"}
+              title="New conversation"
+            >
+              <PlusIcon />
+              <span>New</span>
+            </button>
+            {confirmPopover === "new" && (
+              <ConfirmPopover
+                message="Start a new conversation? Current chat will be cleared."
+                confirmLabel="Start New"
+                onConfirm={confirmNew}
+                onCancel={() => setConfirmPopover(null)}
+              />
+            )}
+          </div>
 
           {/* Delete Conversation */}
-          <button
-            className="topbar-action-btn topbar-action-btn--danger"
-            onClick={handleDeleteConversation}
-            disabled={messages.length === 0}
-            title="Delete this conversation"
-          >
-            <span>+</span> New Conversation
-          </button>
+          <div className="topbar-btn-wrap">
+            <button
+              className="topbar-action-btn topbar-action-btn--danger"
+              onClick={handleDeleteConversation}
+              disabled={messages.length === 0}
+              title="Delete this conversation"
+            >
+              <TrashIcon />
+              <span>Delete</span>
+            </button>
+            {confirmPopover === "delete" && (
+              <ConfirmPopover
+                message="Delete this conversation? This cannot be undone."
+                confirmLabel="Delete"
+                danger
+                onConfirm={confirmDelete}
+                onCancel={() => setConfirmPopover(null)}
+              />
+            )}
+          </div>
         </div>
       </header>
 
@@ -651,97 +721,15 @@ export default function App() {
       {/* ── Chat area ─────────────────────────────────────────────────── */}
       <div className="chat-area" ref={chatAreaRef}>
 
-        {/* Onboarding: no file uploaded yet */}
-        {showUploadZone && (
-          <div className="onboarding-state">
-            <div className="onboarding-inner">
-              <div className="empty-orb">
-                <div className="orb-ring" />
-                <div className="orb-core">QM</div>
-              </div>
-              <h1 className="empty-title">Analyse your data with AI</h1>
-              <p className="empty-sub">
-                Upload a CSV or PDF to unlock intelligent analysis, statistics, and natural-language queries powered by your data.
-              </p>
-
-              <div
-                className={`upload-zone ${isDragging ? "upload-zone--active" : ""} ${uploading ? "upload-zone--uploading" : ""}`}
-                onClick={() => !uploading && fileInputRef.current?.click()}
-                onDragEnter={handleDragEnter}
-                onDragOver={(e) => e.preventDefault()}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <div className="upload-zone-icon">
-                  {uploading ? <SpinnerIcon size={48} /> : <UploadCloudIcon />}
-                </div>
-                <div className="upload-zone-text">
-                  {uploading ? (
-                    <>
-                      <span className="upload-zone-title">Uploading…</span>
-                      <span className="upload-zone-sub">Extracting schema in the background</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="upload-zone-title">Drop your dataset here</span>
-                      <span className="upload-zone-sub">or <u>browse files</u> to upload</span>
-                    </>
-                  )}
-                </div>
-                <div className="upload-zone-hint">Supports .csv and .pdf files</div>
-              </div>
-            </div>
+        {/* Clean, minimalist empty state — only QueryMind written in center */}
+        {messages.length === 0 && !isStreaming && (
+          <div className="empty-center-state">
+            <h1 className="empty-center-brand">QueryMind</h1>
           </div>
         )}
 
-        {/* File uploaded, no messages yet */}
-        {showEmptyState && (
-          <div className="empty-state">
-            <div className="empty-orb">
-              <div className="orb-ring" />
-              <div className="orb-core">QM</div>
-            </div>
-            <h1 className="empty-title">Ready to analyse <span className="csv-name-highlight">{docName}</span></h1>
-            <p className="empty-sub">Ask anything about your data — QueryMind will compute stats and answer from your document.</p>
-            <div className="chips">
-              {SUGGESTED_QUERIES.map((q, i) => (
-                <button key={i} className="chip" onClick={() => setInputValue(q)}>{q}</button>
-              ))}
-            </div>
-
-            {/* ── Sample-file quick-load cards ── */}
-            <div className="sample-files-section">
-              <div className="sample-files-label">
-                <FlashIcon />
-                <span>Try a sample file</span>
-              </div>
-              <div className="sample-files-row">
-                {SAMPLE_FILES.map((sf) => (
-                  <button
-                    key={sf.name}
-                    className="sample-file-card"
-                    onClick={() => loadSampleFile(sf)}
-                    title={`Load ${sf.label} into pending files`}
-                  >
-                    <div className="sample-file-icon">
-                      {sf.tag === "CSV" ? <CsvIcon /> : <PdfIcon />}
-                    </div>
-                    <div className="sample-file-info">
-                      <span className="sample-file-name">{sf.label}</span>
-                      <span className="sample-file-desc">{sf.description}</span>
-                    </div>
-                    <span className={`sample-file-tag tag-${sf.tag.toLowerCase()}`}>
-                      {sf.tag}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Message thread — shown once there are messages OR while streaming */}
-        {(messages.length > 0 || isStreaming) && !showUploadZone && (
+        {/* Message thread */}
+        {(messages.length > 0 || isStreaming) && (
           <div className="messages">
             {messages.map((msg) => {
 
@@ -749,10 +737,10 @@ export default function App() {
               if (msg.isUploadEvent && msg.fileName) {
                 return (
                   <div key={msg.id} className="upload-receipt-row">
-                    <div className={`upload-receipt-card status-${cardStatus}`}>
+                    <div className={`upload-receipt-card status-${isDocProcessing && docName === msg.fileName ? "processing" : "ready"}`}>
                       <div className="upload-receipt-header">
                         <CheckCircleIcon />
-                        <span>{msg.fileType === "pdf" ? "PDF uploaded & indexed" : "CSV uploaded & schema extracted"}</span>
+                        <span>{msg.fileType === "pdf" ? "PDF attached & indexed" : "CSV attached & schema extracted"}</span>
                         <span className="upload-receipt-badge">
                           <span className="upload-receipt-dot" />
                           {isDocProcessing && docName === msg.fileName ? "Processing…" : "Ready"}
@@ -764,11 +752,6 @@ export default function App() {
                           <span>{msg.fileName}</span>
                         </div>
                       </div>
-                      <div className="upload-receipt-note">
-                        {msg.fileType === "pdf"
-                          ? "QueryMind has indexed your document. You can ask questions while it processes."
-                          : "QueryMind has indexed your dataset. You can now ask questions about the content."}
-                      </div>
                     </div>
                     <div className="upload-receipt-time">
                       {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -777,10 +760,11 @@ export default function App() {
                 );
               }
 
-              // Pending query indicator (shown as a ghost bubble)
+              // Pending query indicator
               if ((msg as Message & { isPending?: boolean }).isPending) {
                 return (
                   <div key={msg.id} className="msg-row user">
+                    <div className="avatar user-av">U</div>
                     <div className="msg-body">
                       <div className="msg-bubble msg-bubble--pending">
                         <SpinnerIcon size={12} />
@@ -788,7 +772,6 @@ export default function App() {
                         <span className="pending-label">queued — waiting for document…</span>
                       </div>
                     </div>
-                    <div className="avatar user-av">U</div>
                   </div>
                 );
               }
@@ -796,11 +779,25 @@ export default function App() {
               // Regular message bubble
               return (
                 <div key={msg.id} className={`msg-row ${msg.role}`}>
+                  {/* Fix 2: Assistant avatar before msg-body (stays left) */}
                   {msg.role === "assistant" && (
                     <div className="avatar ai-av">QM</div>
                   )}
+                  {/* Fix 2: User avatar also before msg-body — row-reverse places it right of bubble */}
+                  {msg.role === "user" && (
+                    <div className="avatar user-av">U</div>
+                  )}
                   <div className="msg-body">
                     <div className="msg-bubble">
+                      {/* Fix 1: Render attached file chip at top of user bubble */}
+                      {msg.role === "user" && msg.attachedFileName && (
+                        <div className="msg-attachment-chip">
+                          {msg.attachedFileType === "pdf" ? <PdfIcon /> : <CsvIcon />}
+                          <span className="msg-attachment-name" title={msg.attachedFileName}>
+                            {msg.attachedFileName}
+                          </span>
+                        </div>
+                      )}
                       {msg.role === "assistant" ? (
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {msg.content}
@@ -817,7 +814,7 @@ export default function App() {
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
                       <div className="sources-panel">
                         <button className="sources-toggle" onClick={() => toggleSource(msg.id)}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                           {msg.sources.length} source{msg.sources.length > 1 ? "s" : ""}
                           <span className={`sources-chevron ${expandedSources.has(msg.id) ? "open" : ""}`}>
                             <ChevronIcon />
@@ -847,9 +844,6 @@ export default function App() {
                       {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
-                  {msg.role === "user" && (
-                    <div className="avatar user-av">U</div>
-                  )}
                 </div>
               );
             })}
@@ -864,9 +858,11 @@ export default function App() {
                       <SpinnerIcon size={11} />
                       <span>
                         {streamedTool === "pandas_sandbox"
-                          ? "Running Pandas Sandbox…"
+                          ? "Running analysis…"
                           : streamedTool === "get_csv_stats"
-                          ? "Computing CSV Stats…"
+                          ? "Computing stats…"
+                          : streamedTool === "search_documents"
+                          ? "Searching documents…"
                           : `Using ${streamedTool}…`}
                       </span>
                     </div>
@@ -894,53 +890,81 @@ export default function App() {
 
       {/* ── Input area ──────────────────────────────────────────────────── */}
       <div className="input-area">
-        <div className={`input-box ${isStreaming ? "streaming" : ""} ${docStatus === "idle" ? "input-box--locked" : ""} ${isDocProcessing ? "input-box--processing" : ""}`}>
+        <div className={`input-box ${isStreaming ? "streaming" : ""} ${isDocProcessing ? "input-box--processing" : ""}`}>
 
-          {/* Processing indicator inside the input box */}
-          {isDocProcessing && (
-            <div className="input-processing-badge" title="Document is being processed">
-              <SpinnerIcon size={12} />
-              <span>processing document…</span>
+          {/* Inline attached file chip inside composer — hidden once the file has been sent in a bubble */}
+          {docName && !composerFileConsumed && (
+            <div className="composer-doc-chip">
+              <div className="composer-doc-info">
+                {docIcon}
+                <span className="composer-doc-name" title={docName}>{docName}</span>
+                {isDocProcessing ? (
+                  <span className="composer-doc-status processing">
+                    <SpinnerIcon size={10} /> processing
+                  </span>
+                ) : (
+                  <span className="composer-doc-status ready">ready</span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="composer-doc-remove"
+                onClick={handleRemoveFile}
+                title="Remove attached document"
+              >
+                ×
+              </button>
             </div>
           )}
 
-          <textarea
-            ref={textareaRef}
-            className="chat-textarea"
-            placeholder={inputPlaceholder}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isStreaming || (docStatus !== "ready" && docStatus !== "processing")}
-            rows={1}
-          />
+          <div className="input-box-row">
+            {/* Attach button alongside the text input */}
+            <button
+              type="button"
+              className={`attach-btn ${uploading ? "loading" : ""}`}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || isStreaming}
+              title="Attach CSV or PDF dataset"
+            >
+              {uploading ? <SpinnerIcon size={15} /> : <PaperclipIcon />}
+            </button>
 
-          <button
-            className={`send-btn ${(canSend || canQueue) ? "active" : ""}`}
-            onClick={handleSubmit}
-            disabled={!canSend && !canQueue}
-            aria-label={isDocProcessing ? "Queue query" : "Send"}
-            title={isDocProcessing ? "Queue query — will send when document is ready" : "Send"}
-          >
-            {isStreaming
-              ? <SpinnerIcon size={15} />
-              : isDocProcessing
-              ? <span style={{ fontSize: 14 }}>⏳</span>
-              : <SendIcon />}
-          </button>
+            <textarea
+              ref={textareaRef}
+              className="chat-textarea"
+              placeholder={inputPlaceholder}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isStreaming}
+              rows={1}
+            />
+
+            <button
+              className={`send-btn ${(canSend || canQueue || (inputValue.trim().length > 0 && !isStreaming)) ? "active" : ""}`}
+              onClick={handleSubmit}
+              disabled={!inputValue.trim() || isStreaming}
+              aria-label={isDocProcessing ? "Queue query" : "Send"}
+              title={isDocProcessing ? "Queue query — will send when document is ready" : "Send"}
+            >
+              {isStreaming
+                ? <SpinnerIcon size={14} />
+                : isDocProcessing
+                ? <SpinnerIcon size={14} />
+                : <SendIcon />}
+            </button>
+          </div>
         </div>
 
         <div className="input-footer">
-          {isDocReady ? (
-            <span className="input-hint">Enter to send · Shift+Enter for new line · Drag &amp; drop to replace file</span>
-          ) : isDocProcessing ? (
+          {isDocProcessing && pendingQuery ? (
             <span className="input-hint input-hint--processing">
-              {pendingQuery
-                ? `Query queued: "${pendingQuery.slice(0, 40)}${pendingQuery.length > 40 ? "…" : ""}" — will fire when ready`
-                : "Type a question now — it will be sent automatically when the document is ready"}
+              Query queued: &ldquo;{pendingQuery.slice(0, 40)}{pendingQuery.length > 40 ? "…" : ""}&rdquo; — auto-sending once ready
             </span>
           ) : (
-            <span className="input-hint input-hint--locked">Upload a CSV or PDF file to unlock the chat</span>
+            <span className="input-hint">
+              QueryMind analyzes datasets with AI · Attach CSV or PDF to begin
+            </span>
           )}
         </div>
       </div>

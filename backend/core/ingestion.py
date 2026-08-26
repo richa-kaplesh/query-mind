@@ -18,12 +18,10 @@ class IngestionPipeline:
     def ingest(self, file_path: str) -> dict:
         ext = Path(file_path).suffix.lower()
 
-        if ext == ".pdf":
-            extractor = PDFExtractor()
-        elif ext == ".csv":
-            extractor = CSVExtractor()
-        else:
-            raise ValueError(f"Unsupported file type: {ext}")
+        if ext != ".pdf":
+            raise ValueError(f"IngestionPipeline only handles PDFs, got: {ext}")
+
+        extractor = PDFExtractor()
 
         self.log.info("Extracting pages...")
         pages = extractor.extract(file_path)

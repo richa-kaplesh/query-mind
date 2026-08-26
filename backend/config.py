@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     tesseract_path: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
     class Config:
-        env_file = ".env",
+        env_file = ".env"
         extra = "ignore"
         protected_namespaces = ('settings_',)
 

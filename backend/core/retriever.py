@@ -29,8 +29,7 @@ class HybridRetriever:
         def normalize(scores):
            min_s , max_s= scores.min(),scores.max()
            if max_s - min_s == 0:
-            return scores
-        
+               return np.zeros_like(scores)
            return (scores-min_s)/(max_s-min_s)
     
         dense_all = np.zeros(len(self.indexer.chunks))

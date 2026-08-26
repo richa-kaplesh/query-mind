@@ -1,6 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
+class QueryRequest(BaseModel):
+    question: str
+    conversation_history: list = []
+    
 class PageMetadata(BaseModel):
     source: str
     file_type: str

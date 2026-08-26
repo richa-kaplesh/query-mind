@@ -12,7 +12,10 @@ class TextChunker:
             all_chunks.extend(chunks)
         return all_chunks
 
-    def chunk_text(self, text: str, metadata: dict = {}) -> list[dict]:
+    def chunk_text(self, text: str, metadata: dict | None = None) -> list[dict]:
+        if metadata is None:
+            metadata = {}
+
         chunks = []
         start = 0
 

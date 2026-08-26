@@ -8,12 +8,15 @@ import textwrap
 def _worker(file_path: str, executable_code: str, safe_builtins: dict, queue: multiprocessing.Queue):
     try:
         df = pd.read_csv(file_path, low_memory=False)
+    except UnicodeDecodeError:
+        df = pd.read_csv(file_path, encoding="latin-1", low_memory=False)
+
         local_vars = {"pd":pd, "df":df, "result":None}
         restricted_globals = {"__builtins__": safe_builtins}
         exec(executable_code, restricted_globals, local_vars)
         queue.put(("ok",str(local_vars["result"])))
     except Exception as e:
-        queue.put(("errors", str(e)))
+        queue.put(("error", str(e)))
 
 
 class PandasSandboxTool(BaseTool):
@@ -23,7 +26,7 @@ class PandasSandboxTool(BaseTool):
     SAFE_BUILTINS = {
         "len":len, "str":str, "int":int, "float": float, "bool":bool,
         "round":round, "sum": sum, "min": min, "max" : max, "abs":abs,
-        "sorted": sorted, "list":list, "dict": dict, "tuple":set,
+        "sorted": sorted, "list":list, "dict": dict, "tuple":tuple,"set":set,
         "range": range, "enumerate": enumerate, "zip":zip, "print": print,
     }
 

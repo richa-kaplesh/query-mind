@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
 /* ── Root ─────────────────────────────────────────────────────────────────── */
 
 .db-root {
@@ -210,8 +212,8 @@
   align-items: center;
 }
 
-.db-trace-file { font-size: 10.5px; color: #475569; }
-.db-trace-time { font-size: 10.5px; color: #334155; }
+.db-trace-file { font-size: 10.5px; color: #475569; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+.db-trace-time { font-size: 10.5px; color: #334155; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
 
 .db-trace-tool-tag {
   display: inline-block;
@@ -346,7 +348,7 @@
 
 .db-step-icon    { font-size: 14px; flex-shrink: 0; }
 .db-step-label   { font-size: 12.5px; font-weight: 600; color: #cbd5e1; flex: 1; }
-.db-step-elapsed { font-size: 10.5px; color: #475569; font-family: monospace; margin-left: auto; }
+.db-step-elapsed { font-size: 10.5px; color: #475569; font-family: 'JetBrains Mono', 'Fira Code', monospace; margin-left: auto; }
 
 .db-tool-decision {
   font-size: 11px;
@@ -452,4 +454,28 @@
   color: #d1fae5;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .db-sidebar {
+    width: 260px;
+  }
+}
+
+@media (max-width: 700px) {
+  .db-body {
+    flex-direction: column;
+  }
+  .db-sidebar {
+    width: 100%;
+    max-height: 220px;
+    border-right: none;
+    border-bottom: 1px solid #1e2a3a;
+  }
+  .db-main {
+    flex: 1;
+    min-height: 0;
+  }
 }
