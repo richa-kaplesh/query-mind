@@ -324,6 +324,8 @@ class Generator:
             stream=True,
         )
         for chunk in stream:
+            if not chunk.choices:
+                continue
             delta = chunk.choices[0].delta
             if delta and delta.content:
                 yield delta.content
@@ -402,6 +404,8 @@ class Generator:
 
         full_answer: list[str] = []
         for chunk in stream:
+            if not chunk.choices:
+                continue
             delta = chunk.choices[0].delta
             if delta and delta.content:
                 full_answer.append(delta.content)
