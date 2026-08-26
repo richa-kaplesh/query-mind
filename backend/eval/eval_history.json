@@ -1,0 +1,182 @@
+[
+  {
+    "timestamp": "2026-08-26T09:10:01.508885",
+    "label": "baseline",
+    "description": "",
+    "config": {
+      "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
+      "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+      "chunker": {
+        "method": "fixed-size char split",
+        "chunk_size": 500,
+        "chunk_overlap": 50
+      },
+      "embedding_model": "jina-embeddings-v3",
+      "retriever": {
+        "method": "hybrid BM25 + FAISS",
+        "alpha": 0.5,
+        "top_k": 20
+      },
+      "reranker": "jina-reranker-v2-base-multilingual",
+      "generator_model": "openai/gpt-oss-20b"
+    },
+    "averages": {
+      "faithfulness": 0.9333333333333333,
+      "answer_relevancy": 1.0,
+      "context_precision": 0.48333333333333334,
+      "context_recall": 0.8666666666666667
+    },
+    "per_question": [
+      {
+        "question": "How many days per week is this workout plan designed for?",
+        "answer": "- The workout plan is designed for **3 days per week** [source, p.1 \u2014 IMPORTANT NOTES]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.5,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many sets and reps are prescribed for Banded Glute Bridges?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.6,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the recommended rest time between sets?",
+        "answer": "- Rest 45\u201160\u202fseconds between sets (increasing to 90\u202fseconds as you get stronger)\u3010workout_plan.pdf, p.1 \u2014 IMPORTANT NOTES\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.6,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How long should the Plank hold be held per set on Day 3?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What activity is recommended on rest days, and for how long?",
+        "answer": "- Walk 20\u201130 minutes on rest days. [Source, p.\u202f1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.4,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "According to the document, is it possible to lose fat in just one specific body area like the waist?",
+        "answer": "No. The document states that spot\u2011reducing fat is not possible \u2013 waist (and arm) fat will drop only as overall body fat decreases.  \n[Source: workout_plan.pdf | Page:\u202f1 | Section: IMPORTANT NOTES]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What muscles or goals do Wall Angels target?",
+        "answer": "Wall Angels are listed among the exercises that focus on:\n\n- **Back** muscles  \n- **Shoulder** muscles  \n- **Chest** muscles  \n- Improving **posture**  \n\nThese are the primary muscles and goals highlighted for that exercise in the plan. [Source: workout_plan.pdf, p.0 \u2014 DAY 3 \u2014 FULL BODY + CORE]",
+        "scores": {
+          "faithfulness": 0.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.3,
+          "context_recall": 0.0
+        }
+      },
+      {
+        "question": "Why does the document recommend walking on rest days instead of more intense cardio?",
+        "answer": "- The plan suggests walking for 20\u201130 minutes on rest days because it **burns fat while keeping leg muscles from bulking** and helps you avoid staying completely sedentary.  \n\n  *\u201cWalk 20\u201130 mins on rest days. This burns fat without bulking legs. Stretching and yoga also count. Never stay completely sedentary.\u201d*  \n  [Source: workout_plan.pdf | Page:\u202f1 | Section: IMPORTANT NOTES]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.75,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Within what timeframe does the plan expect visible progress?",
+        "answer": "- Visible progress is expected within **4\u20136 weeks** of consistent training.  \n  [workout_plan.pdf, p.1 \u2014 IMPORTANT NOTES]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Which exercises on Day 2 specifically target hip dips?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.3,
+          "context_recall": 0.0
+        }
+      },
+      {
+        "question": "What protein sources does the document recommend?",
+        "answer": "- Eggs  \n- Chicken  \n- Lentils  \n- Paneer  \n\n[Source: workout_plan.pdf, p.1 \u2014 IMPORTANT NOTES]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.6,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many exercises are in Day 1 \u00e2\u20ac\u201d Upper Body + Posture?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Does the document specify a daily calorie intake or calorie targets?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Does the workout plan require any dumbbells or barbells?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.5,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Does the document include a warm-up or cool-down routine?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      }
+    ]
+  }
+]
