@@ -1,10 +1,33 @@
 import asyncio
 import json
 import logging
+import os
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse
 
 router = APIRouter(prefix='/dashboard')
+
+# Path to eval_history.json — lives in backend/eval/ next to run_eval.py
+_EVAL_HISTORY_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "eval", "eval_history.json"
+)
+
+
+@router.get('/evals')
+async def get_evals():
+    """Return all eval run records, most-recent first. Returns [] if no history yet."""
+    if not os.path.exists(_EVAL_HISTORY_PATH):
+        return []
+    try:
+        with open(_EVAL_HISTORY_PATH, "r", encoding="utf-8") as f:
+            history = json.load(f)
+        # Sort newest first by timestamp string (ISO format sorts lexicographically)
+        history.sort(key=lambda r: r.get("timestamp", ""), reverse=True)
+        return history
+    except Exception as e:
+        logging.getLogger("dashboard_routes").error(f"Failed to read eval history: {e}")
+        raise HTTPException(status_code=500, detail="Could not read eval history")
 
 @router.get('/traces')
 async def get_traces(request: Request):
