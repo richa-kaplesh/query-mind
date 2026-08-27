@@ -27,17 +27,17 @@ class TokenTracker:
         with open(_LOG_PATH, "w") as f:
             json.dump(self._entries, f , indent = 2)
 
-    def log_call(self, model:str, prompt_tokens: int , completion_tokens: int , purpose:str):
+    def log_call(self, model: str, prompt_tokens: int, completion_tokens: int, purpose: str):
         entry = {
-            "timestamp":time.time(),
-            "model":model,
-            "purpose":purpose,
-            "prompt_tokens":prompt_tokens,
-            "completion_tokens":completion_tokens,
-            "total_tokens": prompt_tokens +completion_tokens
+            "timestamp": time.time(),
+            "model": model,
+            "purpose": purpose,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": prompt_tokens + completion_tokens,
         }
-        with self._lock:
-            self.entries.append(entry)
+        with self.lock:
+            self._entries.append(entry)
             self._save()
 
     def get_all(self):
