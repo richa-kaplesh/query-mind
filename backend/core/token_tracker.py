@@ -16,9 +16,9 @@ class TokenTracker:
     def _load(self):
         if os.path.exists(_LOG_PATH):
             try:
-                with open(_LOG_PATH, "r") as f:
+                with open(_LOG_PATH, "r", encoding="utf-8") as f:
                     return json.load(f)
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, UnicodeDecodeError):
                 return []
         return []
     
