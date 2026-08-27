@@ -211,6 +211,8 @@ class Generator:
         final_response = self.client.chat.completions.create(
             model=self.model_name,
             messages=messages,
+            tools=tool_schema,
+            tool_choice="none",
         )
         answer = final_response.choices[0].message.content
 
@@ -294,6 +296,8 @@ class Generator:
             model=self.model_name,
             messages=messages,
             stream=True,
+            tools=tool_schema,
+            tool_choice="none",
         )
 
         full_answer: list[str] = []
