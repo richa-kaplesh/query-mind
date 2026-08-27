@@ -15,9 +15,13 @@ class TokenTracker:
 
     def _load(self):
         if os.path.exists(_LOG_PATH):
-            with open(_LOG_PATH,"r") as f :
-                return json.load(f)
+            try:
+                with open(_LOG_PATH, "r") as f:
+                    return json.load(f)
+            except json.JSONDecodeError:
+                return []
         return []
+    
     def _save(self):
         os.makedirs(os.path.dirname(_LOG_PATH), exist_ok = True)
         with open(_LOG_PATH, "w") as f:
