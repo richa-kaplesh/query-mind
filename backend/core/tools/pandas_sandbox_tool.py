@@ -93,6 +93,7 @@ class PandasSandboxTool(BaseTool):
             is_valid , error_message = self._validate_code(executable_code)
             if not is_valid:
                 return f"Rejected:{error_message}"
+            
 
             
 
@@ -111,7 +112,7 @@ class PandasSandboxTool(BaseTool):
                 return f"Error: Code execution exceeded {self.timeout_seconds} seconds"
 
             if queue.empty():
-                return "Error: Process ended unexpectedly with no result"
+                return "Error:Worker process terminated unexpectedly (possibly out of memory) — try simpler queries or check Render resource limits"
 
             status, payload = queue.get()
             if status == "error":
