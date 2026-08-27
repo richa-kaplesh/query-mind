@@ -3,6 +3,7 @@ from typing import List
 from core.tools.base_tool import BaseTool
 from core.prompt_builder import PromptBuilder
 from core.tool_registry import ToolRegistry
+from core.token_utils import estimate_tokens
 from config import settings
 import json
 import asyncio
@@ -41,7 +42,6 @@ Follow these rules strictly:
 3. Always give a clean, human-readable final answer to the user.
 """
 
-# ── Per-tool parameter specs ──────────────────────────────────────────────────
 TOOL_PARAMS: dict[str, dict] = {
     "pandas_sandbox": {
         "code": {
@@ -67,12 +67,11 @@ TOOL_PARAMS: dict[str, dict] = {
 
 
 def _safe_serialize(obj):
-    """Recursively convert an object to a JSON-serializable form."""
     if isinstance(obj, dict):
         return {k: _safe_serialize(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [_safe_serialize(i) for i in obj]
-    elif hasattr(obj, "model_dump"):        # pydantic v2
+    elif hasattr(obj, "model_dump"):
         return _safe_serialize(obj.model_dump())
     elif hasattr(obj, "__dict__"):
         return _safe_serialize(vars(obj))
@@ -92,10 +91,7 @@ class Generator:
         self.client     = Groq(api_key=self.api_key)
         self.tools: List[BaseTool] = tools if tools is not None else []
 
-    # ── Internal helpers ──────────────────────────────────────────────────────
-
     def _build_tool_schema(self, tools: List[BaseTool]) -> list[dict]:
-        """Convert a BaseTool list → Groq function-calling schema."""
         schema = []
         for tool in tools:
             params = TOOL_PARAMS.get(
@@ -117,14 +113,12 @@ class Generator:
         return schema
 
     def _get_tool_by_name(self, tool_name: str) -> BaseTool | None:
-        """Look up a registered tool by name."""
         for tool in self.tools:
             if tool.name == tool_name:
                 return tool
         return None
 
     def _build_messages(self, query: str, schema: str = None) -> list[dict]:
-        """Return the [system, user] message list, injecting schema when provided."""
         user_content = (
             f"Dataset Schema:\n{schema}\n\nQuestion: {query}" if schema else query
         )
@@ -134,16 +128,6 @@ class Generator:
         ]
 
     def _execute_tool_call(self, tool_call) -> tuple[str, str, str]:
-        """
-        Execute a tool-call object returned by the LLM.
-
-        Returns (tool_name, tool_input, tool_result_str).
-        Raises ValueError if the requested tool is not registered — callers
-        are responsible for catching this and handling it gracefully.
-
-        Returns tool_input as the second element so callers can trace it
-        without re-parsing tool_call.function.arguments themselves.
-        """
         tool_name = tool_call.function.name
         tool_args = json.loads(tool_call.function.arguments)
 
@@ -153,10 +137,9 @@ class Generator:
                 f"LLM requested unknown tool '{tool_name}' — not registered"
             )
 
-        # Dispatch correct argument key per tool type
         tool_input = (
-            tool_args.get("code")       # pandas_sandbox
-            or tool_args.get("query")   # get_csv_stats
+            tool_args.get("code")
+            or tool_args.get("query")
             or tool_args.get("input", "")
         )
 
@@ -168,17 +151,7 @@ class Generator:
 
     # ── Core agentic loop ─────────────────────────────────────────────────────
 
-    def generate_with_tools(self, query: str, schema: str = None, tracer=None , token_tracker=None) -> dict:
-        """
-        Agentic tool-calling pipeline (synchronous).
-
-        Flow:
-          Call 1 (schema + query + tool defs)
-            ├─ Direct answer  →  return immediately
-            └─ Tool call  →  _execute_tool_call  →  Call 2  →  final answer
-
-        tracer: optional callable(step_type, data) for observability.
-        """
+    def generate_with_tools(self, query: str, schema: str = None, tracer=None, token_tracker=None) -> dict:
         tool_schema = self._build_tool_schema(self.tools)
         messages    = self._build_messages(query, schema)
 
@@ -192,7 +165,6 @@ class Generator:
         record("schema_context", {"schema": schema or "(none provided)"})
         record("llm_call_1", {"model": self.model_name, "messages": messages, "tools": tool_schema})
 
-        # ── Call 1 ───────────────────────────────────────────────────────────
         log.info("[LLM] → Call 1 (schema + query + tool defs)")
         response = self.client.chat.completions.create(
             model=self.model_name,
@@ -216,13 +188,11 @@ class Generator:
             "finish_reason": response.choices[0].finish_reason,
         })
 
-        # ── Direct answer ─────────────────────────────────────────────────────
         if not message.tool_calls:
             log.info("[LLM] ✓ Direct answer (no tool used)")
             record("final_answer", {"answer": message.content, "tool_used": None})
             return {"answer": message.content, "tool_used": None}
 
-        # ── Tool execution ────────────────────────────────────────────────────
         tool_call = message.tool_calls[0]
         try:
             tool_name, tool_input, tool_result = self._execute_tool_call(tool_call)
@@ -236,7 +206,6 @@ class Generator:
         messages.append({"role": "assistant", "content": None, "tool_calls": [tool_call]})
         messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": tool_result})
 
-        # ── Call 2: synthesise ────────────────────────────────────────────────
         log.info("[LLM] → Call 2 (synthesise tool result → final answer)")
         record("llm_call_2", {"model": self.model_name, "messages": messages})
         final_response = self.client.chat.completions.create(
@@ -255,21 +224,12 @@ class Generator:
         record("final_answer", {"answer": answer, "tool_used": tool_name})
         return {"answer": answer, "tool_used": tool_name}
 
-
     async def agenerate_with_tools(self, query: str, schema: str = None, tracer=None, token_tracker=None) -> dict:
-            return await asyncio.to_thread(self.generate_with_tools, query, schema, tracer, token_tracker)
+        return await asyncio.to_thread(self.generate_with_tools, query, schema, tracer, token_tracker)
 
     # ── Streaming ─────────────────────────────────────────────────────────────
 
-    def generate_stream(self, query: str, schema: str = None, tracer=None, token_tracker = None):
-        """
-        Token-streaming generator for the SSE endpoint.
-
-        Strategy:
-          Call 1 (non-streaming) decides routing:
-            ├─ Direct answer  →  yield content from Call 1, return.
-            └─ Tool call  →  _execute_tool_call  →  Call 2 (streaming).
-        """
+    def generate_stream(self, query: str, schema: str = None, tracer=None, token_tracker=None):
         tool_schema = self._build_tool_schema(self.tools)
         messages    = self._build_messages(query, schema)
 
@@ -283,7 +243,6 @@ class Generator:
         record("schema_context", {"schema": schema or "(none)"})
         record("llm_call_1", {"model": self.model_name, "messages": messages, "tools": tool_schema})
 
-        # ── Call 1 — routing decision ─────────────────────────────────────────
         log.info("[STREAM] → Call 1 (routing decision)")
         response = self.client.chat.completions.create(
             model=self.model_name,
@@ -294,10 +253,11 @@ class Generator:
         message = response.choices[0].message
         if token_tracker and response.usage:
             token_tracker.log_call(
-                model=self.model_name,
-                prompt_tokens=response.usage.prompt_tokens,
-                completion_tokens=response.usage.completion_tokens,
-                purpose="csv_call1",
+            model=self.model_name,
+            prompt_tokens=estimate_tokens(prompt_text),
+            completion_tokens=estimate_tokens(completion_text),
+            purpose="csv_call2",
+            estimated=True,
         )
 
         record("llm_response_1", {
@@ -307,14 +267,12 @@ class Generator:
             "finish_reason": response.choices[0].finish_reason,
         })
 
-        # ── Direct answer: yield Call 1 content, no second call ───────────────
         if not message.tool_calls:
             log.info("[STREAM] Direct answer — yielding Call 1 content")
             record("final_answer", {"answer": message.content, "tool_used": None})
             yield message.content or ""
             return
 
-        # ── Tool execution ────────────────────────────────────────────────────
         tool_call = message.tool_calls[0]
         try:
             tool_name, tool_input, tool_result = self._execute_tool_call(tool_call)
@@ -331,42 +289,37 @@ class Generator:
 
         yield f"__tool__:{tool_name}"
 
-        # ── Call 2: stream synthesis ──────────────────────────────────────────
         log.info("[STREAM] → Call 2 (stream tool-result synthesis)")
         record("llm_call_2_stream", {"model": self.model_name, "messages": messages})
         stream = self.client.chat.completions.create(
             model=self.model_name,
             messages=messages,
             stream=True,
-            stream_options={"include_usage": True},
         )
+
+        full_answer: list[str] = []
         for chunk in stream:
             if not chunk.choices:
-                if chunk.usage and token_tracker:
-                    token_tracker.log_call(
-                        model=self.model_name,
-                        prompt_tokens=chunk.usage.prompt_tokens,
-                        completion_tokens=chunk.usage.completion_tokens,
-                        purpose="csv_call2",
-                    )
                 continue
             delta = chunk.choices[0].delta
             if delta and delta.content:
+                full_answer.append(delta.content)
                 yield delta.content
+
+        # Groq doesn't return usage on streamed chunks — estimate locally
+        if token_tracker:
+            prompt_text = "\n".join(m["content"] for m in messages if m.get("content"))
+            completion_text = "".join(full_answer)
+            token_tracker.log_call(
+                model=self.model_name,
+                prompt_tokens=estimate_tokens(prompt_text),
+                completion_tokens=estimate_tokens(completion_text),
+                purpose="csv_call2",
+            )
 
     # ── RAG streaming (PDF context-stuffing path) ─────────────────────────────
 
     def _build_rag_context(self, chunks: list[dict]) -> str:
-        """
-        Format retrieved chunks into a cited context block for the LLM prompt.
-
-        Each chunk is preceded by a citation header:
-          [Source: filename.pdf | Page: 3 | Section: Introduction]
-
-        Chunks without a heading omit the Section part.
-        Metadata is read from chunk["metadata"] (produced by TextChunker which
-        carries through PageMetadata fields: source, page, heading).
-        """
         parts: list[str] = []
         for i, chunk in enumerate(chunks, start=1):
             meta    = chunk.get("metadata", {})
@@ -374,7 +327,6 @@ class Generator:
             page    = meta.get("page")
             heading = meta.get("heading")
 
-            # Build citation header
             citation = f"[Source: {source}"
             if page is not None:
                 citation += f" | Page: {page}"
@@ -386,18 +338,7 @@ class Generator:
 
         return "\n\n---\n\n".join(parts)
 
-    def generate_rag_stream(self, query: str, chunks: list[dict], tracer=None,token_tracker=None):
-        """
-        Pure context-stuffing RAG stream for the PDF path.
-
-        Strategy:
-          - Build a cited context block from retrieved chunks.
-          - Single Groq call with streaming=True — no tool-calling.
-          - Yields tokens using the same protocol as generate_stream()
-            so the SSE event_stream() wrapper in routes.py is reused unchanged.
-
-        tracer: optional callable(step_type, data) for observability.
-        """
+    def generate_rag_stream(self, query: str, chunks: list[dict], tracer=None, token_tracker=None):
         def record(step_type, data):
             if tracer:
                 try:
@@ -424,26 +365,28 @@ class Generator:
             model=self.model_name,
             messages=messages,
             stream=True,
-            stream_options={"include_usage": True},
         )
 
         full_answer: list[str] = []
         for chunk in stream:
             if not chunk.choices:
-                # final chunk with usage info has no choices, but has chunk.usage
-                if chunk.usage and token_tracker:
-                    token_tracker.log_call(
-                        model=self.model_name,
-                        prompt_tokens=chunk.usage.prompt_tokens,
-                        completion_tokens=chunk.usage.completion_tokens,
-                        purpose="rag",
-                    )
                 continue
-
             delta = chunk.choices[0].delta
             if delta and delta.content:
                 full_answer.append(delta.content)
                 yield delta.content
+
+        # Groq doesn't return usage on streamed chunks — estimate locally
+        if token_tracker:
+            prompt_text = "\n".join(m["content"] for m in messages if m.get("content"))
+            completion_text = "".join(full_answer)
+            token_tracker.log_call(
+            model=self.model_name,
+            prompt_tokens=estimate_tokens(prompt_text),
+            completion_tokens=estimate_tokens(completion_text),
+            purpose="rag",
+            estimated=True,
+        )
 
         record("rag_final_answer", {"answer": "".join(full_answer)})
         log.info("[RAG] ✓ Stream complete")
@@ -451,7 +394,6 @@ class Generator:
     # ── Legacy RAG utility (non-streaming, kept for scripts/tests) ────────────
 
     def generate_rag(self, query: str, chunks: list[dict]) -> dict:
-        """Non-streaming RAG — kept for test scripts. Uses same context builder."""
         context = self._build_rag_context(chunks)
         messages = [
             {"role": "system", "content": RAG_SYSTEM_PROMPT},
@@ -461,9 +403,4 @@ class Generator:
         return {"answer": result.choices[0].message.content}
 
     def generate(self, query: str, schema: str = None) -> dict:
-        """
-        Synchronous entry point for tests / scripts.
-        Delegates directly to generate_with_tools.
-        Empty tools list → plain LLM call (no function-calling overhead).
-        """
         return self.generate_with_tools(query, schema=schema)
