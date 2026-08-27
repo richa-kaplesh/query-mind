@@ -253,12 +253,11 @@ class Generator:
         message = response.choices[0].message
         if token_tracker and response.usage:
             token_tracker.log_call(
-            model=self.model_name,
-            prompt_tokens=estimate_tokens(prompt_text),
-            completion_tokens=estimate_tokens(completion_text),
-            purpose="csv_call2",
-            estimated=True,
-        )
+                model=self.model_name,
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                purpose="csv_call1",
+            )
 
         record("llm_response_1", {
             "content":       message.content,
@@ -315,6 +314,7 @@ class Generator:
                 prompt_tokens=estimate_tokens(prompt_text),
                 completion_tokens=estimate_tokens(completion_text),
                 purpose="csv_call2",
+                estimated=True,
             )
 
     # ── RAG streaming (PDF context-stuffing path) ─────────────────────────────
