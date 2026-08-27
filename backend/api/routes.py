@@ -17,6 +17,10 @@ from core.ingestion import IngestionPipeline
 from core.tools.pandas_sandbox_tool import PandasSandboxTool
 from core.tracer import TraceStore
 
+import groq
+import httpx as httpx_module
+
+
 log = logging.getLogger("routes")
 
 router = APIRouter()
@@ -29,6 +33,12 @@ documents: dict = {}
 
 
 
+@router.get("/debug/versions")
+async def debug_versions():
+    return {
+        "groq_version": groq.__version__,
+        "httpx_version": httpx_module.__version__,
+    }
 
 @router.post("/upload")
 async def upload_document(
