@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import time
-
 from core.generator import Generator
 from core.tracer import TraceStore
 from core.embedder import Embedder
@@ -11,6 +10,7 @@ from core.retriever import HybridRetriever
 from core.reranker import Reranker
 from api.routes import router
 from api.dashboard_routes import router as dashboard_router
+from core.token_tracker import TokenTracker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,10 +61,14 @@ app.state.embedder  = embedder
 app.state.indexer   = indexer
 app.state.retriever = retriever
 app.state.reranker  = reranker
+app.state.trace_store = TraceStore()
+app.state.generator = Generator()
+app.state.token_tracker = TokenTracker()
 
 # Global trace store for the debug dashboard
 trace_store = TraceStore()
 app.state.trace_store = trace_store
+
 
 log.info("All components loaded ✓")
 

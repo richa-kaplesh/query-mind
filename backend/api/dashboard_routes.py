@@ -79,3 +79,10 @@ async def stream_traces(request: Request):
             'X-Accel-Buffering': 'no'
         }
     )
+
+@router.get("/tokens")
+async def get_tokens(request: Request):
+    tokens = request.app.state.token_tracker
+    return tokens.get_all()
+
+

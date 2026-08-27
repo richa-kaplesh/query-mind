@@ -103,6 +103,7 @@ def _make_tracer(trace_store, trace_id: str):
     def tracer(step_type: str, data: dict):
         trace_store.add_step(trace_id, step_type, data)
     return tracer
+
 @router.post("/query/stream")
 async def query_document_stream(body: QueryRequest, request: Request):
     current_file = _get_active_file()
@@ -130,7 +131,12 @@ async def query_document_stream(body: QueryRequest, request: Request):
         def event_stream_pdf():
             final_answer_parts = []
             try:
-                for token in generator.generate_rag_stream(query=body.question, chunks=chunks, tracer=tracer):
+                for token in generator.generate_rag_stream(
+                    query=body.question,
+                    chunks=chunks,
+                    tracer=tracer,
+                    token_tracker=request.app.state.token_tracker,
+                ):
                     final_answer_parts.append(token)
                     yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
                 trace_store.finish_trace(trace_id, "".join(final_answer_parts), None)
@@ -151,7 +157,12 @@ async def query_document_stream(body: QueryRequest, request: Request):
         final_answer_parts = []
         tool_used = None
         try:
-            for token in generator.generate_stream(query=body.question, schema=schema, tracer=tracer):
+            for token in generator.generate_stream(
+                query=body.question,
+                schema=schema,
+                tracer=tracer,
+                token_tracker=request.app.state.token_tracker,
+            ):
                 if token.startswith("__tool__:"):
                     tool_used = token.split(":", 1)[1]
                     yield f"data: {json.dumps({'type': 'tool', 'content': tool_used})}\n\n"
@@ -168,6 +179,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
+
 @router.get("/documents")
 async def get_documents():
     return {k: v["status"] for k, v in documents.items()}
@@ -175,18 +187,18 @@ async def get_documents():
 
 @router.get("/documents/status")
 def status():
-    return {"documents":{k:v["status"] for k, v in documents.items()}}
+    return {"documents": {k: v["status"] for k, v in documents.items()}}
 
-    
 
 @router.delete("/documents/{filename}")
-def delete(filename:str):
-    documents.pop(filename , None)
-    return {"message": f"{filename} removed","remaining":list(documents.keys())}
+def delete(filename: str):
+    documents.pop(filename, None)
+    return {"message": f"{filename} removed", "remaining": list(documents.keys())}
+
 
 @router.post("/reset")
 async def reset_session():
-    count = len(documents) 
+    count = len(documents)
     documents.clear()
     log.info(f"[RESET] Session cleared — removed {count} document(s)")
     return {"message": "Session reset", "cleared": count}

@@ -168,7 +168,7 @@ class Generator:
 
     # ── Core agentic loop ─────────────────────────────────────────────────────
 
-    def generate_with_tools(self, query: str, schema: str = None, tracer=None) -> dict:
+    def generate_with_tools(self, query: str, schema: str = None, tracer=None , token_tracker=None) -> dict:
         """
         Agentic tool-calling pipeline (synchronous).
 
@@ -201,6 +201,13 @@ class Generator:
             tool_choice="auto" if tool_schema else None,
         )
         message = response.choices[0].message
+        if token_tracker and response.usage:
+            token_tracker.log_call(
+                model=self.model_name,
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                purpose="csv_call1",
+            )
 
         record("llm_response_1", {
             "content":       message.content,
@@ -237,22 +244,24 @@ class Generator:
             messages=messages,
         )
         answer = final_response.choices[0].message.content
-        record("final_answer", {"answer": answer, "tool_used": tool_name})
 
+        if token_tracker and final_response.usage:
+            token_tracker.log_call(
+                model=self.model_name,
+                prompt_tokens=final_response.usage.prompt_tokens,
+                completion_tokens=final_response.usage.completion_tokens,
+                purpose="csv_call2",
+            )
+        record("final_answer", {"answer": answer, "tool_used": tool_name})
         return {"answer": answer, "tool_used": tool_name}
 
-    # ── Async wrapper ─────────────────────────────────────────────────────────
 
-    async def agenerate_with_tools(self, query: str, schema: str = None, tracer=None) -> dict:
-        """
-        Async wrapper — runs generate_with_tools in a thread-pool executor so
-        the FastAPI event loop stays free during blocking Groq HTTP calls.
-        """
-        return await asyncio.to_thread(self.generate_with_tools, query, schema, tracer)
+    async def agenerate_with_tools(self, query: str, schema: str = None, tracer=None, token_tracker=None) -> dict:
+            return await asyncio.to_thread(self.generate_with_tools, query, schema, tracer, token_tracker)
 
     # ── Streaming ─────────────────────────────────────────────────────────────
 
-    def generate_stream(self, query: str, schema: str = None, tracer=None):
+    def generate_stream(self, query: str, schema: str = None, tracer=None, token_tracker = None):
         """
         Token-streaming generator for the SSE endpoint.
 
@@ -283,6 +292,13 @@ class Generator:
             tool_choice="auto"  if tool_schema else None,
         )
         message = response.choices[0].message
+        if token_tracker and response.usage:
+            token_tracker.log_call(
+                model=self.model_name,
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                purpose="csv_call1",
+        )
 
         record("llm_response_1", {
             "content":       message.content,
@@ -322,9 +338,17 @@ class Generator:
             model=self.model_name,
             messages=messages,
             stream=True,
+            stream_options={"include_usage": True},
         )
         for chunk in stream:
             if not chunk.choices:
+                if chunk.usage and token_tracker:
+                    token_tracker.log_call(
+                        model=self.model_name,
+                        prompt_tokens=chunk.usage.prompt_tokens,
+                        completion_tokens=chunk.usage.completion_tokens,
+                        purpose="csv_call2",
+                    )
                 continue
             delta = chunk.choices[0].delta
             if delta and delta.content:
@@ -362,7 +386,7 @@ class Generator:
 
         return "\n\n---\n\n".join(parts)
 
-    def generate_rag_stream(self, query: str, chunks: list[dict], tracer=None):
+    def generate_rag_stream(self, query: str, chunks: list[dict], tracer=None,token_tracker=None):
         """
         Pure context-stuffing RAG stream for the PDF path.
 
@@ -400,12 +424,22 @@ class Generator:
             model=self.model_name,
             messages=messages,
             stream=True,
+            stream_options={"include_usage": True},
         )
 
         full_answer: list[str] = []
         for chunk in stream:
             if not chunk.choices:
+                # final chunk with usage info has no choices, but has chunk.usage
+                if chunk.usage and token_tracker:
+                    token_tracker.log_call(
+                        model=self.model_name,
+                        prompt_tokens=chunk.usage.prompt_tokens,
+                        completion_tokens=chunk.usage.completion_tokens,
+                        purpose="rag",
+                    )
                 continue
+
             delta = chunk.choices[0].delta
             if delta and delta.content:
                 full_answer.append(delta.content)
