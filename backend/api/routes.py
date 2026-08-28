@@ -227,3 +227,19 @@ async def test_multiprocessing():
     if q.empty():
         return {"result": "FAILED - subprocess died silently"}
     return {"result": q.get()}
+
+@router.get("/debug/pandas-test")
+async def test_pandas_worker():
+    import multiprocessing
+    from core.tools.pandas_sandbox_tool import _worker, PandasSandboxTool
+
+    queue = multiprocessing.Queue()
+    process = multiprocessing.Process(
+        target=_worker,
+        args=("uploads/Titanic-Dataset.csv", "result = len(df)", PandasSandboxTool.SAFE_BUILTINS, queue)
+    )
+    process.start()
+    process.join(5)
+    if queue.empty():
+        return {"result": "FAILED - worker died silently even on trivial code"}
+    return {"result": queue.get()}
