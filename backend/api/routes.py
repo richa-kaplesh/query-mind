@@ -212,3 +212,18 @@ async def reset_session():
     documents.clear()
     log.info(f"[RESET] Session cleared — removed {count} document(s)")
     return {"message": "Session reset", "cleared": count}
+
+def _test_worker(queue):
+    queue.put("hello from subprocess")
+
+# temporary test route
+@router.get("/debug/mp-test")
+async def test_multiprocessing():
+    import multiprocessing
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(target=_test_worker, args=(q,))
+    p.start()
+    p.join(5)
+    if q.empty():
+        return {"result": "FAILED - subprocess died silently"}
+    return {"result": q.get()}

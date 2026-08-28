@@ -1,6 +1,5 @@
 from core.tools.base_tool import BaseTool
 import pandas as pd
-from typing import Any
 import ast
 import multiprocessing 
 import textwrap
@@ -10,7 +9,6 @@ def _worker(file_path: str, executable_code: str, safe_builtins: dict, queue: mu
         df = pd.read_csv(file_path, low_memory=False)
     except UnicodeDecodeError:
         df = pd.read_csv(file_path, encoding="latin-1", low_memory=False)
-
         local_vars = {"pd":pd, "df":df, "result":None}
         restricted_globals = {"__builtins__": safe_builtins}
         exec(executable_code, restricted_globals, local_vars)
@@ -61,7 +59,6 @@ class PandasSandboxTool(BaseTool):
         return clean_code.strip()
 
     
-
     def _validate_code(self, code: str) -> tuple[bool, str]:
         try:
             tree = ast.parse(code)
