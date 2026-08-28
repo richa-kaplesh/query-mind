@@ -17,8 +17,7 @@ from core.ingestion import IngestionPipeline
 from core.tools.pandas_sandbox_tool import PandasSandboxTool
 from core.tracer import TraceStore
 
-import groq
-import httpx as httpx_module
+
 
 
 log = logging.getLogger("routes")
@@ -32,13 +31,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 documents: dict = {}
 
 
-
-@router.get("/debug/versions")
-async def debug_versions():
-    return {
-        "groq_version": groq.__version__,
-        "httpx_version": httpx_module.__version__,
-    }
 
 @router.post("/upload")
 async def upload_document(
@@ -216,30 +208,3 @@ async def reset_session():
 def _test_worker(queue):
     queue.put("hello from subprocess")
 
-# temporary test route
-@router.get("/debug/mp-test")
-async def test_multiprocessing():
-    import multiprocessing
-    q = multiprocessing.Queue()
-    p = multiprocessing.Process(target=_test_worker, args=(q,))
-    p.start()
-    p.join(5)
-    if q.empty():
-        return {"result": "FAILED - subprocess died silently"}
-    return {"result": q.get()}
-
-@router.get("/debug/pandas-test")
-async def test_pandas_worker():
-    import multiprocessing
-    from core.tools.pandas_sandbox_tool import _worker, PandasSandboxTool
-
-    queue = multiprocessing.Queue()
-    process = multiprocessing.Process(
-        target=_worker,
-        args=("uploads/Titanic-Dataset.csv", "result = len(df)", PandasSandboxTool.SAFE_BUILTINS, queue)
-    )
-    process.start()
-    process.join(5)
-    if queue.empty():
-        return {"result": "FAILED - worker died silently even on trivial code"}
-    return {"result": queue.get()}
