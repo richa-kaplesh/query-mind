@@ -4,16 +4,19 @@ import ast
 import multiprocessing 
 import textwrap
 
-def _worker(file_path: str, executable_code: str, safe_builtins: dict, queue: multiprocessing.Queue):
+def _worker(file_path, executable_code, safe_builtins, queue):
+    import sys
+    print(f"[WORKER] Starting, file_path={file_path}", file=sys.stderr, flush=True)
     try:
         df = pd.read_csv(file_path, low_memory=False)
-    except UnicodeDecodeError:
-        df = pd.read_csv(file_path, encoding="latin-1", low_memory=False)
-        local_vars = {"pd":pd, "df":df, "result":None}
+        print(f"[WORKER] CSV loaded, shape={df.shape}", file=sys.stderr, flush=True)
+        local_vars = {"pd": pd, "df": df, "result": None}
         restricted_globals = {"__builtins__": safe_builtins}
         exec(executable_code, restricted_globals, local_vars)
-        queue.put(("ok",str(local_vars["result"])))
+        print(f"[WORKER] Exec complete, result={local_vars['result']}", file=sys.stderr, flush=True)
+        queue.put(("ok", str(local_vars["result"])))
     except Exception as e:
+        print(f"[WORKER] Exception: {e}", file=sys.stderr, flush=True)
         queue.put(("error", str(e)))
 
 
