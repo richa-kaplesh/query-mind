@@ -27,7 +27,8 @@ class Reranker:
         Rerank chunks against query using the Jina Rerank API.
 
         Returns up to top_k chunks, each with chunk["rerank_score"] set to
-        the Jina relevance_score (0–1).  Order is highest-score first.
+        the Jina relevance_score (0–1). Order is highest-score first.
+        No absolute score filtering — rank (top_k) alone decides inclusion.
         """
         if not chunks:
             return []
@@ -41,21 +42,13 @@ class Reranker:
             "top_n":     top_k,
         }
 
-        resp = httpx.post(
-            _RERANK_URL,
-            headers=self._headers,
-            json=payload,
-            timeout=30.0,
-        )
+        resp = httpx.post(_RERANK_URL, headers=self._headers, json=payload, timeout=30.0)
 
         if resp.status_code != 200:
-            raise RuntimeError(
-                f"Jina rerank API error {resp.status_code}: {resp.text[:400]}"
-            )
+            raise RuntimeError(f"Jina rerank API error {resp.status_code}: {resp.text[:400]}")
 
         data = resp.json()
-        # Response: {"results": [{"index": i, "relevance_score": f, "document": {...}}, ...]}
-        # Already sorted highest→lowest by the API, but we set rerank_score explicitly.
+
         reranked: list[dict] = []
         for result in data["results"]:
             chunk = chunks[result["index"]].copy()

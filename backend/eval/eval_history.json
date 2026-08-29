@@ -178,5 +178,1268 @@
         }
       }
     ]
+  },
+  {
+    "timestamp": "2026-08-28T08:46:09.058007",
+    "label": "baseline",
+    "description": "",
+    "config": {
+      "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
+      "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+      "chunker": {
+        "method": "fixed-size char split",
+        "chunk_size": 500,
+        "chunk_overlap": 50
+      },
+      "embedding_model": "jina-embeddings-v3",
+      "retriever": {
+        "method": "hybrid BM25 + FAISS",
+        "alpha": 0.5,
+        "top_k": 20
+      },
+      "reranker": "jina-reranker-v2-base-multilingual",
+      "generator_model": "openai/gpt-oss-20b"
+    },
+    "averages": {
+      "faithfulness": 1.0,
+      "answer_relevancy": 1.0,
+      "context_precision": 0.7866666666666667,
+      "context_recall": 1.0
+    },
+    "per_question": [
+      {
+        "question": "What is the minimum investment required for this fund?",
+        "answer": "- Minimum investment: **USD\u202f5,000**  \n  - Subsequent top\u2011ups can be made in **USD\u202f500** increments.  \n  - Source: [Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.\u202f1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load if redeemed before 1 year?",
+        "answer": "- The exit load for redemption before 1 year is **2%** [Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page:\u202f1 | Section: www.hdfcinternational.com].",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load after 2 years?",
+        "answer": "- Exit load after 2\u202fyears: **Nil**\u202f[Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page:\u202f1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the base currency of the fund?",
+        "answer": "- The fund\u2019s base currency is **United States Dollar (USD)**. [Source, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the Total Expense Ratio (TER) for Regular Plan Class B?",
+        "answer": "- **Total Expense Ratio (TER) for Regular Plan \u2013 Class\u202fB:** 1.00\u202f% per annum.  \n  *Cited from: [Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1] and [Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 5-year CAGR return for Developed Markets?",
+        "answer": "- The 5\u2011year CAGR return for Developed Markets is **11.5\u202f%**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page:\u202f1 | Section: www.hdfcinternational.com, p.1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 10-year CAGR return for Emerging Markets?",
+        "answer": "- The 10\u2011year CAGR return for Emerging Markets was **10.1\u202f%**\u202f\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1 | Section: www.hdfcinternational.com\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 1-year CAGR return for Nifty 50?",
+        "answer": "- **1\u2011year CAGR return for Nifty\u202f50:** **-14.3\u202f%**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf | Page\u202f1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many developed markets and constituents does the Developed Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.4,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many emerging markets and constituents does the Emerging Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.6,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Is there a lock-in period for this fund?",
+        "answer": "- No lock\u2011in period is specified for the fund\u3010Source: Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class B.pdf | Page:\u202f1\u3011.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What index does the Developed Markets Equity Fund track?",
+        "answer": "The Developed Markets Equity Fund tracks the **MSCI\u202fWorld Index**\u202f[Source: Leaflet - HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class\u202fB.pdf, p.0 \u2014 The GIFT CITY Advantage].",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is HDFC AMC International's IFSCA registration number?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Does this document guarantee any specific rate of return?",
+        "answer": "- No. The leaflet states that the Fund **does not guarantee or offer any indicative yield/returns** and that there can be \u201cno assurance that the Fund will achieve its target returns or returns comparable to those achieved by the entities with which the investment Manager or their affiliates have been associated\u201d\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1\u3011.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.6,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the minimum age requirement to invest in this fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-08-28T09:02:30.244029",
+    "label": "baseline",
+    "description": "",
+    "config": {
+      "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
+      "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+      "chunker": {
+        "method": "fixed-size char split",
+        "chunk_size": 500,
+        "chunk_overlap": 50
+      },
+      "embedding_model": "jina-embeddings-v3",
+      "retriever": {
+        "method": "hybrid BM25 + FAISS",
+        "alpha": 0.5,
+        "top_k": 20
+      },
+      "reranker": "jina-reranker-v2-base-multilingual",
+      "generator_model": "openai/gpt-oss-20b"
+    },
+    "averages": {
+      "faithfulness": 0.9933333333333334,
+      "answer_relevancy": 1.0,
+      "context_precision": 0.7200000000000001,
+      "context_recall": 0.9333333333333333
+    },
+    "per_question": [
+      {
+        "question": "What is the minimum investment required for this fund?",
+        "answer": "- Minimum investment: **USD\u202f5,000** (with subsequent top\u2011ups available in USD\u202f500 increments)\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load if redeemed before 1 year?",
+        "answer": "- Exit load when redeemed before 1\u202fyear: **2\u202f%** [Leaflet\u202f\u2013\u202fHDFC International Funds\u202f\u2013\u202fGIFT Outbound Retail\u202f\u2013\u202fClass\u202fB.pdf, p.\u202f1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load after 2 years?",
+        "answer": "- Exit load after 2\u202fyears: **Nil**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | p.1 \u2014 www.hdfcinternational.com\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the base currency of the fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the Total Expense Ratio (TER) for Regular Plan Class B?",
+        "answer": "- **Total Expense Ratio (TER) for Regular Plan \u2013 Class\u202fB:** **1.00\u202f% per annum**\u3010Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class\u202fB.pdf | Page\u202f1\u3011\u3010Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class\u202fB.pdf | Page\u202f1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 5-year CAGR return for Developed Markets?",
+        "answer": "- The 5\u2011year CAGR return for Developed Markets was **11.5\u202f%**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1 \u2014 www.hdfcinternational.com\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 10-year CAGR return for Emerging Markets?",
+        "answer": "The 10\u2011year CAGR return for Emerging Markets was **10.1\u202f%**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 1-year CAGR return for Nifty 50?",
+        "answer": "- **1\u2011Year CAGR return for Nifty\u202f50**: **\u201114.3\u202f%**\u202f\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf | Page\u202f1 | Section: www.hdfcinternational.com, p.1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many developed markets and constituents does the Developed Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many emerging markets and constituents does the Emerging Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Is there a lock-in period for this fund?",
+        "answer": "- No lock\u2011in period; the fund is open for redemptions at any time. [Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1]",
+        "scores": {
+          "faithfulness": 0.9,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What index does the Developed Markets Equity Fund track?",
+        "answer": "- The Developed Markets Equity Fund tracks the **MSCI\u202fWorld Index**\u202f\u3010Source, p.0\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is HDFC AMC International's IFSCA registration number?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 0.0
+        }
+      },
+      {
+        "question": "Does this document guarantee any specific rate of return?",
+        "answer": "- No. The document states that **HAMC AMC IFSC is not guaranteeing, offering, or communicating any indicative yield/returns** on investment in the Fund. [Source: Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class B.pdf, p.\u202f1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the minimum age requirement to invest in this fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-08-28T09:17:19.063567",
+    "label": "baseline",
+    "description": "",
+    "config": {
+      "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
+      "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+      "chunker": {
+        "method": "fixed-size char split",
+        "chunk_size": 500,
+        "chunk_overlap": 50
+      },
+      "embedding_model": "jina-embeddings-v3",
+      "retriever": {
+        "method": "hybrid BM25 + FAISS",
+        "alpha": 0.5,
+        "top_k": 20
+      },
+      "reranker": "jina-reranker-v2-base-multilingual",
+      "generator_model": "openai/gpt-oss-20b"
+    },
+    "averages": {
+      "faithfulness": 0.9933333333333334,
+      "answer_relevancy": 1.0,
+      "context_precision": 0.6933333333333332,
+      "context_recall": 0.9333333333333333
+    },
+    "per_question": [
+      {
+        "question": "What is the minimum investment required for this fund?",
+        "answer": "- Minimum investment: **USD\u202f5,000**  \n  - Additional top\u2011up amounts may be added in increments of **USD\u202f500**.  \n  - Source: [Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load if redeemed before 1 year?",
+        "answer": "- The exit load for redemption before 1 year is **2%**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load after 2 years?",
+        "answer": "- The exit load after 2 years is **Nil**\u202f[Source, p.1\u202f\u2014\u202fwww.hdfcinternational.com].",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the base currency of the fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the Total Expense Ratio (TER) for Regular Plan Class B?",
+        "answer": "- The Total Expense Ratio (TER) for the Regular Plan \u2013 Class\u202fB is **1.00\u202f% per annum**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1 | Section: www.hdfcinternational.com\u3011\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1 | Section: www.hdfcinternational.com\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 5-year CAGR return for Developed Markets?",
+        "answer": "- The 5\u2011year CAGR return for Developed Markets was **11.5\u202f%** [Source, p.1 \u2014 www.hdfcinternational.com]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 10-year CAGR return for Emerging Markets?",
+        "answer": "- The 10\u2011year CAGR return for Emerging Markets was **10.1\u202f%**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1 \u2014 www.hdfcinternational.com\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 1-year CAGR return for Nifty 50?",
+        "answer": "- The 1\u2011year CAGR return for the Nifty\u202f50 was **\u201314.3\u202f%** [Source: Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class\u202fB, p.\u202f1].",
+        "scores": {
+          "faithfulness": 0.9,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many developed markets and constituents does the Developed Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many emerging markets and constituents does the Emerging Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Is there a lock-in period for this fund?",
+        "answer": "- **Lock\u2011in period:** No lock\u2011in period is imposed on the fund. [Source, p.1 \u2014 www.hdfcinternational.com]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What index does the Developed Markets Equity Fund track?",
+        "answer": "- The Developed Markets Equity Fund tracks the **MSCI\u202fWorld Index**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf | Page\u202f0\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is HDFC AMC International's IFSCA registration number?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.7,
+          "context_recall": 0.0
+        }
+      },
+      {
+        "question": "Does this document guarantee any specific rate of return?",
+        "answer": "- No. The document states that it does **not** guarantee, offer, or communicate any indicative yield or returns on investment in the Fund.\u202f[Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.\u202f1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the minimum age requirement to invest in this fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-08-29T08:02:52.268578",
+    "label": "baseline",
+    "description": "",
+    "config": {
+      "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
+      "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+      "chunker": {
+        "method": "fixed-size char split",
+        "chunk_size": 500,
+        "chunk_overlap": 50
+      },
+      "embedding_model": "jina-embeddings-v3",
+      "retriever": {
+        "method": "hybrid BM25 + FAISS",
+        "alpha": 0.5,
+        "top_k": 20
+      },
+      "reranker": "jina-reranker-v2-base-multilingual",
+      "generator_model": "openai/gpt-oss-20b"
+    },
+    "averages": {
+      "faithfulness": 1.0,
+      "answer_relevancy": 1.0,
+      "context_precision": 0.7333333333333333,
+      "context_recall": 0.9333333333333333
+    },
+    "per_question": [
+      {
+        "question": "What is the minimum investment required for this fund?",
+        "answer": "- Minimum investment: **USD\u202f5,000** (with a top\u2011up option of USD\u202f500)\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1 \u2014 www.hdfcinternational.com\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load if redeemed before 1 year?",
+        "answer": "- The exit load for a redemption before 1 year is **2%**.  \n  [Source: Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class\u202fB, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load after 2 years?",
+        "answer": "- **Exit load after 2\u202fyears:** Nil\u202f\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.\u202f1 \u2014 www.hdfcinternational.com\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the base currency of the fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the Total Expense Ratio (TER) for Regular Plan Class B?",
+        "answer": "- **Total Expense Ratio (TER) for the Regular Plan \u2013 Class\u202fB:** 1.00\u202f% per annum.  \n  *[Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class\u202fB.pdf, p.\u202f1 \u2014 www.hdfcinternational.com]*",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 5-year CAGR return for Developed Markets?",
+        "answer": "- The 5\u2011year CAGR return for Developed Markets was **11.5\u202f%**\u202f[Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page:\u202f1 | Section: www.hdfcinternational.com, p.1].",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 10-year CAGR return for Emerging Markets?",
+        "answer": "- **10\u2011year CAGR for Emerging Markets:** 10.1%\u00a0[Source, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 1-year CAGR return for Nifty 50?",
+        "answer": "- The 1\u2011year CAGR return for the Nifty\u202f50 was **\u201114.3\u202f%**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many developed markets and constituents does the Developed Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many emerging markets and constituents does the Emerging Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.2,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Is there a lock-in period for this fund?",
+        "answer": "- The fund has **no lock\u2011in period**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page:\u202f1 | Section: www.hdfcinternational.com, p.1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What index does the Developed Markets Equity Fund track?",
+        "answer": "- The Developed\u202fMarkets Equity Fund tracks the **MSCI World Index**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf | Page\u202f0\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is HDFC AMC International's IFSCA registration number?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 0.0
+        }
+      },
+      {
+        "question": "Does this document guarantee any specific rate of return?",
+        "answer": "No.  \nThe document explicitly states that it does not guarantee, offer, or communicate any indicative yield or returns on investment in the Fund. [Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the minimum age requirement to invest in this fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-08-29T08:13:42.839233",
+    "label": "baseline",
+    "description": "",
+    "config": {
+      "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
+      "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+      "chunker": {
+        "method": "fixed-size char split",
+        "chunk_size": 500,
+        "chunk_overlap": 50
+      },
+      "embedding_model": "jina-embeddings-v3",
+      "retriever": {
+        "method": "hybrid BM25 + FAISS",
+        "alpha": 0.5,
+        "top_k": 20
+      },
+      "reranker": "jina-reranker-v2-base-multilingual",
+      "generator_model": "openai/gpt-oss-20b"
+    },
+    "averages": {
+      "faithfulness": 1.0,
+      "answer_relevancy": 1.0,
+      "context_precision": 0.7200000000000001,
+      "context_recall": 1.0
+    },
+    "per_question": [
+      {
+        "question": "What is the minimum investment required for this fund?",
+        "answer": "- **Minimum investment required:** **USD\u202f5,000** (with subsequent top\u2011ups possible from USD\u202f500) [Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, Page\u202f1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load if redeemed before 1 year?",
+        "answer": "- Exit load for redemption before 1 year: **2%** [Source, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load after 2 years?",
+        "answer": "- The exit load after 2\u202fyears is **Nil**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf | Page\u202f1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the base currency of the fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the Total Expense Ratio (TER) for Regular Plan Class B?",
+        "answer": "- The Total Expense Ratio (TER) for the Regular Plan \u2013 Class\u202fB is **1.00\u202f% per annum**. [Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page:\u202f1 | Section: www.hdfcinternational.com, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 5-year CAGR return for Developed Markets?",
+        "answer": "- The 5\u2011year CAGR return for Developed Markets was **11.5\u202f%**.  \n  [Source, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 10-year CAGR return for Emerging Markets?",
+        "answer": "- The 10\u2011year CAGR return for Emerging Markets was **10.1\u202f%**\u00a0[Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1 \u2014 www.hdfcinternational.com].",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 1-year CAGR return for Nifty 50?",
+        "answer": "- The 1\u2011year CAGR return for **Nifty\u202f50** was **\u201114.3\u202f%**\u3010Source, p.1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many developed markets and constituents does the Developed Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many emerging markets and constituents does the Emerging Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.2,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Is there a lock-in period for this fund?",
+        "answer": "- No lock\u2011in period is required for this fund. [Source, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What index does the Developed Markets Equity Fund track?",
+        "answer": "- The Developed Markets Equity Fund tracks the **MSCI\u202fWorld Index**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page:\u202f0 | Section: The GIFT CITY Advantage\u3011.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is HDFC AMC International's IFSCA registration number?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Does this document guarantee any specific rate of return?",
+        "answer": "- No. The leaflet explicitly states that HAMC\u202fAMC\u202fIFSC does **not** guarantee, offer, or communicate any indicative yield or return on investment in the Fund. [Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the minimum age requirement to invest in this fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-08-29T08:21:39.897403",
+    "label": "baseline",
+    "description": "",
+    "config": {
+      "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
+      "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+      "chunker": {
+        "method": "fixed-size char split",
+        "chunk_size": 500,
+        "chunk_overlap": 50
+      },
+      "embedding_model": "jina-embeddings-v3",
+      "retriever": {
+        "method": "hybrid BM25 + FAISS",
+        "alpha": 0.5,
+        "top_k": 20
+      },
+      "reranker": "jina-reranker-v2-base-multilingual",
+      "generator_model": "openai/gpt-oss-20b"
+    },
+    "averages": {
+      "faithfulness": 1.0,
+      "answer_relevancy": 1.0,
+      "context_precision": 0.7200000000000001,
+      "context_recall": 0.9333333333333333
+    },
+    "per_question": [
+      {
+        "question": "What is the minimum investment required for this fund?",
+        "answer": "- Minimum investment: **USD\u202f5,000** (with the option to top\u2011up in increments of **USD\u202f500**).  \n  [Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load if redeemed before 1 year?",
+        "answer": "- Exit load for redemption before 1 year: **2%**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load after 2 years?",
+        "answer": "- The exit load after 2 years is **nil**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf, p.\u202f1\u3011.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the base currency of the fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 0.0
+        }
+      },
+      {
+        "question": "What is the Total Expense Ratio (TER) for Regular Plan Class B?",
+        "answer": "- **Total Expense Ratio (TER) for Regular Plan \u2013 Class\u202fB:** **1.00\u202f% per annum**\u3010Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class\u202fB.pdf | Page: 1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 5-year CAGR return for Developed Markets?",
+        "answer": "- Developed Markets 5\u2011year CAGR return: **11.5%** [Source: Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class B.pdf, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 10-year CAGR return for Emerging Markets?",
+        "answer": "- The 10\u2011year CAGR return for Emerging Markets was **10.1\u202f%**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1 \u2014 www.hdfcinternational.com\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 1-year CAGR return for Nifty 50?",
+        "answer": "- **1\u2011Year CAGR return for Nifty\u202f50:**\u202f-14.3\u202f%\u202f[Source, p.1 \u2014 www.hdfcinternational.com]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many developed markets and constituents does the Developed Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many emerging markets and constituents does the Emerging Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.3,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Is there a lock-in period for this fund?",
+        "answer": "- There is **no lock\u2011in period** for this fund. [Source, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What index does the Developed Markets Equity Fund track?",
+        "answer": "- The Developed Markets Equity Fund tracks the **MSCI World Index**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 0 | Section: The GIFT CITY Advantage\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is HDFC AMC International's IFSCA registration number?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.8,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Does this document guarantee any specific rate of return?",
+        "answer": "- The document explicitly states that it **does not guarantee, offer, or communicate any indicative yield/returns** on investment in the Fund.  \n\n[Source, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the minimum age requirement to invest in this fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-08-29T11:47:42.842062",
+    "label": "reranker-threshold-fix",
+    "description": "Investigated Q13 (IFSCA registration number) recall failure. Root cause chain: (1) fixed-size char chunker was merging the registration number line into an unrelated marketing-bullets chunk, diluting its retrievability -- fixed via heading-aware line-based chunking in TextChunker/PDFExtractor. (2) Even after chunking fix, Reranker.rerank() had a hardcoded absolute min_score=0.3 threshold that silently dropped the registration-number chunk at score 0.2991 -- just 0.0009 below cutoff, despite ranking #4 of 20 candidates. Removed min_score filtering entirely; rely on top_k rank from Jina's already-sorted results instead. Also fixed a duplicate httpx.post() call in Reranker.rerank() that was double-billing every rerank request. Confirmed fix: Q13's chunk now lands in final top-5 (rank 4, score 0.251).",
+    "config": {
+      "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection, heading-tagged lines)",
+      "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+      "chunker": {
+        "method": "heading-aware, line-boundary-respecting split (no mid-line cuts)",
+        "chunk_size": 500,
+        "chunk_overlap": 50
+      },
+      "embedding_model": "jina-embeddings-v3",
+      "retriever": {
+        "method": "hybrid BM25 + FAISS",
+        "alpha": 0.5,
+        "top_k": 20
+      },
+      "reranker": {
+        "model": "jina-reranker-v2-base-multilingual",
+        "min_score_filter": "removed (was 0.3, caused false negatives)"
+      },
+      "generator_model": "openai/gpt-oss-20b"
+    },
+    "averages": {
+      "faithfulness": 1.0,
+      "answer_relevancy": 1.0,
+      "context_precision": 0.8733333333333333,
+      "context_recall": 1.0
+    },
+    "per_question": [
+      {
+        "question": "What is the minimum investment required for this fund?",
+        "answer": "- Minimum investment required: **USD\u202f5,000** (with a possible top\u2011up of USD\u202f500)\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page:\u202f1 | Section: The GIFT CITY Advantage\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load if redeemed before 1 year?",
+        "answer": "- **Exit load for redemption before 1 year:** 2%  \n  [Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf, p.1 \u2014 The GIFT CITY Advantage]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the exit load after 2 years?",
+        "answer": "- **Exit load after 2 years:** Nil\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1 | Section: The GIFT CITY Advantage\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the base currency of the fund?",
+        "answer": "- **Base Currency:** United States Dollar (USD)\u202f[Source, p.\u202f1 \u2014 The GIFT CITY Advantage]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the Total Expense Ratio (TER) for Regular Plan Class B?",
+        "answer": "- The Total Expense Ratio (TER) for the Regular Plan \u2013 Class\u202fB is **1.00\u202f% per annum**. [Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf, p.1 \u2014 The GIFT CITY Advantage]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 5-year CAGR return for Developed Markets?",
+        "answer": "- **5\u2011Year CAGR for Developed Markets:** **11.5\u202f%**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 10-year CAGR return for Emerging Markets?",
+        "answer": "- The 10\u2011year CAGR return for Emerging Markets was **10.1%**\u3010source, p.1\u3011.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What was the 1-year CAGR return for Nifty 50?",
+        "answer": "- The 1\u2011year CAGR return for **Nifty\u202f50** was **\u201114.3\u202f%**  \n  [Leaflet\u202f\u2013\u202fHDFC\u202fInternational\u202fFunds\u202f\u2013\u202fGIFT\u202fOutbound\u202fRetail\u202f\u2013\u202fClass\u202fB.pdf, p.1]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.9,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many developed markets and constituents does the Developed Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.5,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "How many emerging markets and constituents does the Emerging Markets Equity Fund cover?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Is there a lock-in period for this fund?",
+        "answer": "- No lock\u2011in period is specified for this fund.  \n  [Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf\u202f|\u202fPage\u202f1\u202f\u2014\u202fThe GIFT CITY Advantage]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What index does the Developed Markets Equity Fund track?",
+        "answer": "- The HDFC International Developed Markets Equity Fund tracks the **MSCI World Index**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 0 | Section: One Fund\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is HDFC AMC International's IFSCA registration number?",
+        "answer": "HDFC\u202fAMC\u202fInternational (IFSC) Limited\u2019s IFSCA registration number is **IFSCA/FME/III/2023\u201124/073**\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf, p.0 \u2014 The GIFT CITY Advantage\u3011",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "Does this document guarantee any specific rate of return?",
+        "answer": "The document explicitly states that it **does not guarantee** any specific rate of return:\n\n- It warns that there is **no assurance** the Fund will achieve comparable results or exceed other investment activities.  \n- It declares that the Manager makes **no representation or warranty** regarding future performance.  \n- It emphasizes that the information is for general purposes only and is **not an offer to sell** or guarantee returns.\n\n[Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1 \u2014 Disclaimer]",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 1.0,
+          "context_recall": 1.0
+        }
+      },
+      {
+        "question": "What is the minimum age requirement to invest in this fund?",
+        "answer": "The information was not found in the document.",
+        "scores": {
+          "faithfulness": 1.0,
+          "answer_relevancy": 1.0,
+          "context_precision": 0.0,
+          "context_recall": 1.0
+        }
+      }
+    ]
   }
 ]

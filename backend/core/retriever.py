@@ -47,5 +47,16 @@ class HybridRetriever:
            chunk["retriever_score"]= float(hybrid_scores[idx])
            results.append(chunk)
 
+            # --- DEBUG ---
+        print(f"\n[RETRIEVE] query: {query}")
+        print(f"[RETRIEVE] FAISS top-{top_k} indices: {dense_indices.tolist()}")
+        bm25_top = np.argsort(sparse_scores)[::-1][:top_k]
+        print(f"[RETRIEVE] BM25 top-{top_k} indices: {bm25_top.tolist()}")
+        print(f"[RETRIEVE] Hybrid top-{top_k} indices: {top_indices.tolist()}")
+        for i, chunk in enumerate(results):
+            snippet = chunk["text"][:80].replace("\n", " ")
+            print(f"    [{top_indices[i]}] score={chunk['retriever_score']:.4f} | {snippet}")
+        # --- END DEBUG ---
+
         
         return results

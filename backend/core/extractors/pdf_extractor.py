@@ -26,12 +26,11 @@ class PDFExtractor(BaseExtractor):
          warning instead of silently skipping the page.
     """
 
-    # ── Public entry point ────────────────────────────────────────────────────
 
     def extract(self, file_path: str) -> list[ExtractedPage]:
         self.validate_file(file_path)
 
-        filename    = Path(file_path).name
+        filename    = Path(file_path).name  #just extract the name
         doc         = fitz.open(file_path)
         total_pages = len(doc)
         body_size   = self._get_body_size(doc)
@@ -49,7 +48,6 @@ class PDFExtractor(BaseExtractor):
         doc.close()
         return pages
 
-    # ── Step 1: doc-wide body font size ──────────────────────────────────────
 
     def _get_body_size(self, doc) -> float:
         """
@@ -68,9 +66,8 @@ class PDFExtractor(BaseExtractor):
         if not sizes:
             return 12.0  # safe fallback
 
-        return Counter(sizes).most_common(1)[0][0]
+        return Counter(sizes).most_common(1)[0][0]  #It counts the font sizes, takes the top result list, and uses [0][0] to dig past the list and tuple containers to extract just the size number.
 
-    # ── Step 2-8: per-page processing ─────────────────────────────────────────
 
     def _process_page(
         self,
@@ -88,7 +85,7 @@ class PDFExtractor(BaseExtractor):
         warnings: list[str] = []
 
         # Step 2: detect tables and collect their bboxes
-        table_finder = page.find_tables()
+        table_finder = page.find_tables(strategy="lines_strict")
         tables       = table_finder.tables if table_finder.tables else []
         table_rects  = [fitz.Rect(t.bbox) for t in tables]
 
@@ -106,9 +103,9 @@ class PDFExtractor(BaseExtractor):
             if el_type == "table":
                 page_text += self._render_table(content)
             else:  # el_type == "text"
-                block_text, new_heading = self._classify_text_block(content, body_size)
+                block_text, new_heading = self._classify_text_block(content, body_size, current_heading)
                 if new_heading:
-                    current_heading = new_heading   # step 6: carry across pages
+                    current_heading = new_heading
                 if block_text.strip():
                     page_text += block_text
 
@@ -130,7 +127,6 @@ class PDFExtractor(BaseExtractor):
 
         return ExtractedPage(text=page_text.strip(), metadata=metadata), current_heading
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _exclude_table_overlaps(
         self, text_blocks: list, table_rects: list[fitz.Rect]
@@ -165,20 +161,12 @@ class PDFExtractor(BaseExtractor):
             return f"\n[Table extraction error: {exc}]\n\n"
 
     def _classify_text_block(
-        self, block: dict, body_size: float
-    ) -> tuple[str, str | None]:
-        """
-        Walk every span in the block and classify by font size:
-          - size > body_size + 0.5  → heading  (captured, NOT added to body text)
-          - size < body_size - 0.5  → footnote / caption (prefixed and added inline)
-          - else                    → body text
-
-        Returns (body_text_accumulated, last_heading_found_or_None).
-        """
+        self, block: dict, body_size: float, current_heading: str | None) -> tuple[str, str | None]:
         body_text = ""
-        heading: str | None = None
+        heading: str | None = current_heading
 
         for line in block["lines"]:
+            line_text = ""
             for span in line["spans"]:
                 text = span["text"].strip()
                 if not text:
@@ -187,17 +175,13 @@ class PDFExtractor(BaseExtractor):
                 span_size = round(span["size"], 1)
 
                 if span_size > body_size + 0.5:
-                    # Heading: update running heading, do NOT append to body
                     heading = text
-
                 elif span_size < body_size - 0.5:
-                    # Footnote / caption: tag and append inline
-                    body_text += f"[Footnote/Caption]: {text} "
-
+                    line_text += f"[Footnote/Caption]: {text} "
                 else:
-                    # Normal body text
-                    body_text += text + " "
+                    line_text += text + " "
 
-            body_text += "\n"   # preserve line breaks within the block
+            if line_text.strip():
+                body_text += f"[[HEADING:{heading}]]{line_text}\n"
 
         return body_text, heading

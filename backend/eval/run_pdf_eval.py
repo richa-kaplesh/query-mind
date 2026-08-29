@@ -11,9 +11,12 @@ from core.retriever import HybridRetriever
 from core.reranker import Reranker
 from core.generator import Generator
 from config import settings
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PDF_PATH = os.path.join(BASE_DIR, "workout_plan.pdf")
+PDF_PATH = r"D:\query-mind\backend\eval\Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf"
 DATASET_PATH = os.path.join(BASE_DIR, "golden_dataset.json")
+
+SAVE_TO_HISTORY = True  # flip to False while debugging so runs don't get permanently recorded
 
 embedder  = Embedder()
 indexer   = Indexer()
@@ -39,8 +42,10 @@ def run_query(question: str) -> dict:
     query_embedding = embedder.embed_query(question)
     chunks = retriever.retrieve(query=question, query_embedding=query_embedding, top_k=20)
     chunks = reranker.rerank(query=question, chunks=chunks, top_k=5)
-    result = generator.generate_rag(query=question, chunks=chunks)
 
+    print(f"    Chunk scores: {[round(c.get('rerank_score', 0), 3) for c in chunks]}")
+
+    result = generator.generate_rag(query=question, chunks=chunks)
     return {"answer": result["answer"], "chunks": chunks}
 
 
@@ -141,39 +146,57 @@ if __name__ == "__main__":
     setup_pipeline(PDF_PATH)
     output = run_all_evals()
 
-    # Save this run permanently
-    from datetime import datetime
-    run_record = {
-    "timestamp": datetime.utcnow().isoformat(),
-    "label": "baseline",
-    "description": "",
-    "config": {
-    "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
-    "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
-    "chunker": {
-        "method": "fixed-size char split",
-        "chunk_size": settings.chunk_size,
-        "chunk_overlap": settings.chunk_overlap,
-    },
-    "embedding_model": settings.jina_embed_model,
-    "retriever": {
-        "method": "hybrid BM25 + FAISS",
-        "alpha": settings.retriever_alpha,
-        "top_k": settings.retriever_top_k,
-    },
-    "reranker": settings.jina_rerank_model,
-    "generator_model": settings.model_name,
-},
-    "averages": output["averages"],
-    "per_question": output["per_question"],
-}
-    history_path = os.path.join(BASE_DIR, "eval_history.json")
-    history = []
-    if os.path.exists(history_path):
-        with open(history_path, "r") as f:
-            history = json.load(f)
-    history.append(run_record)
-    with open(history_path, "w") as f:
-        json.dump(history, f, indent=2)
+    if SAVE_TO_HISTORY:
+        from datetime import datetime
+        run_record = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "label": "reranker-threshold-fix",
+            "description": (
+                "Investigated Q13 (IFSCA registration number) recall failure. "
+                "Root cause chain: (1) fixed-size char chunker was merging the "
+                "registration number line into an unrelated marketing-bullets chunk, "
+                "diluting its retrievability -- fixed via heading-aware line-based "
+                "chunking in TextChunker/PDFExtractor. (2) Even after chunking fix, "
+                "Reranker.rerank() had a hardcoded absolute min_score=0.3 threshold "
+                "that silently dropped the registration-number chunk at score 0.2991 "
+                "-- just 0.0009 below cutoff, despite ranking #4 of 20 candidates. "
+                "Removed min_score filtering entirely; rely on top_k rank from Jina's "
+                "already-sorted results instead. Also fixed a duplicate httpx.post() "
+                "call in Reranker.rerank() that was double-billing every rerank request. "
+                "Confirmed fix: Q13's chunk now lands in final top-5 (rank 4, score 0.251)."
+            ),
+            "config": {
+                "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection, heading-tagged lines)",
+                "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+                "chunker": {
+                    "method": "heading-aware, line-boundary-respecting split (no mid-line cuts)",
+                    "chunk_size": settings.chunk_size,
+                    "chunk_overlap": settings.chunk_overlap,
+                },
+                "embedding_model": settings.jina_embed_model,
+                "retriever": {
+                    "method": "hybrid BM25 + FAISS",
+                    "alpha": settings.retriever_alpha,
+                    "top_k": settings.retriever_top_k,
+                },
+                "reranker": {
+                    "model": settings.jina_rerank_model,
+                    "min_score_filter": "removed (was 0.3, caused false negatives)",
+                },
+                "generator_model": settings.model_name,
+            },
+            "averages": output["averages"],
+            "per_question": output["per_question"],
+        }
+        history_path = os.path.join(BASE_DIR, "eval_history.json")
+        history = []
+        if os.path.exists(history_path):
+            with open(history_path, "r") as f:
+                history = json.load(f)
+        history.append(run_record)
+        with open(history_path, "w") as f:
+            json.dump(history, f, indent=2)
 
-    print(f"Saved run to {history_path}")
+        print(f"Saved run to {history_path}")
+    else:
+        print("SAVE_TO_HISTORY is False — run not saved.")
