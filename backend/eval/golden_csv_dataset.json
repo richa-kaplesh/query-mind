@@ -1,0 +1,470 @@
+[
+  {
+    "id": "schema_01",
+    "question": "How many columns does this dataset have in total (including the label column)?",
+    "category": "schema",
+    "needs_computation": false,
+    "golden_pandas_code": "len(df.columns)",
+    "golden_answer": 618,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "schema_02",
+    "question": "How many feature columns are there, excluding the class/label column?",
+    "category": "schema",
+    "needs_computation": false,
+    "golden_pandas_code": "len([c for c in df.columns if c.startswith('f')])",
+    "golden_answer": 617,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "schema_03",
+    "question": "What is the name of the label/target column?",
+    "category": "schema",
+    "needs_computation": false,
+    "golden_pandas_code": "df.columns[-1]",
+    "golden_answer": "class",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "schema_04",
+    "question": "What is the name of the first feature column?",
+    "category": "schema",
+    "needs_computation": false,
+    "golden_pandas_code": "df.columns[0]",
+    "golden_answer": "f1",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "schema_05",
+    "question": "What is the name of the last feature column before the class column?",
+    "category": "schema",
+    "needs_computation": false,
+    "golden_pandas_code": "df.columns[-2]",
+    "golden_answer": "f617",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "schema_06",
+    "question": "Are the feature columns (f1...f617) numeric or categorical?",
+    "category": "schema",
+    "needs_computation": false,
+    "golden_pandas_code": "df[df.columns[df.columns.str.startswith('f')]].dtypes",
+    "golden_answer": "numeric (float)",
+    "tolerance": null,
+    "notes": "613 float64, small number int64 due to values like -1/0/1 being read as ints in some columns"
+  },
+  {
+    "id": "schema_07",
+    "question": "Is the class column numeric or categorical/string type?",
+    "category": "schema",
+    "needs_computation": false,
+    "golden_pandas_code": "df['class'].dtype",
+    "golden_answer": "categorical/string",
+    "tolerance": null,
+    "notes": "stored as text, values like \"'1'\" with literal embedded quotes from source export"
+  },
+  {
+    "id": "count_01",
+    "question": "How many rows (samples) are in the dataset?",
+    "category": "aggregation",
+    "needs_computation": true,
+    "golden_pandas_code": "len(df)",
+    "golden_answer": 7797,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "count_02",
+    "question": "How many unique classes are there in the label column?",
+    "category": "aggregation",
+    "needs_computation": true,
+    "golden_pandas_code": "df['class'].nunique()",
+    "golden_answer": 26,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "count_03",
+    "question": "How many samples belong to class 6?",
+    "category": "aggregation",
+    "needs_computation": true,
+    "golden_pandas_code": "df[df['class']==\"'6'\"].shape[0]",
+    "golden_answer": 298,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "count_04",
+    "question": "How many samples belong to class 13?",
+    "category": "aggregation",
+    "needs_computation": true,
+    "golden_pandas_code": "df[df['class']==\"'13'\"].shape[0]",
+    "golden_answer": 299,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "count_05",
+    "question": "Which class has the fewest samples, and how many?",
+    "category": "aggregation",
+    "needs_computation": true,
+    "golden_pandas_code": "df['class'].value_counts().idxmin()",
+    "golden_answer": "class 6 with 298 samples",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "count_06",
+    "question": "Which class(es) have the most samples, and how many?",
+    "category": "aggregation",
+    "needs_computation": true,
+    "golden_pandas_code": "df['class'].value_counts()",
+    "golden_answer": "most classes tie at 300 samples (classes: ['1', '10', '11', '12', '14']...)",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "count_07",
+    "question": "Is the dataset perfectly class-balanced (same number of rows per class)?",
+    "category": "aggregation",
+    "needs_computation": true,
+    "golden_pandas_code": "df['class'].value_counts().nunique()==1",
+    "golden_answer": "No",
+    "tolerance": null,
+    "notes": "most classes have 300 rows, but class 6 has 298 and class 13 has 299"
+  },
+  {
+    "id": "count_08",
+    "question": "Are there any missing (null) values anywhere in the dataset?",
+    "category": "aggregation",
+    "needs_computation": true,
+    "golden_pandas_code": "df.isnull().sum().sum()",
+    "golden_answer": "No, 0 missing values",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "stat_mean_f1",
+    "question": "What is the mean value of column f1?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f1'].mean()",
+    "golden_answer": -0.385396,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_std_f1",
+    "question": "What is the standard deviation of column f1?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f1'].std()",
+    "golden_answer": 0.236721,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_range_f1",
+    "question": "What are the min and max values of column f1?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f1'].min(), df['f1'].max()",
+    "golden_answer": [
+      -1.0,
+      1.0
+    ],
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_mean_f10",
+    "question": "What is the mean value of column f10?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f10'].mean()",
+    "golden_answer": -0.191763,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_std_f10",
+    "question": "What is the standard deviation of column f10?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f10'].std()",
+    "golden_answer": 0.515343,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_range_f10",
+    "question": "What are the min and max values of column f10?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f10'].min(), df['f10'].max()",
+    "golden_answer": [
+      -1.0,
+      1.0
+    ],
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_mean_f100",
+    "question": "What is the mean value of column f100?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f100'].mean()",
+    "golden_answer": 0.439993,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_std_f100",
+    "question": "What is the standard deviation of column f100?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f100'].std()",
+    "golden_answer": 0.31005,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_range_f100",
+    "question": "What are the min and max values of column f100?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f100'].min(), df['f100'].max()",
+    "golden_answer": [
+      -0.9208,
+      1.0
+    ],
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_mean_f300",
+    "question": "What is the mean value of column f300?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f300'].mean()",
+    "golden_answer": -0.046931,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_std_f300",
+    "question": "What is the standard deviation of column f300?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f300'].std()",
+    "golden_answer": 0.514015,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_range_f300",
+    "question": "What are the min and max values of column f300?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f300'].min(), df['f300'].max()",
+    "golden_answer": [
+      -1.0,
+      1.0
+    ],
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_mean_f617",
+    "question": "What is the mean value of column f617?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f617'].mean()",
+    "golden_answer": -0.281416,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_std_f617",
+    "question": "What is the standard deviation of column f617?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f617'].std()",
+    "golden_answer": 0.354418,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_range_f617",
+    "question": "What are the min and max values of column f617?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f617'].min(), df['f617'].max()",
+    "golden_answer": [
+      -0.9626,
+      0.8898
+    ],
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "stat_01",
+    "question": "Which feature column (among f1..f617) has the highest overall mean value?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df[df.columns[df.columns.str.startswith('f')]].mean().idxmax()",
+    "golden_answer": "f430",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "stat_02",
+    "question": "Which feature column has the highest standard deviation (most variance)?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df[df.columns[df.columns.str.startswith('f')]].std().idxmax()",
+    "golden_answer": "f580",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "stat_03",
+    "question": "What is the overall minimum value found anywhere across all f1..f617 columns?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df[df.columns[df.columns.str.startswith('f')]].min().min()",
+    "golden_answer": -1.0,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "stat_04",
+    "question": "What is the overall maximum value found anywhere across all f1..f617 columns?",
+    "category": "statistics",
+    "needs_computation": true,
+    "golden_pandas_code": "df[df.columns[df.columns.str.startswith('f')]].max().max()",
+    "golden_answer": 1.0,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "row_01",
+    "question": "What class label does the first row (row index 0) belong to?",
+    "category": "row_lookup",
+    "needs_computation": true,
+    "golden_pandas_code": "df.iloc[0]['class']",
+    "golden_answer": "1",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "row_02",
+    "question": "What is the value of f1 in row index 0?",
+    "category": "row_lookup",
+    "needs_computation": true,
+    "golden_pandas_code": "df.iloc[0]['f1']",
+    "golden_answer": -0.4394,
+    "tolerance": 1e-06,
+    "notes": ""
+  },
+  {
+    "id": "row_03",
+    "question": "What is the value of f5 in row index 4999?",
+    "category": "row_lookup",
+    "needs_computation": true,
+    "golden_pandas_code": "df.iloc[4999]['f5']",
+    "golden_answer": 0.1126,
+    "tolerance": 1e-06,
+    "notes": ""
+  },
+  {
+    "id": "row_04",
+    "question": "What class does the last row in the dataset belong to?",
+    "category": "row_lookup",
+    "needs_computation": true,
+    "golden_pandas_code": "df.iloc[-1]['class']",
+    "golden_answer": "26",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "filter_01",
+    "question": "How many rows have a value of f1 greater than 0?",
+    "category": "filtering",
+    "needs_computation": true,
+    "golden_pandas_code": "(df['f1'] > 0).sum()",
+    "golden_answer": 467,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "filter_02",
+    "question": "Among rows belonging to class 1, how many have a negative value for f10?",
+    "category": "filtering",
+    "needs_computation": true,
+    "golden_pandas_code": "((df['class']==\"'1'\") & (df['f10']<0)).sum()",
+    "golden_answer": 214,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "filter_03",
+    "question": "How many rows have f617 exactly equal to 1.0?",
+    "category": "filtering",
+    "needs_computation": true,
+    "golden_pandas_code": "(df['f617']==1.0).sum()",
+    "golden_answer": 0,
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "corr_01",
+    "question": "What is the Pearson correlation coefficient between f1 and f2?",
+    "category": "correlation",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f1'].corr(df['f2'])",
+    "golden_answer": 0.736602,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "groupby_01",
+    "question": "Which class has the highest average value of f1?",
+    "category": "groupby",
+    "needs_computation": true,
+    "golden_pandas_code": "df.groupby('class')['f1'].mean().idxmax()",
+    "golden_answer": "21",
+    "tolerance": null,
+    "notes": ""
+  },
+  {
+    "id": "groupby_02",
+    "question": "What is the average value of f300 for rows in class 20?",
+    "category": "groupby",
+    "needs_computation": true,
+    "golden_pandas_code": "df[df['class']==\"'20'\"]['f300'].mean()",
+    "golden_answer": -0.485631,
+    "tolerance": 0.0001,
+    "notes": ""
+  },
+  {
+    "id": "extreme_01",
+    "question": "What is the row index of the maximum value of f1, and what class does that row belong to?",
+    "category": "extremes",
+    "needs_computation": true,
+    "golden_pandas_code": "df['f1'].idxmax(); df.loc[idx,'class']",
+    "golden_answer": {
+      "row_index": 3764,
+      "class": "21"
+    },
+    "tolerance": null,
+    "notes": ""
+  }
+]

@@ -4,6 +4,7 @@ from core.tools.base_tool import BaseTool
 from core.prompt_builder import PromptBuilder
 from core.tool_registry import ToolRegistry
 from core.token_utils import estimate_tokens
+from core.models import CSVSchema
 from config import settings
 import json
 import asyncio
@@ -18,7 +19,7 @@ heading when available).
 
 Rules you MUST follow:
 1. Answer ONLY from the provided context passages. Do not use prior knowledge.
-2. Cite your sources inline using the format [source, p.N] or [source, p.N \u2014 Heading] \
+2. Cite your sources inline using the format [source, p.N] or [source, p.N — Heading] \
    when a heading is available.
 3. If multiple passages support the answer, cite all of them.
 4. If the answer cannot be found in the provided context, respond exactly with: \
@@ -118,9 +119,13 @@ class Generator:
                 return tool
         return None
 
-    def _build_messages(self, query: str, schema: str = None) -> list[dict]:
+    def _build_messages(self, query: str, schema: str | CSVSchema = None) -> list[dict]:
+        if isinstance(schema, CSVSchema):
+            schema_str = schema.to_prompt_string()
+        else:
+            schema_str = schema
         user_content = (
-            f"Dataset Schema:\n{schema}\n\nQuestion: {query}" if schema else query
+            f"Dataset Schema:\n{schema_str}\n\nQuestion: {query}" if schema_str else query
         )
         return [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -151,7 +156,7 @@ class Generator:
 
     # ── Core agentic loop ─────────────────────────────────────────────────────
 
-    def generate_with_tools(self, query: str, schema: str = None, tracer=None, token_tracker=None) -> dict:
+    def generate_with_tools(self, query: str, schema: str | CSVSchema = None, tracer=None, token_tracker=None) -> dict:
         tool_schema = self._build_tool_schema(self.tools)
         messages    = self._build_messages(query, schema)
 
@@ -162,7 +167,8 @@ class Generator:
                 except Exception:
                     pass
 
-        record("schema_context", {"schema": schema or "(none provided)"})
+        schema_str = schema.to_prompt_string() if isinstance(schema, CSVSchema) else schema
+        record("schema_context", {"schema": schema_str or "(none provided)"})
         record("llm_call_1", {"model": self.model_name, "messages": messages, "tools": tool_schema})
 
         log.info("[LLM] → Call 1 (schema + query + tool defs)")
@@ -203,16 +209,32 @@ class Generator:
         record("tool_input",  {"tool_name": tool_name, "input":  tool_input})
         record("tool_output", {"tool_name": tool_name, "result": tool_result})
 
-        messages.append({"role": "assistant", "content": None, "tool_calls": [tool_call]})
-        messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": tool_result})
+        # Fresh, tool-free message list for synthesis — avoids replaying tool_calls
+        # and avoids passing `tools`/`tool_choice` at all, which is what previously
+        # let the model attempt a second tool call and get rejected by Groq
+        # ("tool choice is none, but model called a tool").
+        original_user_content = messages[1]["content"]
+        synthesis_messages = [
+            {"role": "system", "content": messages[0]["content"]},
+            {
+                "role": "user",
+                "content": (
+                    f"{original_user_content}\n\n"
+                    f"Tool used: {tool_name}\n"
+                    f"Tool result: {tool_result}\n\n"
+                    "The computation has already been done — the result above is final and correct. "
+                    "Do not perform any further calculation or write any code. "
+                    "Simply state the answer to the original question in plain language, "
+                    "using only the tool result provided."
+                ),
+            },
+        ]
 
         log.info("[LLM] → Call 2 (synthesise tool result → final answer)")
-        record("llm_call_2", {"model": self.model_name, "messages": messages})
+        record("llm_call_2", {"model": self.model_name, "messages": synthesis_messages})
         final_response = self.client.chat.completions.create(
             model=self.model_name,
-            messages=messages,
-            tools=tool_schema,
-            tool_choice="none",
+            messages=synthesis_messages,
         )
         answer = final_response.choices[0].message.content
 
@@ -225,13 +247,13 @@ class Generator:
             )
         record("final_answer", {"answer": answer, "tool_used": tool_name})
         return {"answer": answer, "tool_used": tool_name}
-
-    async def agenerate_with_tools(self, query: str, schema: str = None, tracer=None, token_tracker=None) -> dict:
+    
+    async def agenerate_with_tools(self, query: str, schema: str | CSVSchema = None, tracer=None, token_tracker=None) -> dict:
         return await asyncio.to_thread(self.generate_with_tools, query, schema, tracer, token_tracker)
 
     # ── Streaming ─────────────────────────────────────────────────────────────
 
-    def generate_stream(self, query: str, schema: str = None, tracer=None, token_tracker=None):
+    def generate_stream(self, query: str, schema: str | CSVSchema = None, tracer=None, token_tracker=None):
         tool_schema = self._build_tool_schema(self.tools)
         messages    = self._build_messages(query, schema)
 
@@ -242,7 +264,8 @@ class Generator:
                 except Exception:
                     pass
 
-        record("schema_context", {"schema": schema or "(none)"})
+        schema_str = schema.to_prompt_string() if isinstance(schema, CSVSchema) else schema
+        record("schema_context", {"schema": schema_str or "(none)"})
         record("llm_call_1", {"model": self.model_name, "messages": messages, "tools": tool_schema})
 
         log.info("[STREAM] → Call 1 (routing decision)")
@@ -406,5 +429,5 @@ class Generator:
         result = self.client.chat.completions.create(model=self.model_name, messages=messages)
         return {"answer": result.choices[0].message.content}
 
-    def generate(self, query: str, schema: str = None) -> dict:
+    def generate(self, query: str, schema: str | CSVSchema = None) -> dict:
         return self.generate_with_tools(query, schema=schema)

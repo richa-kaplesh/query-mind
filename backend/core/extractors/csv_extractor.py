@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-from core.models import CSVSchema, ColumnSchema, ExtractedPage, PageMetadata
+from core.models import CSVSchema, ColumnSchema, CSVExtractionResult
 from core.extractors.base_extractor import BaseExtractor
 
 
@@ -11,27 +11,19 @@ class CSVExtractor(BaseExtractor):
 
     Public API
     ----------
-    extract_schema(file_path)  → CSVSchema          ← primary method
-    extract(file_path)         → list[ExtractedPage] ← keeps BaseExtractor contract;
-                                                       delegates to extract_schema and
-                                                       serialises via to_prompt_string()
+    extract_schema(file_path)  → CSVSchema
+    extract(file_path)         → CSVExtractionResult
     """
 
     # ── BaseExtractor contract ────────────────────────────────────────────────
 
-    def extract(self, file_path: str) -> list[ExtractedPage]:
+    def extract(self, file_path: str) -> CSVExtractionResult:
         """
         Satisfies BaseExtractor.extract().
-        Internally calls extract_schema(), then converts the CSVSchema to a
-        prompt-ready string and wraps it in a single ExtractedPage so that
-        the existing routes/_extract_schema_sync() call still works unchanged.
+        Internally calls extract_schema() and returns a CSVExtractionResult wrapping the CSVSchema.
         """
         schema = self.extract_schema(file_path)
-        metadata = PageMetadata(
-            source=schema.source,
-            file_type="csv",
-        )
-        return [ExtractedPage(text=schema.to_prompt_string(), metadata=metadata)]
+        return CSVExtractionResult(schema=schema)
 
     # ── Primary method ────────────────────────────────────────────────────────
 

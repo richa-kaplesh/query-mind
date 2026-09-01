@@ -12,8 +12,8 @@ df_test.to_csv("test_data.csv", index=False)
 
 # 2. Instantiate your extractor and run it
 extractor = CSVExtractor()
-extracted_pages = extractor.extract("test_data.csv")
+result = extractor.extract("test_data.csv")
 
 # 3. Print the result
 print("--- RAW PAGE TEXT SENT TO LLM ---\n")
-print(extracted_pages[0].text)
+print(result.schema.to_prompt_string())

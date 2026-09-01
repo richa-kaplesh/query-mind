@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import List
 from pathlib import Path
-from core.models import ExtractedPage
+from core.models import ExtractionResult
 
 
 class BaseExtractor(ABC):
 
     @abstractmethod
-    def extract(self, file_path: str) -> List[ExtractedPage]:
+    def extract(self, file_path: str) -> ExtractionResult:
         pass
 
     def validate_file(self, file_path: str) -> bool:

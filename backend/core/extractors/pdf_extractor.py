@@ -2,7 +2,7 @@ import fitz  # PyMuPDF
 from collections import Counter
 from pathlib import Path
 
-from core.models import ExtractedPage, PageMetadata
+from core.models import ExtractedPage, PageMetadata, PDFExtractionResult
 from core.extractors.base_extractor import BaseExtractor
 
 
@@ -27,7 +27,7 @@ class PDFExtractor(BaseExtractor):
     """
 
 
-    def extract(self, file_path: str) -> list[ExtractedPage]:
+    def extract(self, file_path: str) -> PDFExtractionResult:
         self.validate_file(file_path)
 
         filename    = Path(file_path).name  #just extract the name
@@ -46,7 +46,7 @@ class PDFExtractor(BaseExtractor):
             pages.append(extracted)
 
         doc.close()
-        return pages
+        return PDFExtractionResult(pages=pages)
 
 
     def _get_body_size(self, doc) -> float:

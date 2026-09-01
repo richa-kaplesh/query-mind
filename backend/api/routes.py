@@ -48,7 +48,7 @@ async def upload_document(
             "status":"processing",
             "file_path": file_path,
             "file_type": Path(file.filename).suffix.lower(),
-            "schema":""
+            "schema": None
         }
         # background_tasks.add_task(fn, **kwargs)
         background_tasks.add_task(
@@ -66,34 +66,19 @@ async def upload_document(
     }
 
 
-def _extract_schema_sync(file_path: str) ->str:
-        extractor = CSVExtractor()
-        pages = extractor.extract(file_path)
-        return pages[0].text if pages else ""
-
 async def ingest_document(file_path: str, filename: str, app_state) -> None:
-    ext = Path(file_path).suffix.lower()
-
     try:
-        if ext == ".pdf":
-            pipeline = IngestionPipeline(
-                embedder = app_state.embedder,
-                indexer = app_state.indexer,
-            )
-            # await ... — pauses this function right here
-            # asyncio.to_thread() returns something awaitable — a placeholder that says "the thread is running, I'll let you know when it's done."
-            result = await asyncio.to_thread(pipeline.ingest, file_path)
-            documents[filename]["status"]="ready"
-        
-        elif ext == ".csv":
-            schema = await asyncio.to_thread(_extract_schema_sync, file_path)
-            documents[filename]["status"]="ready"
-            documents[filename]["schema"]= schema
-        else:
-            raise ValueError(f"Unsupported file type:{ext}")
+        pipeline = IngestionPipeline(
+            embedder = app_state.embedder,
+            indexer = app_state.indexer,
+        )
+        result = await asyncio.to_thread(pipeline.ingest, file_path)
+        documents[filename]["status"] = "ready"
+        if result.get("type") == "csv":
+            documents[filename]["schema"] = result["schema"]
     except Exception as e:
-        documents[filename]["status"]="failed"
-        log.error(f"[INGEST] Failed for {filename}:{e}",exc_info=True)
+        documents[filename]["status"] = "failed"
+        log.error(f"[INGEST] Failed for {filename}:{e}", exc_info=True)
 
 def _get_active_file() -> dict | None:
     return next((v for v in documents.values() if v.get("status") == "ready"), None)

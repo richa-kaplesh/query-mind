@@ -6,9 +6,9 @@ import json
 def test_schema():
     print("=== SCHEMA EXTRACTION ===")
     extractor = CSVExtractor()
-    pages = extractor.extract("test_data.csv")
-    schema = pages[0].text
-    print(schema)
+    result = extractor.extract("test_data.csv")
+    schema = result.schema
+    print(schema.to_prompt_string())
     print()
 
 def test_sandbox():

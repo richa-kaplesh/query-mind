@@ -30,8 +30,8 @@ def setup_pipeline(pdf_path: str):
     extractor = PDFExtractor()
     chunker = TextChunker()
 
-    pages = extractor.extract(pdf_path)
-    all_chunks = chunker.chunk_pages(pages)
+    result = extractor.extract(pdf_path)
+    all_chunks = chunker.chunk_pages(result.pages)
     all_chunks = embedder.embed_chunks(all_chunks)
     indexer.index(all_chunks)
 
