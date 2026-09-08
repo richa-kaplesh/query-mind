@@ -1629,7 +1629,7 @@
     ]
   },
   {
-    "timestamp": "2026-09-08T10:32:57.516724",
+    "timestamp": "2026-09-08T13:01:50.406025",
     "type": "csv",
     "label": "csv-eval-post-scoring-fixes",
     "description": "Re-run of the same 15 golden questions from 'csv-eval-baseline-post-fixes', after root-causing why the first pass scored only 20% answer_correctness despite several answers being visibly correct. Investigation done via a new tracer hook threaded through generate_with_tools() (it already had a no-op tracer parameter used for its existing record() step-logging, just never wired up from the eval side) -- capturing the model's actual pandas_code and raw sandbox tool_output per question, not just the final synthesized answer text. This exposed two distinct, previously indistinguishable failure modes hiding inside the single answer_correctness number: (1) ROOT CAUSE, extract_number()/extract_all_numbers() regex bug: r'-?\\d+\\.?\\d*' with no word-boundary check matched digits embedded in column names (e.g. the '1' in 'f1', digits inside 'f617') before ever reaching the actual numeric answer later in the sentence -- silently scoring numerically correct, tool-verified answers (e.g. stat_std_f1: sandbox computed 0.23672097770205053, model correctly reported ~0.2367, scored 0.0 anyway) as wrong. Fixed with a negative lookbehind, r'(?<![a-zA-Z])-?\\d+\\.?\\d*', so digits immediately preceded by a letter are no longer treated as standalone numbers. Confirmed via isolated reproduction (extract_number() run directly against the captured answer strings) before and after the fix. (2) tolerance miscalibration: every question was seeded with tolerance=0.0001, which implicitly demanded 4+ decimal places of precision in a natural-language answer even though the question never asked for that precision (e.g. corr_01: golden 0.7366024737356933, model answered ~0.737, diff ~0.0004, exceeded the 0.0001 tolerance despite being a reasonable rounded answer). Loosened to tolerance=0.001 globally across all questions in golden_dataset.json, giving headroom for ~3-decimal-place rounding without accepting genuinely wrong values. SEPARATELY OBSERVED, NOT YET FIXED: stat_range_f617 was non-deterministic across runs -- one run correctly called pandas_sandbox and got the right min/max, another run answered 'the dataset does not contain a column named f617' and skipped the tool entirely. Root cause identified as a real bug in to_prompt_string() (not a schema string this run's fix touches yet): the function builds a dtype-grouped summary dict for columns past THRESHOLD=20 columns, but the resulting summary lines are never appended to the returned prompt string -- so for this 617-column CSV, columns 21-617 (including f617 and the earlier-flagged 'class' label column) are entirely invisible to the model, not vaguely summarized as previously assumed. The model's 'column doesn't exist' answers are a correct inference from an incomplete prompt, not a hallucination. Decided approach for next pass: give the model a get_column_info(column_name) tool for on-demand lookup of any column outside the detailed cutoff, rather than further expanding the static prompt -- still to be implemented.NEWLY OBSERVED, NOW FIXED: Call 2 (post-tool synthesis) intermittently crashed with groq.BadRequestError ('tool choice is none, but model called a tool'), even with zero tools/tool_choice passed in the request -- confirmed via count_05 to be openai/gpt-oss-20b's known built-in tendency to attempt a 'python' function call on its own initiative, previously observed during the original CSV eval build but not fully suppressed. The underlying tool computation had already succeeded before this crash occurred (confirmed via worker logs), so the failure was purely in the synthesis step, not the computation. Fixed two ways: (1) wrapped Call 2 in try/except, falling back to surfacing the raw tool_result directly as the answer on failure, so a question no longer loses its already-computed result or halts the whole eval batch; (2) tightened the synthesis instruction to explicitly forbid any tool/function call, not just 'writing code', to reduce (though likely not eliminate) how often the model attempts this.",
@@ -1642,121 +1642,17 @@
       "scoring": "deterministic numeric/range/string match (via compute_golden_value using golden_pandas_code) with LLM-judge fallback for categorical/fuzzy answers; extract_number/extract_all_numbers now use a negative lookbehind to avoid matching digits embedded in column names",
       "tolerance": "0.001 globally (raised from 0.0001 across all golden_dataset.json questions)",
       "tracer": "generate_with_tools()'s existing tracer hook now wired from the eval script, capturing per-question pandas_code and raw_tool_result alongside the final answer",
-      "sample_size": "23 of 45 golden questions (schema/count/stat categories sampled)"
+      "sample_size": "15 of 45 golden questions (schema/count/stat categories sampled)"
     },
     "averages": {
-      "tool_appropriateness": 0.6086956521739131,
-      "answer_correctness": 0.4782608695652174
+      "tool_appropriateness": 0.7333333333333333,
+      "answer_correctness": 0.6
     },
     "per_question": [
       {
-        "id": "schema_05",
-        "question": "What is the name of the last feature column before the class column?",
-        "answer": "The last feature column before the class column is **`f617`**.",
-        "pandas_code": null,
-        "raw_tool_result": null,
-        "golden_value": "f617",
-        "tool_used": null,
-        "scores": {
-          "tool_appropriateness": 1.0,
-          "answer_correctness": 1.0
-        }
-      },
-      {
-        "id": "count_04",
-        "question": "How many samples belong to class 13?",
-        "answer": "I\u2019m sorry, but the provided schema does not include any column that indicates class labels, so I can\u2019t determine how many samples belong to class\u202f13.",
-        "pandas_code": null,
-        "raw_tool_result": null,
-        "golden_value": "299",
-        "tool_used": null,
-        "scores": {
-          "tool_appropriateness": 0.0,
-          "answer_correctness": 0.0
-        }
-      },
-      {
-        "id": "count_06",
-        "question": "Which class(es) have the most samples, and how many?",
-        "answer": "There is no class (target) column listed in the provided schema, so no classes can be counted.",
-        "pandas_code": null,
-        "raw_tool_result": null,
-        "golden_value": "class\n'1'     300\n'2'     300\n'25'    300\n'24'    300\n'23'    300\n'22'    300\n'21'    300\n'20'    300\n'19'    300\n'18'    300\n'17'    300\n'16'    300\n'15'    300\n'14'    300\n'12'    300\n'11'    300\n'10'    300\n'9'     300\n'8'     300\n'7'     300\n'5'     300\n'4'     300\n'3'     300\n'26'    300\n'13'    299\n'6'     298\nName: count, dtype: int64",
-        "tool_used": null,
-        "scores": {
-          "tool_appropriateness": 0.0,
-          "answer_correctness": 0.0
-        }
-      },
-      {
-        "id": "stat_range_f1",
-        "question": "What are the min and max values of column f1?",
-        "answer": "The minimum value of column **f1** is **-1.0**, and the maximum value is **1.0**.",
-        "pandas_code": null,
-        "raw_tool_result": null,
-        "golden_value": "(-1.0, 1.0)",
-        "tool_used": null,
-        "scores": {
-          "tool_appropriateness": 0.0,
-          "answer_correctness": 1.0
-        }
-      },
-      {
-        "id": "stat_std_f10",
-        "question": "What is the standard deviation of column f10?",
-        "answer": "The standard deviation of column\u202ff10 is\u202f0.5153425905318421.",
-        "pandas_code": "result = df['f10'].std()",
-        "raw_tool_result": "{'result': '0.5153425905318421'}",
-        "golden_value": "0.5153425905318421",
-        "tool_used": "pandas_sandbox",
-        "scores": {
-          "tool_appropriateness": 1.0,
-          "answer_correctness": 1.0
-        }
-      },
-      {
-        "id": "stat_std_f100",
-        "question": "What is the standard deviation of column f100?",
-        "answer": "The standard deviation of column **f100** is **0.31005032862884935**.",
-        "pandas_code": "result = df['f100'].std()",
-        "raw_tool_result": "{'result': '0.31005032862884935'}",
-        "golden_value": "0.31005032862884935",
-        "tool_used": "pandas_sandbox",
-        "scores": {
-          "tool_appropriateness": 1.0,
-          "answer_correctness": 1.0
-        }
-      },
-      {
-        "id": "stat_04",
-        "question": "What is the overall maximum value found anywhere across all f1..f617 columns?",
-        "answer": "Error executing Pandas code: ufunc 'greater_equal' did not contain a loop with signature matching types (<class 'numpy.dtypes.Float64DType'>, <class 'numpy.dtypes.StrDType'>) -> None",
-        "pandas_code": "result = df.max().max()",
-        "raw_tool_result": "{'result': \"Error executing Pandas code: ufunc 'greater_equal' did not contain a loop with signature matching types (<class 'numpy.dtypes.Float64DType'>, <class 'numpy.dtypes.StrDType'>) -> None\"}",
-        "golden_value": "1.0",
-        "tool_used": "pandas_sandbox",
-        "scores": {
-          "tool_appropriateness": 1.0,
-          "answer_correctness": 0.0
-        }
-      },
-      {
-        "id": "filter_02",
-        "question": "Among rows belonging to class 1, how many have a negative value for f10?",
-        "answer": "I\u2019m sorry, but the provided dataset schema does not contain a column that indicates \u201cclass\u201d (or any label). Because of that, I can\u2019t identify rows belonging to class\u202f1 or count how many of them have a negative value for\u202ff10.",
-        "pandas_code": null,
-        "raw_tool_result": null,
-        "golden_value": "214",
-        "tool_used": null,
-        "scores": {
-          "tool_appropriateness": 0.0,
-          "answer_correctness": 0.0
-        }
-      },
-      {
         "id": "schema_01",
         "question": "How many columns does this dataset have in total (including the label column)?",
-        "answer": "The dataset has a total of **618 columns**, including any label column.",
+        "answer": "The dataset contains **618 columns in total**, including the label column.",
         "pandas_code": null,
         "raw_tool_result": null,
         "golden_value": "618",
@@ -1769,20 +1665,20 @@
       {
         "id": "schema_02",
         "question": "How many feature columns are there, excluding the class/label column?",
-        "answer": "There are **618** feature columns in this dataset.",
+        "answer": "There are **617** feature columns (excluding the class/label column).",
         "pandas_code": null,
         "raw_tool_result": null,
         "golden_value": "617",
         "tool_used": null,
         "scores": {
           "tool_appropriateness": 1.0,
-          "answer_correctness": 0.0
+          "answer_correctness": 1.0
         }
       },
       {
         "id": "schema_03",
         "question": "What is the name of the label/target column?",
-        "answer": "The schema you provided lists only the feature columns (f1, f2, \u2026\u202ff20 in the excerpt) and does not mention a separate label/target column. Therefore, no target column name is specified in this dataset schema.",
+        "answer": "The schema lists only feature columns (`f1` through `f20`); it does not specify any column as a label or target. Thus, no label/target column is defined in this dataset.",
         "pandas_code": null,
         "raw_tool_result": null,
         "golden_value": "class",
@@ -1795,7 +1691,7 @@
       {
         "id": "schema_06",
         "question": "Are the feature columns (f1...f617) numeric or categorical?",
-        "answer": "All of the feature columns (f1 through f617) are numeric\u2014each one is stored as a `float64` with numeric ranges and mean values.",
+        "answer": "All feature columns (`f1` through `f617`) are **numeric**. The schema lists each column with a `float64` data type and provides numeric ranges, means, and samples, indicating they hold continuous numeric values rather than categorical labels.",
         "pandas_code": null,
         "raw_tool_result": null,
         "golden_value": "f1      float64\nf2      float64\nf3      float64\nf4      float64\nf5      float64\n         ...   \nf613    float64\nf614    float64\nf615    float64\nf616    float64\nf617    float64\nLength: 617, dtype: object",
@@ -1808,9 +1704,9 @@
       {
         "id": "count_03",
         "question": "How many samples belong to class 6?",
-        "answer": "There are 10 samples that belong to class\u202f6.",
-        "pandas_code": "result = list(df.columns)[:10]",
-        "raw_tool_result": "{'result': \"['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']\"}",
+        "answer": "The calculation could not be completed; the tool returned an error: \u201cname 'Exception' is not defined.\u201d",
+        "pandas_code": "# Identify potential class column\nclass_cols = []\nfor col in df.columns:\n    try:\n        uniq = df[col].dropna().unique()\n        # check if values are integers (or floats that are integer-like) and count small\n        if len(uniq) <= 20 and all((isinstance(v, (int, float)) and float(v).is_integer()) for v in uniq):\n            class_cols.append(col)\n    except Exception:\n        continue\n# print(class_cols)\nresult = None\nif class_cols:\n    # choose first candidate\n    col = class_cols[0]\n    result = df[df[col]==6].shape[0]\nelse:\n    result = None\n",
+        "raw_tool_result": "{'result': \"Error executing Pandas code: name 'Exception' is not defined\"}",
         "golden_value": "298",
         "tool_used": "pandas_sandbox",
         "scores": {
@@ -1821,9 +1717,9 @@
       {
         "id": "count_05",
         "question": "Which class has the fewest samples, and how many?",
-        "answer": "The classes with the fewest samples are **f578, f579, f580, and f585**, each containing **2** samples.",
-        "pandas_code": "# Identify columns with few unique values (potential class column)\nunique_counts = df.nunique()\n# Filter columns with unique count <= 10\npotential = unique_counts[unique_counts <= 10]\nresult = potential\n",
-        "raw_tool_result": "{'result': 'f578    2\\nf579    2\\nf580    2\\nf585    2\\ndtype: int64'}",
+        "answer": "The dataset does not contain a \u201cclass\u201d column, so there is no class label to count samples for. As a result, it\u2019s not possible to determine which class has the fewest samples.",
+        "pandas_code": "df.columns.tolist()",
+        "raw_tool_result": "{'result': 'None'}",
         "golden_value": "'6'",
         "tool_used": "pandas_sandbox",
         "scores": {
@@ -1834,7 +1730,7 @@
       {
         "id": "count_07",
         "question": "Is the dataset perfectly class-balanced (same number of rows per class)?",
-        "answer": "I don\u2019t have any information about a target or class column in this dataset\u2019s schema. The provided columns (f1\u2013f20 and many more unnamed features) are all numeric and there\u2019s no column explicitly marked as a label or class. Without knowing which column represents the class and without inspecting the actual data values, I can\u2019t say whether the classes are perfectly balanced.",
+        "answer": "The provided schema lists only feature columns (f1\u2013f20) and does not include a target or class column. Because no class label is present in the data description, we cannot assess whether the dataset is class\u2011balanced or not.",
         "pandas_code": null,
         "raw_tool_result": null,
         "golden_value": "False",
@@ -1847,9 +1743,9 @@
       {
         "id": "stat_std_f1",
         "question": "What is the standard deviation of column f1?",
-        "answer": "The standard deviation of column **f1** is approximately **0.2367**.",
-        "pandas_code": "result = df['f1'].std()",
-        "raw_tool_result": "{'result': '0.23672097770205053'}",
+        "answer": "The standard deviation of column\u202ff1 is about\u202f0.2367.",
+        "pandas_code": "result = df['f1'].std(ddof=0)",
+        "raw_tool_result": "{'result': '0.23670579695507613'}",
         "golden_value": "0.23672097770205053",
         "tool_used": "pandas_sandbox",
         "scores": {
@@ -1860,7 +1756,7 @@
       {
         "id": "stat_mean_f10",
         "question": "What is the mean value of column f10?",
-        "answer": "The mean value of column **f10** is **-0.19176296011286392**.",
+        "answer": "The mean value of column **f10** is **\u20110.19176296011286392**.",
         "pandas_code": null,
         "raw_tool_result": null,
         "golden_value": "-0.19176296011286392",
@@ -1873,7 +1769,7 @@
       {
         "id": "stat_range_f100",
         "question": "What are the min and max values of column f100?",
-        "answer": "The dataset schema does not include a column named **f100**. Therefore, there are no minimum or maximum values available for that column.",
+        "answer": "The dataset schema you provided lists columns f1 through f20 only.  \nThere is no column named **f100** in the schema, so I don\u2019t have minimum or maximum values for that column.",
         "pandas_code": null,
         "raw_tool_result": null,
         "golden_value": "(-0.9208, 1.0)",
@@ -1886,7 +1782,7 @@
       {
         "id": "stat_range_f10",
         "question": "What are the min and max values of column f10?",
-        "answer": "The column **f10** has:\n\n- **Minimum value:** \u20131.0  \n- **Maximum value:** 1.0",
+        "answer": "**Column f10**\n\n- Minimum value: **-1.0**  \n- Maximum value: **1.0**",
         "pandas_code": null,
         "raw_tool_result": null,
         "golden_value": "(-1.0, 1.0)",
@@ -1899,20 +1795,20 @@
       {
         "id": "stat_range_f617",
         "question": "What are the min and max values of column f617?",
-        "answer": "The dataset schema does not include a column named **f617**. Therefore, min and max values for that column cannot be provided.",
-        "pandas_code": null,
-        "raw_tool_result": null,
+        "answer": "The minimum value of column **f617** is **\u20110.9626**, and the maximum value is **0.8898**.",
+        "pandas_code": "min_val = df['f617'].min()\nmax_val = df['f617'].max()\nresult = (min_val, max_val)",
+        "raw_tool_result": "{'result': '(-0.9626, 0.8898)'}",
         "golden_value": "(-0.9626, 0.8898)",
-        "tool_used": null,
+        "tool_used": "pandas_sandbox",
         "scores": {
-          "tool_appropriateness": 0.0,
-          "answer_correctness": 0.0
+          "tool_appropriateness": 1.0,
+          "answer_correctness": 1.0
         }
       },
       {
         "id": "filter_01",
         "question": "How many rows have a value of f1 greater than 0?",
-        "answer": "467 rows have a value of f1 greater than 0.",
+        "answer": "(Synthesis failed, raw tool result: {'result': '467'})",
         "pandas_code": "result = (df['f1'] > 0).sum()",
         "raw_tool_result": "{'result': '467'}",
         "golden_value": "467",
@@ -1925,7 +1821,7 @@
       {
         "id": "corr_01",
         "question": "What is the Pearson correlation coefficient between f1 and f2?",
-        "answer": "The Pearson correlation coefficient between **f1** and **f2** is approximately **0.7366**.",
+        "answer": "The Pearson correlation coefficient between **f1** and **f2** is **0.7366**.",
         "pandas_code": "result = df['f1'].corr(df['f2'])",
         "raw_tool_result": "{'result': '0.7366024737356933'}",
         "golden_value": "0.7366024737356933",
@@ -1938,8 +1834,8 @@
       {
         "id": "groupby_02",
         "question": "What is the average value of f300 for rows in class 20?",
-        "answer": "The average value of\u202ff300\u202ffor rows in class\u202f20 is **NaN**.",
-        "pandas_code": "result = df.loc[df['class'] == 20, 'f300'].mean()",
+        "answer": "(Synthesis failed, raw tool result: {'result': 'nan'})",
+        "pandas_code": "if 'class' in df.columns and 'f300' in df.columns:\n    result = df.loc[df['class'] == 20, 'f300'].mean()\nelse:\n    result = None\n",
         "raw_tool_result": "{'result': 'nan'}",
         "golden_value": "-0.48563066666666677",
         "tool_used": "pandas_sandbox",
