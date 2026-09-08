@@ -265,9 +265,19 @@ export default function App() {
 
   // ── Backend health check ──────────────────────────────────────────────
   useEffect(() => {
-    fetch(`${API_BASE}/`, { signal: AbortSignal.timeout(4000) })
-      .then((r) => { if (!r.ok) throw new Error(); setBackendDown(false); })
-      .catch(() => setBackendDown(true));
+    fetch(`${API_BASE}/`, { signal: AbortSignal.timeout(8000) })
+      .then((r) => {
+        if (r.ok || r.status < 500) setBackendDown(false);
+        else setBackendDown(true);
+      })
+      .catch(() => {
+        // Retry once after 2 seconds before marking as unreachable
+        setTimeout(() => {
+          fetch(`${API_BASE}/`, { signal: AbortSignal.timeout(8000) })
+            .then((r) => setBackendDown(!r.ok && r.status >= 500))
+            .catch(() => setBackendDown(true));
+        }, 2000);
+      });
   }, []);
 
   // ── Auto-scroll ────────────────────────────────────────────────────────
