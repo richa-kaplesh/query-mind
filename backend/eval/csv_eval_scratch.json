@@ -1,8 +1,114 @@
 [
   {
+    "id": "schema_05",
+    "question": "What is the name of the last feature column before the class column?",
+    "answer": "The last feature column before the class column is **`f617`**.",
+    "pandas_code": null,
+    "raw_tool_result": null,
+    "golden_value": "f617",
+    "tool_used": null,
+    "scores": {
+      "tool_appropriateness": 1.0,
+      "answer_correctness": 1.0
+    }
+  },
+  {
+    "id": "count_04",
+    "question": "How many samples belong to class 13?",
+    "answer": "I\u2019m sorry, but the provided schema does not include any column that indicates class labels, so I can\u2019t determine how many samples belong to class\u202f13.",
+    "pandas_code": null,
+    "raw_tool_result": null,
+    "golden_value": "299",
+    "tool_used": null,
+    "scores": {
+      "tool_appropriateness": 0.0,
+      "answer_correctness": 0.0
+    }
+  },
+  {
+    "id": "count_06",
+    "question": "Which class(es) have the most samples, and how many?",
+    "answer": "There is no class (target) column listed in the provided schema, so no classes can be counted.",
+    "pandas_code": null,
+    "raw_tool_result": null,
+    "golden_value": "class\n'1'     300\n'2'     300\n'25'    300\n'24'    300\n'23'    300\n'22'    300\n'21'    300\n'20'    300\n'19'    300\n'18'    300\n'17'    300\n'16'    300\n'15'    300\n'14'    300\n'12'    300\n'11'    300\n'10'    300\n'9'     300\n'8'     300\n'7'     300\n'5'     300\n'4'     300\n'3'     300\n'26'    300\n'13'    299\n'6'     298\nName: count, dtype: int64",
+    "tool_used": null,
+    "scores": {
+      "tool_appropriateness": 0.0,
+      "answer_correctness": 0.0
+    }
+  },
+  {
+    "id": "stat_range_f1",
+    "question": "What are the min and max values of column f1?",
+    "answer": "The minimum value of column **f1** is **-1.0**, and the maximum value is **1.0**.",
+    "pandas_code": null,
+    "raw_tool_result": null,
+    "golden_value": "(-1.0, 1.0)",
+    "tool_used": null,
+    "scores": {
+      "tool_appropriateness": 0.0,
+      "answer_correctness": 1.0
+    }
+  },
+  {
+    "id": "stat_std_f10",
+    "question": "What is the standard deviation of column f10?",
+    "answer": "The standard deviation of column\u202ff10 is\u202f0.5153425905318421.",
+    "pandas_code": "result = df['f10'].std()",
+    "raw_tool_result": "{'result': '0.5153425905318421'}",
+    "golden_value": "0.5153425905318421",
+    "tool_used": "pandas_sandbox",
+    "scores": {
+      "tool_appropriateness": 1.0,
+      "answer_correctness": 1.0
+    }
+  },
+  {
+    "id": "stat_std_f100",
+    "question": "What is the standard deviation of column f100?",
+    "answer": "The standard deviation of column **f100** is **0.31005032862884935**.",
+    "pandas_code": "result = df['f100'].std()",
+    "raw_tool_result": "{'result': '0.31005032862884935'}",
+    "golden_value": "0.31005032862884935",
+    "tool_used": "pandas_sandbox",
+    "scores": {
+      "tool_appropriateness": 1.0,
+      "answer_correctness": 1.0
+    }
+  },
+  {
+    "id": "stat_04",
+    "question": "What is the overall maximum value found anywhere across all f1..f617 columns?",
+    "answer": "Error executing Pandas code: ufunc 'greater_equal' did not contain a loop with signature matching types (<class 'numpy.dtypes.Float64DType'>, <class 'numpy.dtypes.StrDType'>) -> None",
+    "pandas_code": "result = df.max().max()",
+    "raw_tool_result": "{'result': \"Error executing Pandas code: ufunc 'greater_equal' did not contain a loop with signature matching types (<class 'numpy.dtypes.Float64DType'>, <class 'numpy.dtypes.StrDType'>) -> None\"}",
+    "golden_value": "1.0",
+    "tool_used": "pandas_sandbox",
+    "scores": {
+      "tool_appropriateness": 1.0,
+      "answer_correctness": 0.0
+    }
+  },
+  {
+    "id": "filter_02",
+    "question": "Among rows belonging to class 1, how many have a negative value for f10?",
+    "answer": "I\u2019m sorry, but the provided dataset schema does not contain a column that indicates \u201cclass\u201d (or any label). Because of that, I can\u2019t identify rows belonging to class\u202f1 or count how many of them have a negative value for\u202ff10.",
+    "pandas_code": null,
+    "raw_tool_result": null,
+    "golden_value": "214",
+    "tool_used": null,
+    "scores": {
+      "tool_appropriateness": 0.0,
+      "answer_correctness": 0.0
+    }
+  },
+  {
     "id": "schema_01",
     "question": "How many columns does this dataset have in total (including the label column)?",
-    "answer": "The dataset contains **618 columns** in total, including the label column.",
+    "answer": "The dataset has a total of **618 columns**, including any label column.",
+    "pandas_code": null,
+    "raw_tool_result": null,
     "golden_value": "618",
     "tool_used": null,
     "scores": {
@@ -13,7 +119,9 @@
   {
     "id": "schema_02",
     "question": "How many feature columns are there, excluding the class/label column?",
-    "answer": "There are **618 feature columns** in the dataset (excluding any class/label column, which is not present in the schema).",
+    "answer": "There are **618** feature columns in this dataset.",
+    "pandas_code": null,
+    "raw_tool_result": null,
     "golden_value": "617",
     "tool_used": null,
     "scores": {
@@ -24,7 +132,9 @@
   {
     "id": "schema_03",
     "question": "What is the name of the label/target column?",
-    "answer": "The provided schema lists only the feature columns (`f1` to `f20`). No column is indicated as a label or target, so there is no target column in this dataset.",
+    "answer": "The schema you provided lists only the feature columns (f1, f2, \u2026\u202ff20 in the excerpt) and does not mention a separate label/target column. Therefore, no target column name is specified in this dataset schema.",
+    "pandas_code": null,
+    "raw_tool_result": null,
     "golden_value": "class",
     "tool_used": null,
     "scores": {
@@ -35,7 +145,9 @@
   {
     "id": "schema_06",
     "question": "Are the feature columns (f1...f617) numeric or categorical?",
-    "answer": "All of the feature columns (f1 through f617) are numeric \u2013 they are stored as float64 values (no categorical types or missing values).",
+    "answer": "All of the feature columns (f1 through f617) are numeric\u2014each one is stored as a `float64` with numeric ranges and mean values.",
+    "pandas_code": null,
+    "raw_tool_result": null,
     "golden_value": "f1      float64\nf2      float64\nf3      float64\nf4      float64\nf5      float64\n         ...   \nf613    float64\nf614    float64\nf615    float64\nf616    float64\nf617    float64\nLength: 617, dtype: object",
     "tool_used": null,
     "scores": {
@@ -46,29 +158,35 @@
   {
     "id": "count_03",
     "question": "How many samples belong to class 6?",
-    "answer": "I\u2019m sorry, but the dataset schema you provided only lists features `f1` through `f20`; there is no column identified as a class or label. Consequently, I can\u2019t determine how many samples belong to class\u202f6.",
+    "answer": "There are 10 samples that belong to class\u202f6.",
+    "pandas_code": "result = list(df.columns)[:10]",
+    "raw_tool_result": "{'result': \"['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10']\"}",
     "golden_value": "298",
-    "tool_used": null,
+    "tool_used": "pandas_sandbox",
     "scores": {
-      "tool_appropriateness": 0.0,
+      "tool_appropriateness": 1.0,
       "answer_correctness": 0.0
     }
   },
   {
     "id": "count_05",
     "question": "Which class has the fewest samples, and how many?",
-    "answer": "I\u2019m sorry, but the provided schema only lists the feature columns `f1` through `f20`; it does not include a class or label column. Therefore I can\u2019t determine which class has the fewest samples.",
+    "answer": "The classes with the fewest samples are **f578, f579, f580, and f585**, each containing **2** samples.",
+    "pandas_code": "# Identify columns with few unique values (potential class column)\nunique_counts = df.nunique()\n# Filter columns with unique count <= 10\npotential = unique_counts[unique_counts <= 10]\nresult = potential\n",
+    "raw_tool_result": "{'result': 'f578    2\\nf579    2\\nf580    2\\nf585    2\\ndtype: int64'}",
     "golden_value": "'6'",
-    "tool_used": null,
+    "tool_used": "pandas_sandbox",
     "scores": {
-      "tool_appropriateness": 0.0,
+      "tool_appropriateness": 1.0,
       "answer_correctness": 0.0
     }
   },
   {
     "id": "count_07",
     "question": "Is the dataset perfectly class-balanced (same number of rows per class)?",
-    "answer": "I don\u2019t see any column in the schema that represents class labels, so I can\u2019t determine whether the data are class\u2011balanced.",
+    "answer": "I don\u2019t have any information about a target or class column in this dataset\u2019s schema. The provided columns (f1\u2013f20 and many more unnamed features) are all numeric and there\u2019s no column explicitly marked as a label or class. Without knowing which column represents the class and without inspecting the actual data values, I can\u2019t say whether the classes are perfectly balanced.",
+    "pandas_code": null,
+    "raw_tool_result": null,
     "golden_value": "False",
     "tool_used": null,
     "scores": {
@@ -79,29 +197,35 @@
   {
     "id": "stat_std_f1",
     "question": "What is the standard deviation of column f1?",
-    "answer": "The standard deviation of column\u202ff1 is **0.23672097770205053**.",
+    "answer": "The standard deviation of column **f1** is approximately **0.2367**.",
+    "pandas_code": "result = df['f1'].std()",
+    "raw_tool_result": "{'result': '0.23672097770205053'}",
     "golden_value": "0.23672097770205053",
     "tool_used": "pandas_sandbox",
     "scores": {
       "tool_appropriateness": 1.0,
-      "answer_correctness": 0.0
+      "answer_correctness": 1.0
     }
   },
   {
     "id": "stat_mean_f10",
     "question": "What is the mean value of column f10?",
-    "answer": "The mean value of column **f10** is **\u20110.19176296011286392**.",
+    "answer": "The mean value of column **f10** is **-0.19176296011286392**.",
+    "pandas_code": null,
+    "raw_tool_result": null,
     "golden_value": "-0.19176296011286392",
     "tool_used": null,
     "scores": {
       "tool_appropriateness": 0.0,
-      "answer_correctness": 0.0
+      "answer_correctness": 1.0
     }
   },
   {
     "id": "stat_range_f100",
     "question": "What are the min and max values of column f100?",
-    "answer": "I\u2019m sorry, but the schema you provided does not include the minimum and maximum values for column\u202ff100. The snippet lists only the statistics for columns\u202ff1 through\u202ff20, and the min/max for f100 aren\u2019t available in that information.",
+    "answer": "The dataset schema does not include a column named **f100**. Therefore, there are no minimum or maximum values available for that column.",
+    "pandas_code": null,
+    "raw_tool_result": null,
     "golden_value": "(-0.9208, 1.0)",
     "tool_used": null,
     "scores": {
@@ -112,8 +236,23 @@
   {
     "id": "stat_range_f10",
     "question": "What are the min and max values of column f10?",
-    "answer": "The column **f10** has a minimum value of **-1.0** and a maximum value of **1.0**.",
+    "answer": "The column **f10** has:\n\n- **Minimum value:** \u20131.0  \n- **Maximum value:** 1.0",
+    "pandas_code": null,
+    "raw_tool_result": null,
     "golden_value": "(-1.0, 1.0)",
+    "tool_used": null,
+    "scores": {
+      "tool_appropriateness": 0.0,
+      "answer_correctness": 1.0
+    }
+  },
+  {
+    "id": "stat_range_f617",
+    "question": "What are the min and max values of column f617?",
+    "answer": "The dataset schema does not include a column named **f617**. Therefore, min and max values for that column cannot be provided.",
+    "pandas_code": null,
+    "raw_tool_result": null,
+    "golden_value": "(-0.9626, 0.8898)",
     "tool_used": null,
     "scores": {
       "tool_appropriateness": 0.0,
@@ -121,20 +260,11 @@
     }
   },
   {
-    "id": "stat_range_f617",
-    "question": "What are the min and max values of column f617?",
-    "answer": "The minimum value in column **f617** is **-0.9626**, and the maximum value is **0.8898**.",
-    "golden_value": "(-0.9626, 0.8898)",
-    "tool_used": "pandas_sandbox",
-    "scores": {
-      "tool_appropriateness": 1.0,
-      "answer_correctness": 0.0
-    }
-  },
-  {
     "id": "filter_01",
     "question": "How many rows have a value of f1 greater than 0?",
-    "answer": "There are 467 rows where `f1` is greater than 0.",
+    "answer": "467 rows have a value of f1 greater than 0.",
+    "pandas_code": "result = (df['f1'] > 0).sum()",
+    "raw_tool_result": "{'result': '467'}",
     "golden_value": "467",
     "tool_used": "pandas_sandbox",
     "scores": {
@@ -145,22 +275,26 @@
   {
     "id": "corr_01",
     "question": "What is the Pearson correlation coefficient between f1 and f2?",
-    "answer": "The Pearson correlation coefficient between\u202ff1\u202fand\u202ff2\u202fis approximately\u202f0.7366.",
+    "answer": "The Pearson correlation coefficient between **f1** and **f2** is approximately **0.7366**.",
+    "pandas_code": "result = df['f1'].corr(df['f2'])",
+    "raw_tool_result": "{'result': '0.7366024737356933'}",
     "golden_value": "0.7366024737356933",
     "tool_used": "pandas_sandbox",
     "scores": {
       "tool_appropriateness": 1.0,
-      "answer_correctness": 0.0
+      "answer_correctness": 1.0
     }
   },
   {
     "id": "groupby_02",
     "question": "What is the average value of f300 for rows in class 20?",
-    "answer": "I\u2019m sorry, but the dataset schema you provided does not include a \u201cclass\u201d column (or any column that indicates a class label). Without that column, I can\u2019t filter rows by class\u202f20 or compute the requested average for `f300`. If you can provide the column that indicates class, I can help calculate the average.",
+    "answer": "The average value of\u202ff300\u202ffor rows in class\u202f20 is **NaN**.",
+    "pandas_code": "result = df.loc[df['class'] == 20, 'f300'].mean()",
+    "raw_tool_result": "{'result': 'nan'}",
     "golden_value": "-0.48563066666666677",
-    "tool_used": null,
+    "tool_used": "pandas_sandbox",
     "scores": {
-      "tool_appropriateness": 0.0,
+      "tool_appropriateness": 1.0,
       "answer_correctness": 0.0
     }
   }

@@ -1,8 +1,7 @@
 from groq import Groq
 from typing import List
 from core.tools.base_tool import BaseTool
-from core.prompt_builder import PromptBuilder
-from core.tool_registry import ToolRegistry
+
 from core.token_utils import estimate_tokens
 from core.models import CSVSchema
 from config import settings
@@ -164,8 +163,8 @@ class Generator:
             if tracer:
                 try:
                     tracer(step_type, _safe_serialize(data))
-                except Exception:
-                    pass
+                
+                except Exception as e: print(f"[TRACER ERROR] {e}")
 
         schema_str = schema.to_prompt_string() if isinstance(schema, CSVSchema) else schema
         record("schema_context", {"schema": schema_str or "(none provided)"})
@@ -223,28 +222,34 @@ class Generator:
                     f"Tool used: {tool_name}\n"
                     f"Tool result: {tool_result}\n\n"
                     "The computation has already been done — the result above is final and correct. "
-                    "Do not perform any further calculation or write any code. "
+                    "Do not call any tool or function, do not write or execute any code, and do not "
+                    "attempt further computation of any kind. "
                     "Simply state the answer to the original question in plain language, "
-                    "using only the tool result provided."
+                    "using only the tool result provided above."
                 ),
             },
         ]
 
         log.info("[LLM] → Call 2 (synthesise tool result → final answer)")
         record("llm_call_2", {"model": self.model_name, "messages": synthesis_messages})
-        final_response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=synthesis_messages,
-        )
-        answer = final_response.choices[0].message.content
-
-        if token_tracker and final_response.usage:
-            token_tracker.log_call(
+        try:
+            final_response = self.client.chat.completions.create(
                 model=self.model_name,
-                prompt_tokens=final_response.usage.prompt_tokens,
-                completion_tokens=final_response.usage.completion_tokens,
-                purpose="csv_call2",
+                messages=synthesis_messages,
             )
+            answer = final_response.choices[0].message.content
+
+            if token_tracker and final_response.usage:
+                token_tracker.log_call(
+                    model=self.model_name,
+                    prompt_tokens=final_response.usage.prompt_tokens,
+                    completion_tokens=final_response.usage.completion_tokens,
+                    purpose="csv_call2",
+                )
+        except Exception as e:
+            log.error(f"[LLM] Call 2 synthesis failed: {e}")
+            # Fall back to the raw tool result so we don't lose the computation that already succeeded
+            answer = f"(Synthesis failed, raw tool result: {tool_result})"
         record("final_answer", {"answer": answer, "tool_used": tool_name})
         return {"answer": answer, "tool_used": tool_name}
     

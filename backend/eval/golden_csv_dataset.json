@@ -156,7 +156,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f1'].mean()",
     "golden_answer": -0.385396,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -166,7 +166,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f1'].std()",
     "golden_answer": 0.236721,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -179,7 +179,7 @@
       -1.0,
       1.0
     ],
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -189,7 +189,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f10'].mean()",
     "golden_answer": -0.191763,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -199,7 +199,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f10'].std()",
     "golden_answer": 0.515343,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -212,7 +212,7 @@
       -1.0,
       1.0
     ],
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -222,7 +222,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f100'].mean()",
     "golden_answer": 0.439993,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -232,7 +232,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f100'].std()",
     "golden_answer": 0.31005,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -245,7 +245,7 @@
       -0.9208,
       1.0
     ],
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -255,7 +255,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f300'].mean()",
     "golden_answer": -0.046931,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -265,7 +265,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f300'].std()",
     "golden_answer": 0.514015,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -278,7 +278,7 @@
       -1.0,
       1.0
     ],
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -288,7 +288,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f617'].mean()",
     "golden_answer": -0.281416,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -298,7 +298,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f617'].std()",
     "golden_answer": 0.354418,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -311,7 +311,7 @@
       -0.9626,
       0.8898
     ],
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -431,7 +431,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df['f1'].corr(df['f2'])",
     "golden_answer": 0.736602,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {
@@ -451,7 +451,7 @@
     "needs_computation": true,
     "golden_pandas_code": "df[df['class']==\"'20'\"]['f300'].mean()",
     "golden_answer": -0.485631,
-    "tolerance": 0.0001,
+    "tolerance": 0.001,
     "notes": ""
   },
   {

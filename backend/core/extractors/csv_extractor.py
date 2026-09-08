@@ -69,7 +69,7 @@ class CSVExtractor(BaseExtractor):
           Try pd.read_csv with the detected separator, iterating encodings.
           on_bad_lines='warn' skips isolated malformed rows instead of aborting.
         """
-        import csv as _csv
+       
 
         sep = self._sniff_separator(file_path)
 

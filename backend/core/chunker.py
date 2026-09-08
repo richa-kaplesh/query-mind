@@ -49,39 +49,56 @@ class TextChunker:
         return chunks
 
     def _chunk_section(self, heading, lines: list[str], metadata: dict) -> list[dict]:
-        chunks = []
-        buffer: list[str] = []
-        buffer_len = 0
+            chunks = []          # final list of chunk-dicts we'll return
+            buffer = []          # lines waiting to become the next chunk
+            buffer_len = 0        # total characters currently in buffer
 
-        def flush():
-            if not buffer:
-                return
-            chunk_text = "\n".join(buffer)
-            chunks.append({
-                "text": chunk_text,
-                "metadata": {
-                    **metadata,
-                    "chunk_index": len(chunks),
-                    "heading": heading,
-                }
-            })
+            for line in lines:
+                line_len = len(line) + 1   # +1 for the "\n" that will join it
 
-        for line in lines:
-            line_len = len(line) + 1
-            if buffer and buffer_len + line_len > self.chunk_size:
-                flush()
-                overlap_lines = []
-                overlap_len = 0
-                for l in reversed(buffer):
-                    if overlap_len + len(l) + 1 > self.chunk_overlap:
-                        break
-                    overlap_lines.insert(0, l)
-                    overlap_len += len(l) + 1
-                buffer = overlap_lines
-                buffer_len = overlap_len
+                # if adding this line would overflow the current chunk, seal it off first
+                if buffer and (buffer_len + line_len > self.chunk_size):
 
-            buffer.append(line)
-            buffer_len += line_len
+                    # --- seal the current buffer into a chunk ---
+                    chunk_text = "\n".join(buffer)
+                    chunks.append({
+                        "text": chunk_text,
+                        "metadata": {
+                            **metadata,
+                            "chunk_index": len(chunks),
+                            "heading": heading,
+                        }
+                    })
 
-        flush()
-        return chunks
+                    # --- figure out overlap: keep the last few lines for the next chunk ---
+                    new_buffer = []
+                    new_buffer_len = 0
+                    for line_from_end in reversed(buffer):
+                        extra_len = len(line_from_end) + 1
+                        if new_buffer_len + extra_len > self.chunk_overlap:
+                            break
+                        new_buffer.append(line_from_end)   # append instead of insert(0, ...)
+                        new_buffer_len += extra_len
+
+                    new_buffer.reverse()   # we added them backwards, so flip to correct order
+
+                    buffer = new_buffer
+                    buffer_len = new_buffer_len
+
+                # add the current line to (whatever's left of) the buffer
+                buffer.append(line)
+                buffer_len += line_len
+
+            # after the loop, seal whatever's left in the buffer as the final chunk
+            if buffer:
+                chunk_text = "\n".join(buffer)
+                chunks.append({
+                    "text": chunk_text,
+                    "metadata": {
+                        **metadata,
+                        "chunk_index": len(chunks),
+                        "heading": heading,
+                    }
+                })
+
+            return chunks
