@@ -3,12 +3,15 @@ import pandas as pd
 import ast
 import multiprocessing 
 import textwrap
+from core.utils.data_cleaning import strip_stray_quotes
+
 
 def _worker(file_path, executable_code, safe_builtins, queue):
     import sys
     print(f"[WORKER] Starting, file_path={file_path}", file=sys.stderr, flush=True)
     try:
         df = pd.read_csv(file_path, low_memory=False)
+        df = strip_stray_quotes(df)
         print(f"[WORKER] CSV loaded, shape={df.shape}", file=sys.stderr, flush=True)
         local_vars = {"pd": pd, "df": df, "result": None}
         restricted_globals = {"__builtins__": safe_builtins}
@@ -43,7 +46,10 @@ class PandasSandboxTool(BaseTool):
     def description(self) -> str:
         return (
             "Execute dynamic Python/Pandas code on DataFrame 'df' to answer exact mathematical, "
-            "filtering, aggregation, or analytical queries. Assign your final answer to variable 'result'."
+            "filtering, aggregation, or analytical queries. Assign your final answer to variable 'result'. "
+            "Also use this tool to check whether a column exists (e.g. df.columns) or inspect its values, "
+            "even if that column isn't shown in full detail in the schema above — the schema only details "
+            "some columns individually; others are only listed by name."
         )
 
     def clean_code(self, raw_code: str) -> str:

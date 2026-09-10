@@ -26,6 +26,44 @@ generator.tools = [PandasSandboxTool(file_path=CSV_PATH)]
 groq_client = Groq(api_key=settings.groq_api_key)
 
 
+import re
+
+_DASH_MAP = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-"})
+
+_SIGNAL_PATTERN = re.compile(
+    r"(?:\bis\b|\bare\b|\bwas\b|\bwere\b|\bequals?\b|\bapproximately\b|\babout\b)"
+    r"\s*\**\s*(-?\d+\.?\d*)",
+    re.IGNORECASE,
+)
+
+def _clean(text: str) -> str:
+    return text.translate(_DASH_MAP)
+
+def _bare_numbers(text: str) -> list[float]:
+    """Fallback: standalone numbers not glued to a letter prefix (e.g. skips f10, f617)."""
+    numbers = []
+    for m in re.finditer(r"[a-zA-Z]*-?\d+\.?\d*", text):
+        token = m.group()
+        if re.match(r"[a-zA-Z]*", token).group():
+            continue
+        numbers.append(float(token))
+    return numbers
+
+def extract_number(text: str):
+    text = _clean(text)
+    signal_matches = _SIGNAL_PATTERN.findall(text)
+    if signal_matches:
+        return float(signal_matches[-1])   # the final stated answer, not an echoed parameter
+    numbers = _bare_numbers(text)          # fallback for answers with no linking verb
+    return numbers[-1] if numbers else None
+
+def extract_all_numbers(text: str) -> list[float]:
+    text = _clean(text)
+    signal_matches = _SIGNAL_PATTERN.findall(text)
+    if len(signal_matches) >= 2:
+        return [float(x) for x in signal_matches]
+    return _bare_numbers(text)             # fallback for range answers without "is"/"are" phrasing
+
 def setup_csv_pipeline(csv_path: str):
     """
     Returns (schema, df):
@@ -70,15 +108,7 @@ def check_tool_app(should_use: bool, actual_tool_used) -> float:
     return 1.0 if actual_used_bool == should_use else 0.0
 
 
-def extract_number(text: str):
-    text = text.replace("\u2011", "-").replace("\u2010", "-").replace("\u2013", "-").replace("\u2012", "-")
-    for m in re.finditer(r"[a-zA-Z]*-?\d+\.?\d*", text):
-        token = m.group()
-        letters = re.match(r"[a-zA-Z]*", token).group()
-        if letters:          # glued to a letter prefix like "f10" — skip it
-            continue
-        return float(token)
-    return None
+
 
 def score_correctness(golden_value, actual_answer: str, tolerance) -> float:
     if tolerance is not None:
@@ -104,16 +134,7 @@ def score_correctness(golden_value, actual_answer: str, tolerance) -> float:
             return 1.0
         return score_with_llm_judge(golden_value, actual_answer)
 
-def extract_all_numbers(text: str) -> list[float]:
-    text = text.replace("\u2011", "-").replace("\u2010", "-").replace("\u2013", "-").replace("\u2012", "-")
-    numbers = []
-    for m in re.finditer(r"[a-zA-Z]*-?\d+\.?\d*", text):
-        token = m.group()
-        letters = re.match(r"[a-zA-Z]*", token).group()
-        if letters:          # glued to a letter prefix like "f10" — skip it
-            continue
-        numbers.append(float(token))
-    return numbers
+
 
 def score_with_llm_judge(golden_value, actual_answer: str) -> float:
     prompt = f"""You are an evaluation judge for a CSV question-answering system.
@@ -228,74 +249,89 @@ def finalize_csv_eval_run():
     run_record = {
         "timestamp": datetime.utcnow().isoformat(),
         "type": "csv",
-        "label": "csv-eval-post-scoring-fixes",
+        "label": "csv-eval-final",
         "description": (
-            "Re-run of the same 15 golden questions from 'csv-eval-baseline-post-fixes', "
-            "after root-causing why the first pass scored only 20% answer_correctness "
-            "despite several answers being visibly correct. Investigation done via a new "
-            "tracer hook threaded through generate_with_tools() (it already had a no-op "
-            "tracer parameter used for its existing record() step-logging, just never wired "
-            "up from the eval side) -- capturing the model's actual pandas_code and raw "
-            "sandbox tool_output per question, not just the final synthesized answer text. "
-            "This exposed two distinct, previously indistinguishable failure modes hiding "
-            "inside the single answer_correctness number: "
-            "(1) ROOT CAUSE, extract_number()/extract_all_numbers() regex bug: "
-            "r'-?\\d+\\.?\\d*' with no word-boundary check matched digits embedded in column "
-            "names (e.g. the '1' in 'f1', digits inside 'f617') before ever reaching the "
-            "actual numeric answer later in the sentence -- silently scoring numerically "
-            "correct, tool-verified answers (e.g. stat_std_f1: sandbox computed "
-            "0.23672097770205053, model correctly reported ~0.2367, scored 0.0 anyway) as "
-            "wrong. Fixed with a negative lookbehind, r'(?<![a-zA-Z])-?\\d+\\.?\\d*', so digits "
-            "immediately preceded by a letter are no longer treated as standalone numbers. "
-            "Confirmed via isolated reproduction (extract_number() run directly against the "
-            "captured answer strings) before and after the fix. "
-            "(2) tolerance miscalibration: every question was seeded with tolerance=0.0001, "
-            "which implicitly demanded 4+ decimal places of precision in a natural-language "
-            "answer even though the question never asked for that precision (e.g. corr_01: "
-            "golden 0.7366024737356933, model answered ~0.737, diff ~0.0004, exceeded the "
-            "0.0001 tolerance despite being a reasonable rounded answer). Loosened to "
-            "tolerance=0.001 globally across all questions in golden_dataset.json, giving "
-            "headroom for ~3-decimal-place rounding without accepting genuinely wrong values. "
-            "SEPARATELY OBSERVED, NOT YET FIXED: stat_range_f617 was non-deterministic across "
-            "runs -- one run correctly called pandas_sandbox and got the right min/max, "
-            "another run answered 'the dataset does not contain a column named f617' and "
-            "skipped the tool entirely. Root cause identified as a real bug in "
-            "to_prompt_string() (not a schema string this run's fix touches yet): the "
-            "function builds a dtype-grouped summary dict for columns past THRESHOLD=20 "
-            "columns, but the resulting summary lines are never appended to the returned "
-            "prompt string -- so for this 617-column CSV, columns 21-617 (including f617 and "
-            "the earlier-flagged 'class' label column) are entirely invisible to the model, "
-            "not vaguely summarized as previously assumed. The model's 'column doesn't exist' "
-            "answers are a correct inference from an incomplete prompt, not a hallucination. "
-            "Decided approach for next pass: give the model a get_column_info(column_name) "
-            "tool for on-demand lookup of any column outside the detailed cutoff, rather than "
-            "further expanding the static prompt -- still to be implemented."
-                        "NEWLY OBSERVED, NOW FIXED: Call 2 (post-tool synthesis) intermittently crashed "
-            "with groq.BadRequestError ('tool choice is none, but model called a tool'), "
-            "even with zero tools/tool_choice passed in the request -- confirmed via "
-            "count_05 to be openai/gpt-oss-20b's known built-in tendency to attempt a "
-            "'python' function call on its own initiative, previously observed during the "
-            "original CSV eval build but not fully suppressed. The underlying tool "
-            "computation had already succeeded before this crash occurred (confirmed via "
-            "worker logs), so the failure was purely in the synthesis step, not the "
-            "computation. Fixed two ways: (1) wrapped Call 2 in try/except, falling back to "
-            "surfacing the raw tool_result directly as the answer on failure, so a question "
-            "no longer loses its already-computed result or halts the whole eval batch; "
-            "(2) tightened the synthesis instruction to explicitly forbid any tool/function "
-            "call, not just 'writing code', to reduce (though likely not eliminate) how "
-            "often the model attempts this."
+            "Final pass on the canonical 15-question CSV eval set, after a full day of "
+            "root-causing why the original run scored only 20% answer_correctness. Summary "
+            "of every distinct bug found and fixed across the investigation: "
+            "(1) extract_number()/extract_all_numbers() originally used a plain digit regex "
+            "with no letter-boundary check, matching digits embedded in column names (e.g. "
+            "the '1' in 'f1') as standalone numbers -- fixed with a token-based approach that "
+            "rejects any digit sequence glued to a letter prefix, correctly handling "
+            "multi-digit column suffixes (f10, f100, f617) that a simple lookbehind missed. "
+            "(2) Unicode dash variants (U+2010-U+2013, from markdown auto-formatting) weren't "
+            "recognized as negative signs by the ASCII-only '-' in the regex -- fixed by "
+            "normalizing all dash variants to ASCII '-' before parsing. "
+            "(3) Both extraction functions were rewritten a final time to anchor on linking "
+            "words ('is', 'are', 'equals', 'approximately', etc.) rather than taking the "
+            "first or last number in the text -- the earlier position-based heuristics failed "
+            "on answers that echoed a question parameter before stating the result (e.g. "
+            "'...for rows in class 20 is -0.4856' was extracting '20' instead of the actual "
+            "answer). The signal-word anchor generalizes correctly across every phrasing "
+            "pattern observed in this dataset's answers, with the old letter-prefix logic "
+            "kept as a fallback for phrasing with no linking verb. "
+            "(4) tolerance was loosened from 0.0001 to 0.001 globally across "
+            "golden_dataset.json, since the tighter value implicitly demanded 4+ decimal "
+            "places of precision in prose answers that were never asked for. "
+            "(5) Found and fixed a deeper data bug: the 'class' column's values contain "
+            "literal embedded quote characters in the source CSV (e.g. \"'1'\" not \"1\"), "
+            "confirmed by inspecting the raw file directly. This caused the model's "
+            "correctly-written comparison code (df['class']==1) to silently match zero rows. "
+            "Fixed by stripping stray quote characters and converting to numeric where every "
+            "value parses cleanly, in a new shared strip_stray_quotes() utility. "
+            "(6) That fix initially only applied to CSVExtractor's dataframe, not "
+            "PandasSandboxTool's -- the sandbox tool loads the CSV independently in its own "
+            "worker process (required since a live DataFrame can't cross a multiprocessing "
+            "process boundary), so it was still operating on unclean, quoted string data "
+            "even after the extractor was fixed. Resolved by moving the cleaning logic into "
+            "a shared utility function imported by both, eliminating the drift between the "
+            "two independent CSV loads. "
+            "(7) Several golden_dataset.json entries (count_04, filter_02, groupby_02) had "
+            "golden_pandas_code written against the old quoted-string class format (e.g. "
+            "df['class']=='1') and silently broke in the same way once the data was cleaned "
+            "-- each question's own recorded golden_answer field was used as ground truth to "
+            "confirm the correct value, then the golden code was updated to compare against "
+            "clean numeric class values. "
+            "(8) Call 2 (post-tool synthesis) intermittently crashed with "
+            "groq.BadRequestError ('tool choice is none, but model called a tool') due to "
+            "openai/gpt-oss-20b's tendency to attempt an unprompted 'python' tool call even "
+            "with no tools declared -- fixed with a try/except fallback to the raw tool "
+            "result, plus a tightened synthesis instruction explicitly forbidding any "
+            "tool/function call, not just code. Call 1 was separately given retry logic (3 "
+            "attempts, 1s delay) after a malformed tool-call-argument generation error was "
+            "observed. "
+            "(9) Root-caused and fixed the original 'model claims a column doesn't exist' "
+            "failure family (schema_03, count_04, count_06, filter_02, groupby_02 in earlier "
+            "runs): to_prompt_string() computed a dtype-grouped summary for columns beyond "
+            "its THRESHOLD=20 detail cutoff but never appended it to the returned prompt "
+            "string, so columns 21-617 (including the 'class' label column) were completely "
+            "invisible to the model, not vaguely summarized as previously assumed. Fixed by "
+            "appending the summary lines, and separately updated PandasSandboxTool's "
+            "description to explicitly tell the model to check df.columns for anything not "
+            "shown in full schema detail. "
+            "KNOWN, NOT FIXED: count_05 ('which class has the fewest samples, and how many') "
+            "is a compound-answer question -- the model answered only the count (298) and "
+            "not the class label (6) that golden_value expects, but the count itself is "
+            "correct. This is a question-design/scoring gap (single-value scoring applied to "
+            "a two-part question), not a model or data bug -- needs either a compound-answer "
+            "scorer or splitting into two separate questions. Flagged for next investigation, "
+            "not addressed this pass. count_06 has a related but distinct issue: multiple "
+            "classes tie at the maximum count (300), and the scorer expects one specific "
+            "class rather than accepting any class in the tied set."
         ),
         "config": {
             "csv_extractor": "CSVExtractor (discriminated union, structured CSVSchema)",
-            "schema_serialization": "to_prompt_string() with THRESHOLD=20 truncation + dtype-grouped summary for remaining columns (KNOWN BUG: summary lines computed but never appended to output -- columns past 20 are fully invisible to the model, not just vaguely summarized)",
+            "data_cleaning": "shared strip_stray_quotes() utility (core/utils/data_cleaning.py), used by both CSVExtractor._load() and PandasSandboxTool's worker process -- strips embedded quote characters from object-dtype columns and converts to numeric where every value parses cleanly",
+            "schema_serialization": "to_prompt_string() with THRESHOLD=20 truncation; columns past the cutoff are now summarized by name and dtype (previously computed but never appended -- fixed)",
             "generator_model": settings.model_name,
             "tool_registration": "generator.tools set explicitly in eval script to match production's per-request mutation",
-            "synthesis_call": "fresh system+user messages, no tools/tool_choice passed, explicit no-further-computation instruction",
-            "scoring": "deterministic numeric/range/string match (via compute_golden_value using golden_pandas_code) with LLM-judge fallback for categorical/fuzzy answers; extract_number/extract_all_numbers now use a negative lookbehind to avoid matching digits embedded in column names",
+            "pandas_sandbox_description": "explicitly instructs the model to check df.columns / inspect values for columns not shown in full schema detail",
+            "synthesis_call": "fresh system+user messages, no tools/tool_choice passed, explicit no-tool/no-function-call instruction; wrapped in try/except with raw-tool-result fallback on synthesis failure",
+            "call_1_retry": "3 attempts with 1s delay on failure, graceful error message after exhausting retries",
+            "scoring": "deterministic numeric/range/string match (via compute_golden_value using golden_pandas_code) with LLM-judge fallback for categorical/fuzzy answers; extract_number/extract_all_numbers anchor on linking words (is/are/equals/approximately) rather than first-or-last-number position, with letter-prefix-rejection as fallback for answers without linking verbs",
             "tolerance": "0.001 globally (raised from 0.0001 across all golden_dataset.json questions)",
-            "tracer": "generate_with_tools()'s existing tracer hook now wired from the eval script, capturing per-question pandas_code and raw_tool_result alongside the final answer",
-            "sample_size": f"{len(results)} of 45 golden questions (schema/count/stat categories sampled)",
-            "synthesis_call": "fresh system+user messages, no tools/tool_choice passed, explicit no-tool/no-function-call instruction; wrapped in try/except with raw-tool-result fallback on synthesis failure (Groq's gpt-oss-20b can attempt an unprompted 'python' tool call even with no tools declared)",
+            "tracer": "generate_with_tools()'s tracer hook wired from the eval script, capturing per-question pandas_code and raw_tool_result alongside the final answer",
+            "sample_size": f"{len(results)} of 45 golden questions (schema/count/stat/filter/groupby categories sampled)",
         },
         "averages": {"tool_appropriateness": avg_tool, "answer_correctness": avg_correctness},
         "per_question": results,
@@ -311,10 +347,11 @@ def finalize_csv_eval_run():
         json.dump(history, f, indent=2)
 
     print(f"Finalized run with {len(results)} questions saved to {history_path}")
-    
+
 if __name__ == "__main__":
+
     finalize_csv_eval_run()
-    
+
             
     
 

@@ -68,6 +68,15 @@ class CSVSchema(BaseModel):
                         groups[col.dtype] = []
                     groups[col.dtype].append(col)
                 print(groups)
+                for dtype, cols in groups.items():
+                        col_names = ", ".join(c.name for c in cols)
+                        lines.append(f"  +{len(cols)} more {dtype} columns not detailed above: {col_names}")
+
+                lines.append(
+                        "Note: some columns are only listed by name above, not in full detail. "
+                        "If asked about a column not shown in detail, do not assume it doesn't exist — "
+                        "use the pandas_sandbox tool to check df.columns or inspect it directly."
+                )
                 if self.warnings:
                     lines.append("Warnings: " + "; ".join(self.warnings))
 

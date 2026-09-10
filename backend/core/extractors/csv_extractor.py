@@ -3,6 +3,7 @@ from pathlib import Path
 
 from core.models import CSVSchema, ColumnSchema, CSVExtractionResult
 from core.extractors.base_extractor import BaseExtractor
+from core.utils.data_cleaning import strip_stray_quotes
 
 
 class CSVExtractor(BaseExtractor):
@@ -76,13 +77,14 @@ class CSVExtractor(BaseExtractor):
         last_error: Exception = RuntimeError("No encodings tried")
         for enc in self._ENCODINGS:
             try:
-                return pd.read_csv(
+                df = pd.read_csv(
                     file_path,
                     sep=sep,
                     encoding=enc,
                     low_memory=False,
                     on_bad_lines="warn",   # skip malformed rows, don't crash
                 )
+                return strip_stray_quotes(df)
             except UnicodeDecodeError as e:
                 last_error = e
                 continue
@@ -92,7 +94,8 @@ class CSVExtractor(BaseExtractor):
         raise ValueError(
             f"Failed to load CSV — tried encodings {self._ENCODINGS}: {last_error}"
         )
-
+    
+        
     def _sniff_separator(self, file_path: str) -> str:
         """
         Use csv.Sniffer on the first 8 KB to detect the actual delimiter.

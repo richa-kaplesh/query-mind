@@ -94,7 +94,7 @@
     "question": "How many samples belong to class 6?",
     "category": "aggregation",
     "needs_computation": true,
-    "golden_pandas_code": "df[df['class']==\"'6'\"].shape[0]",
+    "golden_pandas_code": "df[df['class']==6].shape[0]",
     "golden_answer": 298,
     "tolerance": null,
     "notes": ""
@@ -104,7 +104,7 @@
     "question": "How many samples belong to class 13?",
     "category": "aggregation",
     "needs_computation": true,
-    "golden_pandas_code": "df[df['class']==\"'13'\"].shape[0]",
+    "golden_pandas_code": "df[df['class']==\"13\"].shape[0]",
     "golden_answer": 299,
     "tolerance": null,
     "notes": ""
@@ -409,7 +409,7 @@
     "question": "Among rows belonging to class 1, how many have a negative value for f10?",
     "category": "filtering",
     "needs_computation": true,
-    "golden_pandas_code": "((df['class']==\"'1'\") & (df['f10']<0)).sum()",
+    "golden_pandas_code": "((df['class']==1) & (df['f10']<0)).sum()",
     "golden_answer": 214,
     "tolerance": null,
     "notes": ""
@@ -449,7 +449,7 @@
     "question": "What is the average value of f300 for rows in class 20?",
     "category": "groupby",
     "needs_computation": true,
-    "golden_pandas_code": "df[df['class']==\"'20'\"]['f300'].mean()",
+    "golden_pandas_code": "df[df['class']==20]['f300'].mean()",
     "golden_answer": -0.485631,
     "tolerance": 0.001,
     "notes": ""

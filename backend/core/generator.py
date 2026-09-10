@@ -8,6 +8,7 @@ from config import settings
 import json
 import asyncio
 import logging
+import time
 
 log = logging.getLogger("generator")
 
@@ -170,13 +171,33 @@ class Generator:
         record("schema_context", {"schema": schema_str or "(none provided)"})
         record("llm_call_1", {"model": self.model_name, "messages": messages, "tools": tool_schema})
 
+
+        MAX_RETRIES = 3
+        RETRY_DELAY_SECONDS = 1
+
         log.info("[LLM] → Call 1 (schema + query + tool defs)")
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            tools=tool_schema if tool_schema else None,
-            tool_choice="auto" if tool_schema else None,
-        )
+        response = None
+        last_error = None
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                    tools=tool_schema if tool_schema else None,
+                    tool_choice="auto" if tool_schema else None,
+                )
+                break
+            except Exception as e:
+                last_error = e
+                log.warning(f"[LLM] Call 1 attempt {attempt}/{MAX_RETRIES} failed: {e}")
+                if attempt < MAX_RETRIES:
+                    time.sleep(RETRY_DELAY_SECONDS)
+
+        if response is None:
+            log.error(f"[LLM] Call 1 failed after {MAX_RETRIES} attempts: {last_error}")
+            record("final_answer", {"answer": f"LLM call failed after {MAX_RETRIES} attempts: {last_error}", "tool_used": None})
+            return {"answer": f"(Call 1 failed after {MAX_RETRIES} attempts: {last_error})", "tool_used": None}
+
         message = response.choices[0].message
         if token_tracker and response.usage:
             token_tracker.log_call(
