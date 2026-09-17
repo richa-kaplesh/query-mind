@@ -2,7 +2,7 @@
   {
     "id": "schema_01",
     "question": "How many columns does this dataset have in total (including the label column)?",
-    "answer": "The dataset contains **618 columns in total**, including the label column.",
+    "answer": "The dataset contains **618 columns in total** (this count includes the label column).",
     "pandas_code": null,
     "raw_tool_result": null,
     "golden_value": "618",
@@ -15,7 +15,7 @@
   {
     "id": "schema_02",
     "question": "How many feature columns are there, excluding the class/label column?",
-    "answer": "There are **617** feature columns (the dataset has 618 columns in total, and one of them is the `class` label).",
+    "answer": "There are 617 feature columns in the dataset (618 total columns minus the single \u201cclass\u201d label column).",
     "pandas_code": null,
     "raw_tool_result": null,
     "golden_value": "617",
@@ -28,7 +28,7 @@
   {
     "id": "schema_03",
     "question": "What is the name of the label/target column?",
-    "answer": "The target (label) column is **`class`**.",
+    "answer": "The target (label) column is named **`class`**.",
     "pandas_code": null,
     "raw_tool_result": null,
     "golden_value": "class",
@@ -41,22 +41,22 @@
   {
     "id": "schema_06",
     "question": "Are the feature columns (f1...f617) numeric or categorical?",
-    "answer": "All of the feature columns (`f1` through `f617`) are numeric. They are stored as floating\u2011point (`float64`) or integer (`int64`) values, not as categorical or string types.",
+    "answer": "All of the feature columns `f1` through `f617` are numeric.  \nThey are stored as floating\u2011point values (most are `float64`), with a few (`f578`, `f579`, `f580`, `f585`) stored as `int64`. None of the features are encoded as categorical variables.",
     "pandas_code": null,
     "raw_tool_result": null,
     "golden_value": "f1      float64\nf2      float64\nf3      float64\nf4      float64\nf5      float64\n         ...   \nf613    float64\nf614    float64\nf615    float64\nf616    float64\nf617    float64\nLength: 617, dtype: object",
     "tool_used": null,
     "scores": {
       "tool_appropriateness": 1.0,
-      "answer_correctness": 0.3
+      "answer_correctness": 0.0
     }
   },
   {
     "id": "count_05",
     "question": "Which class has the fewest samples, and how many?",
-    "answer": "(Synthesis failed, raw tool result: {'result': 'Error: Code execution exceeded 5 seconds'})",
-    "pandas_code": "result = df['class'].value_counts().nsmallest(1).iloc[0]",
-    "raw_tool_result": "{'result': 'Error: Code execution exceeded 5 seconds'}",
+    "answer": "(Synthesis failed, raw tool result: {'result': '298'})",
+    "pandas_code": "result = df['class'].value_counts().min()\n",
+    "raw_tool_result": "{'result': '298'}",
     "golden_value": "6",
     "tool_used": "pandas_sandbox",
     "scores": {
@@ -67,9 +67,9 @@
   {
     "id": "count_07",
     "question": "Is the dataset perfectly class-balanced (same number of rows per class)?",
-    "answer": "No. The classes are not perfectly balanced. While most classes have 300 instances, class\u202f13 has 299 rows and class\u202f6 has 298 rows, so the dataset is not evenly distributed.",
-    "pandas_code": "result = df['class'].value_counts().to_dict()",
-    "raw_tool_result": "{'result': '{1: 300, 2: 300, 25: 300, 24: 300, 23: 300, 22: 300, 21: 300, 20: 300, 19: 300, 18: 300, 17: 300, 16: 300, 15: 300, 14: 300, 12: 300, 11: 300, 10: 300, 9: 300, 8: 300, 7: 300, 5: 300, 4: 300, 3: 300, 26: 300, 13: 299, 6: 298}'}",
+    "answer": "No \u2013 the classes are not perfectly balanced.  \nAll classes have 300 rows except for class\u202f13, which has 299 rows, and class\u202f6, which has 298 rows.",
+    "pandas_code": "result = df['class'].value_counts()",
+    "raw_tool_result": "{'result': 'class\\n1     300\\n2     300\\n25    300\\n24    300\\n23    300\\n22    300\\n21    300\\n20    300\\n19    300\\n18    300\\n17    300\\n16    300\\n15    300\\n14    300\\n12    300\\n11    300\\n10    300\\n9     300\\n8     300\\n7     300\\n5     300\\n4     300\\n3     300\\n26    300\\n13    299\\n6     298\\nName: count, dtype: int64'}",
     "golden_value": "False",
     "tool_used": "pandas_sandbox",
     "scores": {
@@ -80,9 +80,9 @@
   {
     "id": "stat_std_f1",
     "question": "What is the standard deviation of column f1?",
-    "answer": "The standard deviation of column **f1** is **0.23672097770205053**.",
-    "pandas_code": "result = df['f1'].std()",
-    "raw_tool_result": "{'result': '0.23672097770205053'}",
+    "answer": "The standard deviation of column\u202ff1 is approximately\u202f0.2367.",
+    "pandas_code": "result = df['f1'].std(ddof=0)",
+    "raw_tool_result": "{'result': '0.23670579695507613'}",
     "golden_value": "0.23672097770205053",
     "tool_used": "pandas_sandbox",
     "scores": {
@@ -106,9 +106,9 @@
   {
     "id": "stat_range_f100",
     "question": "What are the min and max values of column f100?",
-    "answer": "The minimum value of **f100** is **\u20110.9208** and the maximum value is **1.0000**.",
-    "pandas_code": "result = df['f100'].agg(['min','max'])",
-    "raw_tool_result": "{'result': 'min   -0.9208\\nmax    1.0000\\nName: f100, dtype: float64'}",
+    "answer": "The minimum value of column\u202ff100 is **\u20110.9208**, and the maximum value is **1.0**.",
+    "pandas_code": "result = (df['f100'].min(), df['f100'].max())",
+    "raw_tool_result": "{'result': '(-0.9208, 1.0)'}",
     "golden_value": "(-0.9208, 1.0)",
     "tool_used": "pandas_sandbox",
     "scores": {
@@ -119,7 +119,7 @@
   {
     "id": "stat_range_f10",
     "question": "What are the min and max values of column f10?",
-    "answer": "The minimum value of **f10** is **-1.0**, and the maximum value is **1.0**.",
+    "answer": "The column **f10** has:\n\n- **Minimum value:** \u20131.0  \n- **Maximum value:** 1.0",
     "pandas_code": null,
     "raw_tool_result": null,
     "golden_value": "(-1.0, 1.0)",
@@ -132,9 +132,9 @@
   {
     "id": "stat_range_f617",
     "question": "What are the min and max values of column f617?",
-    "answer": "The minimum value of **f617** is **-0.9626** and the maximum value is **0.8898**.",
-    "pandas_code": "result = (df['f617'].min(), df['f617'].max())",
-    "raw_tool_result": "{'result': '(-0.9626, 0.8898)'}",
+    "answer": "The minimum value in column **f617** is **-0.9626** and the maximum value is **0.8898**.",
+    "pandas_code": "result = df['f617'].agg(['min','max']).to_dict()",
+    "raw_tool_result": "{'result': \"{'min': -0.9626, 'max': 0.8898}\"}",
     "golden_value": "(-0.9626, 0.8898)",
     "tool_used": "pandas_sandbox",
     "scores": {
@@ -145,34 +145,34 @@
   {
     "id": "filter_01",
     "question": "How many rows have a value of f1 greater than 0?",
-    "answer": "Error: Code execution exceeded 5 seconds",
+    "answer": "There are **467** rows in the dataset where the value of `f1` is greater than 0.",
     "pandas_code": "result = (df['f1'] > 0).sum()",
-    "raw_tool_result": "{'result': 'Error: Code execution exceeded 5 seconds'}",
+    "raw_tool_result": "{'result': '467'}",
     "golden_value": "467",
     "tool_used": "pandas_sandbox",
     "scores": {
       "tool_appropriateness": 1.0,
-      "answer_correctness": 0.0
+      "answer_correctness": 1.0
     }
   },
   {
     "id": "corr_01",
     "question": "What is the Pearson correlation coefficient between f1 and f2?",
-    "answer": "I\u2019m sorry, but I couldn\u2019t compute the Pearson correlation coefficient between\u202ff1\u202fand\u202ff2\u202fwithin the allotted time.",
+    "answer": "The Pearson correlation coefficient between **f1** and **f2** is approximately **0.7366**.",
     "pandas_code": "result = df['f1'].corr(df['f2'])",
-    "raw_tool_result": "{'result': 'Error: Code execution exceeded 5 seconds'}",
+    "raw_tool_result": "{'result': '0.7366024737356933'}",
     "golden_value": "0.7366024737356933",
     "tool_used": "pandas_sandbox",
     "scores": {
       "tool_appropriateness": 1.0,
-      "answer_correctness": 0.0
+      "answer_correctness": 1.0
     }
   },
   {
     "id": "groupby_02",
     "question": "What is the average value of f300 for rows in class 20?",
-    "answer": "The average value of\u202ff300\u202ffor rows in class\u202f20 is\u202fapproximately\u202f-0.4856.",
-    "pandas_code": "result = df.loc[df['class']==20, 'f300'].mean()",
+    "answer": "The average value of **f300** for rows where **class\u202f=\u202f20** is **about \u20130.4856**.",
+    "pandas_code": "result = df.loc[df['class'] == 20, 'f300'].mean()",
     "raw_tool_result": "{'result': '-0.48563066666666677'}",
     "golden_value": "-0.48563066666666677",
     "tool_used": "pandas_sandbox",
@@ -184,7 +184,7 @@
   {
     "id": "count_03",
     "question": "How many samples belong to class 6?",
-    "answer": "There are **298** samples that belong to class\u202f6.",
+    "answer": "There are 298 samples that belong to class\u202f6.",
     "pandas_code": "result = (df['class'] == 6).sum()",
     "raw_tool_result": "{'result': '298'}",
     "golden_value": "298",
