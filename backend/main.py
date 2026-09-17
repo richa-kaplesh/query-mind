@@ -61,8 +61,7 @@ app.state.embedder  = embedder
 app.state.indexer   = indexer
 app.state.retriever = retriever
 app.state.reranker  = reranker
-app.state.trace_store = TraceStore()
-app.state.generator = Generator()
+
 app.state.token_tracker = TokenTracker()
 
 # Global trace store for the debug dashboard

@@ -39,6 +39,7 @@ async def upload_document(
     files: List[UploadFile] = File(...),
 ):
     documents.clear()
+    request.app.state.indexer.reset()
     uploaded=[]
     for file in files:
         file_path = os.path.join(UPLOAD_DIR, file.filename)

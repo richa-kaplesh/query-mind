@@ -1,0 +1,183 @@
+{
+  "timestamp": "2026-09-16T15:53:14.589278",
+  "label": "reranker-threshold-fix",
+  "description": "Investigated Q13 (IFSCA registration number) recall failure. Root cause chain: (1) fixed-size char chunker was merging the registration number line into an unrelated marketing-bullets chunk, diluting its retrievability -- fixed via heading-aware line-based chunking in TextChunker/PDFExtractor. (2) Even after chunking fix, Reranker.rerank() had a hardcoded absolute min_score=0.3 threshold that silently dropped the registration-number chunk at score 0.2991 -- just 0.0009 below cutoff, despite ranking #4 of 20 candidates. Removed min_score filtering entirely; rely on top_k rank from Jina's already-sorted results instead. Also fixed a duplicate httpx.post() call in Reranker.rerank() that was double-billing every rerank request. Confirmed fix: Q13's chunk now lands in final top-5 (rank 4, score 0.251).",
+  "config": {
+    "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection, heading-tagged lines)",
+    "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+    "chunker": {
+      "method": "heading-aware, line-boundary-respecting split (no mid-line cuts)",
+      "chunk_size": 500,
+      "chunk_overlap": 50
+    },
+    "embedding_model": "jina-embeddings-v3",
+    "retriever": {
+      "method": "hybrid BM25 + FAISS",
+      "alpha": 0.5,
+      "top_k": 20
+    },
+    "reranker": {
+      "model": "jina-reranker-v2-base-multilingual",
+      "min_score_filter": "removed (was 0.3, caused false negatives)"
+    },
+    "generator_model": "openai/gpt-oss-20b"
+  },
+  "averages": {
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0,
+    "context_precision": 0.8566666666666668,
+    "context_recall": 1.0
+  },
+  "per_question": [
+    {
+      "question": "What is the minimum investment required for this fund?",
+      "answer": "- **Minimum investment:** USD\u202f5,000 (with additional top\u2011ups possible in USD\u202f500 increments)\u3010Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf, p.1 \u2013 The GIFT CITY Advantage\u3011",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What is the exit load if redeemed before 1 year?",
+      "answer": "- The exit load for redemption before 1 year is **2%**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1 | Section: The GIFT CITY Advantage\u3011.",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What is the exit load after 2 years?",
+      "answer": "- The exit load after 2\u202fyears is **Nil**.  \n  [Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf | Page\u202f1 \u2014 The GIFT CITY Advantage]",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What is the base currency of the fund?",
+      "answer": "- The fund\u2019s base currency is the **United States Dollar (USD)**. [source, p.1 \u2014 The GIFT CITY Advantage]",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.9,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What is the Total Expense Ratio (TER) for Regular Plan Class B?",
+      "answer": "- **Total Expense Ratio (TER) for the Regular Plan \u2013 Class\u202fB:** **1.00\u202f% per annum**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page:\u202f1 | Section: The GIFT CITY Advantage\u3011",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What was the 5-year CAGR return for Developed Markets?",
+      "answer": "- The 5\u2011year CAGR return for Developed Markets is **11.5\u202f%** (USD Returns) [Source, p.1].",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.85,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What was the 10-year CAGR return for Emerging Markets?",
+      "answer": "- The 10\u2011year CAGR return for Emerging Markets is **10.1%** [Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 1].",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What was the 1-year CAGR return for Nifty 50?",
+      "answer": "- **1\u2011Year CAGR return for Nifty\u202f50:** **-14.3\u202f%** [Source, p.1]",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "How many developed markets and constituents does the Developed Markets Equity Fund cover?",
+      "answer": "The information was not found in the document.",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.4,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "How many emerging markets and constituents does the Emerging Markets Equity Fund cover?",
+      "answer": "The information was not found in the document.",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.8,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "Is there a lock-in period for this fund?",
+      "answer": "- **No lock\u2011in period** \u2013 The fund has no lock\u2011in period.  \n  *Source: Leaflet \u2013 HDFC International Funds \u2013 GIFT Outbound Retail \u2013 Class\u202fB, page\u202f1, \u201cThe GIFT CITY Advantage\u201d section*\u202f[Source, p.1 \u2014 The GIFT CITY Advantage]",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.9,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What index does the Developed Markets Equity Fund track?",
+      "answer": "- The Developed Markets Equity Fund tracks the **MSCI\u202fWorld Index**.  \n  [Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class\u202fB.pdf | Page\u202f0 | Section: One\u202fFund]",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What is HDFC AMC International's IFSCA registration number?",
+      "answer": "- **HDFC AMC International\u2019s IFSCA registration number:**  \n  **IFSCA/FME/III/2023-24/073**\u3010Source: Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf | Page: 0 \u2014 The GIFT CITY Advantage\u3011",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "Does this document guarantee any specific rate of return?",
+      "answer": "No. The document explicitly states that it does not provide any guarantee or offer of specific returns:\n\n- \u201cHAMC AMC IFSC is not guaranteeing /offering/ communicating any indicative yield/returns on investment in the Fund.\u201d [Source, p.1 \u2013 Disclaimer]  \n- \u201cThere can be no assurance that the Fund will achieve results comparable to or that the returns generated will equal or exceed those of other investment activities\u2026 The Manager does not make any representation or warranty, express or implied, regarding future performance.\u201d [Source, p.1 \u2013 Disclaimer]",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "question": "What is the minimum age requirement to invest in this fund?",
+      "answer": "The information was not found in the document.",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.0,
+        "context_recall": 1.0
+      }
+    }
+  ]
+}

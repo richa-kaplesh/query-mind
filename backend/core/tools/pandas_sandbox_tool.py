@@ -17,6 +17,10 @@ def _worker(file_path, executable_code, safe_builtins, queue):
         restricted_globals = {"__builtins__": safe_builtins}
         exec(executable_code, restricted_globals, local_vars)
         print(f"[WORKER] Exec complete, result={local_vars['result']}", file=sys.stderr, flush=True)
+        result_str = str(local_vars["result"])
+        if len(result_str) > 5000:
+            result_str = result_str[:5000] + "... (truncated)"
+        queue.put(("ok", result_str))
         queue.put(("ok", str(local_vars["result"])))
     except Exception as e:
         print(f"[WORKER] Exception: {e}", file=sys.stderr, flush=True)
@@ -94,36 +98,39 @@ class PandasSandboxTool(BaseTool):
                     return False, f"Access to '{node.id}' is not allowed"
 
         return True, "" 
+    
     def execute_query(self, file_path: str, llm_code: str) -> str:
-            executable_code = self.clean_code(llm_code)
-            is_valid , error_message = self._validate_code(executable_code)
-            if not is_valid:
-                return f"Rejected:{error_message}"
-            
+        executable_code = self.clean_code(llm_code)
+        is_valid, error_message = self._validate_code(executable_code)
+        if not is_valid:
+            return f"Rejected:{error_message}"
 
-            
+        queue = multiprocessing.Queue()
+        process = multiprocessing.Process(
+            target=_worker,
+            args=(file_path, executable_code, self.SAFE_BUILTINS, queue)
+        )
+        process.start()
 
-            queue = multiprocessing.Queue()
-            process = multiprocessing.Process(
-                target=_worker,
-                args=(file_path, executable_code, self.SAFE_BUILTINS, queue)
-
-            )
-            process.start()
-            process.join(self.timeout_seconds)
-
+        try:
+            status, payload = queue.get(timeout=self.timeout_seconds)
+        except Exception:
+            # nothing arrived in time — either still running or genuinely stuck
+            process.terminate()
+            process.join(2)
             if process.is_alive():
-                process.terminate()
+                process.kill()  # SIGTERM can be ignored by a C-level pandas loop; force it
                 process.join()
-                return f"Error: Code execution exceeded {self.timeout_seconds} seconds"
+            return f"Error: Code execution exceeded {self.timeout_seconds} seconds"
 
-            if queue.empty():
-                return "Error:Worker process terminated unexpectedly (possibly out of memory) — try simpler queries or check Render resource limits"
+        process.join(2)
+        if process.is_alive():
+            process.terminate()
+            process.join()
 
-            status, payload = queue.get()
-            if status == "error":
-                return f"Error executing Pandas code: {payload}"
-            return payload
+        if status == "error":
+            return f"Error executing Pandas code: {payload}"
+        return payload
 
     def run(self, code: str) -> dict:
         result = self.execute_query(self.file_path, code)

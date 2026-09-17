@@ -1,6 +1,5 @@
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import re
 import pandas as pd
@@ -9,8 +8,8 @@ from core.generator import Generator
 from core.extractors.csv_extractor import CSVExtractor
 from core.models import CSVSchema
 from config import settings
-import time 
 from datetime import datetime 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = r"D:\query-mind\backend\uploads\phpB0xrNj.csv"
 DATASET_PATH = os.path.join(BASE_DIR, "golden_csv_dataset.json")
@@ -349,12 +348,21 @@ def finalize_csv_eval_run():
     print(f"Finalized run with {len(results)} questions saved to {history_path}")
 
 if __name__ == "__main__":
-
-    finalize_csv_eval_run()
-
-            
-    
-
+    run_single_csv_eval("schema_01")
+    run_single_csv_eval("schema_02")
+    run_single_csv_eval("schema_03")
+    run_single_csv_eval("schema_06")
+    run_single_csv_eval("count_05")
+    run_single_csv_eval("count_07")
+    run_single_csv_eval("stat_std_f1")
+    run_single_csv_eval("stat_mean_f10")
+    run_single_csv_eval("stat_range_f100")
+    run_single_csv_eval("stat_range_f10")
+    run_single_csv_eval("stat_range_f617")
+    run_single_csv_eval("filter_01")
+    run_single_csv_eval("corr_01")
+    run_single_csv_eval("groupby_02")
+    run_single_csv_eval("count_03")
     if SAVE_TO_HISTORY:
         from datetime import datetime
         run_record = {

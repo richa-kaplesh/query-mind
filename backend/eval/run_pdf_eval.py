@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
+from datetime import datetime
 from groq import Groq
 from core.extractors.pdf_extractor import PDFExtractor
 from core.chunker import TextChunker
@@ -15,6 +16,8 @@ from config import settings
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_PATH = r"D:\query-mind\backend\eval\Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf"
 DATASET_PATH = os.path.join(BASE_DIR, "golden_dataset.json")
+HISTORY_PATH = os.path.join(BASE_DIR, "eval_history.json")
+NEW_RESULTS_PATH = os.path.join(BASE_DIR, "eval_results.json")
 
 SAVE_TO_HISTORY = True  # flip to False while debugging so runs don't get permanently recorded
 
@@ -142,61 +145,78 @@ def run_all_evals():
     return {"averages": averages, "per_question": results}
 
 
+def build_run_record(output: dict, label: str = "reranker-threshold-fix") -> dict:
+    """Shared record shape used by both save paths."""
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "label": label,
+        "description": (
+            "Investigated Q13 (IFSCA registration number) recall failure. "
+            "Root cause chain: (1) fixed-size char chunker was merging the "
+            "registration number line into an unrelated marketing-bullets chunk, "
+            "diluting its retrievability -- fixed via heading-aware line-based "
+            "chunking in TextChunker/PDFExtractor. (2) Even after chunking fix, "
+            "Reranker.rerank() had a hardcoded absolute min_score=0.3 threshold "
+            "that silently dropped the registration-number chunk at score 0.2991 "
+            "-- just 0.0009 below cutoff, despite ranking #4 of 20 candidates. "
+            "Removed min_score filtering entirely; rely on top_k rank from Jina's "
+            "already-sorted results instead. Also fixed a duplicate httpx.post() "
+            "call in Reranker.rerank() that was double-billing every rerank request. "
+            "Confirmed fix: Q13's chunk now lands in final top-5 (rank 4, score 0.251)."
+        ),
+        "config": {
+            "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection, heading-tagged lines)",
+            "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+            "chunker": {
+                "method": "heading-aware, line-boundary-respecting split (no mid-line cuts)",
+                "chunk_size": settings.chunk_size,
+                "chunk_overlap": settings.chunk_overlap,
+            },
+            "embedding_model": settings.jina_embed_model,
+            "retriever": {
+                "method": "hybrid BM25 + FAISS",
+                "alpha": settings.retriever_alpha,
+                "top_k": settings.retriever_top_k,
+            },
+            "reranker": {
+                "model": settings.jina_rerank_model,
+                "min_score_filter": "removed (was 0.3, caused false negatives)",
+            },
+            "generator_model": settings.model_name,
+        },
+        "averages": output["averages"],
+        "per_question": output["per_question"],
+    }
+
+
+def save_new_results(output: dict):
+    """New behavior: write this run to its own file, overwriting any previous run there."""
+    run_record = build_run_record(output)
+    with open(NEW_RESULTS_PATH, "w") as f:
+        json.dump(run_record, f, indent=2)
+    print(f"Saved run to {NEW_RESULTS_PATH}")
+
+
+def save_to_history(output: dict):
+    """Old behavior: append this run to the running eval_history.json log.
+    Kept for later use — not called from __main__ right now."""
+    run_record = build_run_record(output)
+    history = []
+    if os.path.exists(HISTORY_PATH):
+        with open(HISTORY_PATH, "r") as f:
+            history = json.load(f)
+    history.append(run_record)
+    with open(HISTORY_PATH, "w") as f:
+        json.dump(history, f, indent=2)
+    print(f"Saved run to {HISTORY_PATH}")
+
+
 if __name__ == "__main__":
     setup_pipeline(PDF_PATH)
     output = run_all_evals()
 
-    if SAVE_TO_HISTORY:
-        from datetime import datetime
-        run_record = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "label": "reranker-threshold-fix",
-            "description": (
-                "Investigated Q13 (IFSCA registration number) recall failure. "
-                "Root cause chain: (1) fixed-size char chunker was merging the "
-                "registration number line into an unrelated marketing-bullets chunk, "
-                "diluting its retrievability -- fixed via heading-aware line-based "
-                "chunking in TextChunker/PDFExtractor. (2) Even after chunking fix, "
-                "Reranker.rerank() had a hardcoded absolute min_score=0.3 threshold "
-                "that silently dropped the registration-number chunk at score 0.2991 "
-                "-- just 0.0009 below cutoff, despite ranking #4 of 20 candidates. "
-                "Removed min_score filtering entirely; rely on top_k rank from Jina's "
-                "already-sorted results instead. Also fixed a duplicate httpx.post() "
-                "call in Reranker.rerank() that was double-billing every rerank request. "
-                "Confirmed fix: Q13's chunk now lands in final top-5 (rank 4, score 0.251)."
-            ),
-            "config": {
-                "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection, heading-tagged lines)",
-                "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
-                "chunker": {
-                    "method": "heading-aware, line-boundary-respecting split (no mid-line cuts)",
-                    "chunk_size": settings.chunk_size,
-                    "chunk_overlap": settings.chunk_overlap,
-                },
-                "embedding_model": settings.jina_embed_model,
-                "retriever": {
-                    "method": "hybrid BM25 + FAISS",
-                    "alpha": settings.retriever_alpha,
-                    "top_k": settings.retriever_top_k,
-                },
-                "reranker": {
-                    "model": settings.jina_rerank_model,
-                    "min_score_filter": "removed (was 0.3, caused false negatives)",
-                },
-                "generator_model": settings.model_name,
-            },
-            "averages": output["averages"],
-            "per_question": output["per_question"],
-        }
-        history_path = os.path.join(BASE_DIR, "eval_history.json")
-        history = []
-        if os.path.exists(history_path):
-            with open(history_path, "r") as f:
-                history = json.load(f)
-        history.append(run_record)
-        with open(history_path, "w") as f:
-            json.dump(history, f, indent=2)
+    save_new_results(output)
 
-        print(f"Saved run to {history_path}")
-    else:
-        print("SAVE_TO_HISTORY is False — run not saved.")
+    # eval_history logging kept available for later — intentionally not invoked yet
+    # if SAVE_TO_HISTORY:
+    #     save_to_history(output)
