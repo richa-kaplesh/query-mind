@@ -11,6 +11,10 @@ class Indexer:
         self.chunks = []                   # all chunks stored for lookup
         self.bm25 = None                   # keyword search index
         self.faiss_index = None
+    def reset(self) -> None:
+        self.chunks = []
+        self.bm25 = None
+        self.faiss_index = None
     
 
     def index(self, chunks: List[dict]) -> None:
@@ -26,5 +30,6 @@ class Indexer:
         faiss.normalize_L2(embeddings)
         self.faiss_index.add(embeddings)
 
+  
 # No scoring happening yet. No query exists yet. we are just organizing data so searching becomes fast later.
 
