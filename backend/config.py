@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     web_search_max_results: int = 5
 
     tesseract_path: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-
+    gateway_url: str = "https://llm-gateway-qewa.onrender.com"
     class Config:
         env_file = ".env"
         extra = "ignore"

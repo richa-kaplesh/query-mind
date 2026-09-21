@@ -1,7 +1,7 @@
 from groq import Groq
 from typing import List
 from core.tools.base_tool import BaseTool
-
+from core import gateway_client
 from core.token_utils import estimate_tokens
 from core.models import CSVSchema
 from config import settings
@@ -12,7 +12,6 @@ import time
 
 log = logging.getLogger("generator")
 
-# ── RAG system prompt (PDF context-stuffing path) ─────────────────────────────
 RAG_SYSTEM_PROMPT = """You are a precise document assistant. You are given extracted passages \
 from a PDF document, each preceded by its citation (source file, page number, and section \
 heading when available).
@@ -133,20 +132,18 @@ class Generator:
         ]
 
     def _execute_tool_call(self, tool_call) -> tuple[str, str, str]:
-        tool_name = tool_call.function.name
-        tool_args = json.loads(tool_call.function.arguments)
+        if isinstance(tool_call, dict):
+            tool_name = tool_call["function"]["name"]
+            tool_args = json.loads(tool_call["function"]["arguments"])
+        else:
+            tool_name = tool_call.function.name
+            tool_args = json.loads(tool_call.function.arguments)
 
         tool = self._get_tool_by_name(tool_name)
         if tool is None:
-            raise ValueError(
-                f"LLM requested unknown tool '{tool_name}' — not registered"
-            )
+            raise ValueError(f"LLM requested unknown tool '{tool_name}' — not registered")
 
-        tool_input = (
-            tool_args.get("code")
-            or tool_args.get("query")
-            or tool_args.get("input", "")
-        )
+        tool_input = tool_args.get("code") or tool_args.get("query") or tool_args.get("input", "")
 
         log.info(f"[TOOL] Executing '{tool_name}'…")
         tool_result = tool.run(tool_input)
@@ -279,9 +276,10 @@ class Generator:
 
     # ── Streaming ─────────────────────────────────────────────────────────────
 
-    def generate_stream(self, query: str, schema: str | CSVSchema = None, tracer=None, token_tracker=None):
+    async def generate_stream(self, query: str, schema: str | CSVSchema = None, conversation_id: str = None,
+                           user_id: str = "query_mind_user", tracer=None, token_tracker=None):
         tool_schema = self._build_tool_schema(self.tools)
-        messages    = self._build_messages(query, schema)
+        messages = self._build_messages(query, schema)
 
         def record(step_type, data):
             if tracer:
@@ -292,38 +290,39 @@ class Generator:
 
         schema_str = schema.to_prompt_string() if isinstance(schema, CSVSchema) else schema
         record("schema_context", {"schema": schema_str or "(none)"})
-        record("llm_call_1", {"model": self.model_name, "messages": messages, "tools": tool_schema})
+        record("llm_call_1", {"messages": messages, "tools": tool_schema})
+        log.info("[STREAM] → Gateway Call 1 (routing decision)")
 
-        log.info("[STREAM] → Call 1 (routing decision)")
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            tools=tool_schema   if tool_schema else None,
-            tool_choice="auto"  if tool_schema else None,
+        result = await gateway_client.complete(
+            conversation_id=conversation_id, user_id=user_id, messages=messages,
+            tools=tool_schema if tool_schema else None,
+            tool_choice="auto" if tool_schema else None,
         )
-        message = response.choices[0].message
-        if token_tracker and response.usage:
-            token_tracker.log_call(
-                model=self.model_name,
-                prompt_tokens=response.usage.prompt_tokens,
-                completion_tokens=response.usage.completion_tokens,
-                purpose="csv_call1",
-            )
 
         record("llm_response_1", {
-            "content":       message.content,
-            "tool_calls":    [{"name": tc.function.name, "arguments": tc.function.arguments}
-                              for tc in (message.tool_calls or [])],
-            "finish_reason": response.choices[0].finish_reason,
+            "content": result.get("content"),
+            "tool_calls": result.get("tool_calls"),
+            "finish_reason": result.get("finish_reason"),
         })
+        if token_tracker:
+            token_tracker.log_call(
+                model=result.get("model_used", "gateway"),
+                prompt_tokens=estimate_tokens(str(messages)),
+                completion_tokens=estimate_tokens(result.get("content") or ""),
+                purpose="csv_call1", estimated=True,
+            )
 
-        if not message.tool_calls:
-            log.info("[STREAM] Direct answer — yielding Call 1 content")
-            record("final_answer", {"answer": message.content, "tool_used": None})
-            yield message.content or ""
+        tool_calls = result.get("tool_calls")
+        if not tool_calls:
+            answer = result.get("content") or ""
+            log.info("[STREAM] Direct answer — faking stream from gateway content")
+            record("final_answer", {"answer": answer, "tool_used": None})
+            for word in answer.split(" "):
+                yield word + " "
+                await asyncio.sleep(0.02)
             return
 
-        tool_call = message.tool_calls[0]
+        tool_call = tool_calls[0]
         try:
             tool_name, tool_input, tool_result = self._execute_tool_call(tool_call)
         except ValueError as e:
@@ -331,45 +330,40 @@ class Generator:
             yield str(e)
             return
 
-        record("tool_input",  {"tool_name": tool_name, "input":  tool_input})
+        record("tool_input", {"tool_name": tool_name, "input": tool_input})
         record("tool_output", {"tool_name": tool_name, "result": tool_result})
-
-        messages.append({"role": "assistant", "content": None, "tool_calls": [tool_call]})
-        messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": tool_result})
-
         yield f"__tool__:{tool_name}"
 
-        log.info("[STREAM] → Call 2 (stream tool-result synthesis)")
-        record("llm_call_2_stream", {"model": self.model_name, "messages": messages})
-        stream = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            stream=True,
-            tools=tool_schema,
-            tool_choice="none",
-        )
+        # Fresh, tool-free synthesis messages — same fix generate_with_tools already
+        # applies, backported here since the streaming path had the same latent bug.
+        original_user_content = messages[1]["content"]
+        synthesis_messages = [
+            {"role": "system", "content": messages[0]["content"]},
+            {"role": "user", "content": (
+                f"{original_user_content}\n\nTool used: {tool_name}\nTool result: {tool_result}\n\n"
+                "The computation has already been done — the result above is final and correct. "
+                "Do not call any tool or function, do not write or execute any code, and do not "
+                "attempt further computation of any kind. Simply state the answer to the original "
+                "question in plain language, using only the tool result provided above."
+            )},
+        ]
 
-        full_answer: list[str] = []
-        for chunk in stream:
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta
-            if delta and delta.content:
-                full_answer.append(delta.content)
-                yield delta.content
+        log.info("[STREAM] → Gateway Call 2 (tool-result synthesis)")
+        record("llm_call_2_stream", {"messages": synthesis_messages})
+        result2 = await gateway_client.complete(conversation_id=conversation_id, user_id=user_id, messages=synthesis_messages)
+        answer = result2.get("content") or ""
 
-        # Groq doesn't return usage on streamed chunks — estimate locally
+        for word in answer.split(" "):
+            yield word + " "
+            await asyncio.sleep(0.02)
+
         if token_tracker:
-            prompt_text = "\n".join(m["content"] for m in messages if m.get("content"))
-            completion_text = "".join(full_answer)
             token_tracker.log_call(
-                model=self.model_name,
-                prompt_tokens=estimate_tokens(prompt_text),
-                completion_tokens=estimate_tokens(completion_text),
-                purpose="csv_call2",
-                estimated=True,
+                model=result2.get("model_used", "gateway"),
+                prompt_tokens=estimate_tokens(str(synthesis_messages)),
+                completion_tokens=estimate_tokens(answer),
+                purpose="csv_call2", estimated=True,
             )
-
     # ── RAG streaming (PDF context-stuffing path) ─────────────────────────────
 
     def _build_rag_context(self, chunks: list[dict]) -> str:
@@ -391,7 +385,8 @@ class Generator:
 
         return "\n\n---\n\n".join(parts)
 
-    def generate_rag_stream(self, query: str, chunks: list[dict], tracer=None, token_tracker=None):
+    async def generate_rag_stream(self, query: str, chunks: list[dict], conversation_id: str,
+                                user_id: str = "query_mind_user", tracer=None, token_tracker=None):
         def record(step_type, data):
             if tracer:
                 try:
@@ -400,49 +395,34 @@ class Generator:
                     pass
 
         context = self._build_rag_context(chunks)
-        user_content = (
-            f"Context passages:\n\n{context}\n\n"
-            f"Question: {query}"
-        )
+        user_content = f"Context passages:\n\n{context}\n\nQuestion: {query}"
         messages = [
             {"role": "system", "content": RAG_SYSTEM_PROMPT},
-            {"role": "user",   "content": user_content},
+            {"role": "user", "content": user_content},
         ]
 
         record("rag_context", {"chunk_count": len(chunks), "context_preview": context[:500]})
-        record("rag_llm_call", {"model": self.model_name, "query": query})
+        record("rag_llm_call", {"query": query})
+        log.info(f"[RAG] → Gateway call | {len(chunks)} chunks | query: '{query[:80]}'")
 
-        log.info(f"[RAG] → Streaming call | {len(chunks)} chunks | query: '{query[:80]}'")
+        result = await gateway_client.complete(conversation_id=conversation_id, user_id=user_id, messages=messages)
+        answer = result.get("content") or ""
 
-        stream = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            stream=True,
-        )
+        for i, word in enumerate(answer.split(" ")):
+            yield word if i == 0 else " " + word
+            await asyncio.sleep(0.02)
 
-        full_answer: list[str] = []
-        for chunk in stream:
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta
-            if delta and delta.content:
-                full_answer.append(delta.content)
-                yield delta.content
-
-        # Groq doesn't return usage on streamed chunks — estimate locally
         if token_tracker:
-            prompt_text = "\n".join(m["content"] for m in messages if m.get("content"))
-            completion_text = "".join(full_answer)
             token_tracker.log_call(
-            model=self.model_name,
-            prompt_tokens=estimate_tokens(prompt_text),
-            completion_tokens=estimate_tokens(completion_text),
-            purpose="rag",
-            estimated=True,
-        )
+                model=result.get("model_used", "gateway"),
+                prompt_tokens=estimate_tokens(user_content),
+                completion_tokens=estimate_tokens(answer),
+                purpose="rag",
+                estimated=True,
+            )
 
-        record("rag_final_answer", {"answer": "".join(full_answer)})
-        log.info("[RAG] ✓ Stream complete")
+        record("rag_final_answer", {"answer": answer})
+        log.info("[RAG] ✓ Gateway call complete")
 
     # ── Legacy RAG utility (non-streaming, kept for scripts/tests) ────────────
 

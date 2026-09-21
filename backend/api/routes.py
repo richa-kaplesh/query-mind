@@ -10,7 +10,7 @@ import json
 from typing import List, Optional
 from pathlib import Path
 from core.models import QueryRequest, CSVSchema, ColumnSchema, ExtractedPage, PageMetadata
-
+import uuid
 from core.extractors.csv_extractor import CSVExtractor
 from core.extractors.pdf_extractor import PDFExtractor
 from core.ingestion import IngestionPipeline
@@ -29,15 +29,16 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # In-memory document store: { filename → {status, file_path, schema, ...} }
 documents: dict = {}
-
-
+conversation_id: str | None = None
 
 @router.post("/upload")
 async def upload_document(
     request: Request,
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
-):
+): 
+    global conversation_id
+    conversation_id = str(uuid.uuid4())
     documents.clear()
     request.app.state.indexer.reset()
     uploaded=[]
@@ -116,10 +117,10 @@ async def query_document_stream(body: QueryRequest, request: Request):
         raw_chunks      = await asyncio.to_thread(retriever.retrieve, body.question, query_embedding)
         chunks          = await asyncio.to_thread(reranker.rerank, body.question, raw_chunks)
 
-        def event_stream_pdf():
+        async def event_stream_pdf():
             final_answer_parts = []
             try:
-                for token in generator.generate_rag_stream(
+                async for token in generator.generate_rag_stream(
                     query=body.question,
                     chunks=chunks,
                     tracer=tracer,
@@ -141,11 +142,12 @@ async def query_document_stream(body: QueryRequest, request: Request):
     schema = current_file.get("schema", "")
     generator.tools = [PandasSandboxTool(file_path=file_path)]
 
-    def event_stream():
+    async def event_stream():
         final_answer_parts = []
         tool_used = None
         try:
-            for token in generator.generate_stream(
+            async for token in generator.generate_stream(
+                conversation_id=conversation_id,
                 query=body.question,
                 schema=schema,
                 tracer=tracer,
@@ -186,6 +188,8 @@ def delete(filename: str):
 
 @router.post("/reset")
 async def reset_session():
+    global conversation_id
+    conversation_id = None
     count = len(documents)
     documents.clear()
     log.info(f"[RESET] Session cleared — removed {count} document(s)")
