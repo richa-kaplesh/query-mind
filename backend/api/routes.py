@@ -123,6 +123,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
                 async for token in generator.generate_rag_stream(
                     query=body.question,
                     chunks=chunks,
+                    conversation_id=conversation_id,
                     tracer=tracer,
                     token_tracker=request.app.state.token_tracker,
                 ):
