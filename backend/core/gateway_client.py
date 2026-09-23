@@ -14,6 +14,6 @@ async def complete(conversation_id: str, user_id: str, messages: list[dict],
             "is_tool_related": is_tool_related,
             })
             if response.status_code >= 400:
-                print(f"[GATEWAY ERROR] status={response.status_code} body={response.text}")
+              print(f"[GATEWAY ERROR] status={response.status_code} body={response.text}", flush=True)
             response.raise_for_status()
             return response.json()
