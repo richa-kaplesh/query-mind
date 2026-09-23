@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
@@ -11,6 +12,7 @@ from core.reranker import Reranker
 from api.routes import router
 from api.dashboard_routes import router as dashboard_router
 from core.token_tracker import TokenTracker
+from core.tools.pandas_worker_manager import worker_manager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,7 +21,21 @@ logging.basicConfig(
 )
 log = logging.getLogger("main")
 
-app = FastAPI(title="QueryMind - CSV Engine")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── Startup ──
+    log.info("Booting persistent pandas worker...")
+    worker_manager.boot()
+    yield
+    # ── Shutdown ──
+    log.info("Shutting down persistent pandas worker...")
+    if worker_manager.is_alive():
+        worker_manager.task_queue.put(("shutdown", None))
+        worker_manager.process.join(timeout=5)
+
+
+app = FastAPI(title="QueryMind - CSV Engine", lifespan=lifespan)
 
 # CORS setup for frontend connectivity
 app.add_middleware(

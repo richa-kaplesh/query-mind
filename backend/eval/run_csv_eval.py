@@ -9,6 +9,10 @@ from core.extractors.csv_extractor import CSVExtractor
 from core.models import CSVSchema
 from config import settings
 from datetime import datetime 
+import re as re_module  # already imported as `re` at top of file — reuse that import
+import asyncio
+import uuid
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = r"D:\query-mind\backend\uploads\phpB0xrNj.csv"
@@ -129,7 +133,9 @@ def score_correctness(golden_value, actual_answer: str, tolerance) -> float:
             return 1.0 if abs(actual_number - float(golden_value)) <= tolerance else 0.0
     else:
         golden_str = str(golden_value).strip().lower()
-        if golden_str in actual_answer.strip().lower():
+        # \b = word boundary — matches "6" as a standalone token, not the "6" inside "268" or "f617"
+        pattern = r'\b' + re.escape(golden_str) + r'\b'
+        if re.search(pattern, actual_answer.strip().lower()):
             return 1.0
         return score_with_llm_judge(golden_value, actual_answer)
 
@@ -348,20 +354,11 @@ def finalize_csv_eval_run():
     print(f"Finalized run with {len(results)} questions saved to {history_path}")
 
 if __name__ == "__main__":
-    run_single_csv_eval("schema_01")
-    run_single_csv_eval("schema_02")
-    run_single_csv_eval("schema_03")
-    run_single_csv_eval("schema_06")
+    
     run_single_csv_eval("count_05")
     run_single_csv_eval("count_07")
-    run_single_csv_eval("stat_std_f1")
-    run_single_csv_eval("stat_mean_f10")
-    run_single_csv_eval("stat_range_f100")
-    run_single_csv_eval("stat_range_f10")
-    run_single_csv_eval("stat_range_f617")
-    run_single_csv_eval("filter_01")
-    run_single_csv_eval("corr_01")
-    run_single_csv_eval("groupby_02")
+   
+    
     run_single_csv_eval("count_03")
     if SAVE_TO_HISTORY:
         from datetime import datetime

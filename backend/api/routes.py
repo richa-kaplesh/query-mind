@@ -16,6 +16,7 @@ from core.extractors.pdf_extractor import PDFExtractor
 from core.ingestion import IngestionPipeline
 from core.tools.pandas_sandbox_tool import PandasSandboxTool
 from core.tracer import TraceStore
+from core.tools.pandas_worker_manager import worker_manager
 
 
 
@@ -68,6 +69,7 @@ async def upload_document(
     }
 
 
+
 async def ingest_document(file_path: str, filename: str, app_state) -> None:
     try:
         pipeline = IngestionPipeline(
@@ -76,12 +78,17 @@ async def ingest_document(file_path: str, filename: str, app_state) -> None:
         )
         result = await asyncio.to_thread(pipeline.ingest, file_path)
         documents[filename]["status"] = "ready"
+
         if result.get("type") == "csv":
             documents[filename]["schema"] = result["schema"]
+            status, err = worker_manager.load_file(file_path)
+            if status == "error":
+                documents[filename]["status"] = "failed"
+                log.error(f"[INGEST] Worker failed to load {filename}: {err}")
+
     except Exception as e:
         documents[filename]["status"] = "failed"
         log.error(f"[INGEST] Failed for {filename}:{e}", exc_info=True)
-
 def _get_active_file() -> dict | None:
     return next((v for v in documents.values() if v.get("status") == "ready"), None)
 
@@ -189,10 +196,9 @@ def delete(filename: str):
 
 @router.post("/reset")
 async def reset_session():
-    global conversation_id
-    conversation_id = None
     count = len(documents)
     documents.clear()
+    worker_manager.unload()
     log.info(f"[RESET] Session cleared — removed {count} document(s)")
     return {"message": "Session reset", "cleared": count}
 
