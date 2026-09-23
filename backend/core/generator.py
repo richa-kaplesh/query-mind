@@ -297,6 +297,7 @@ class Generator:
             conversation_id=conversation_id, user_id=user_id, messages=messages,
             tools=tool_schema if tool_schema else None,
             tool_choice="auto" if tool_schema else None,
+            is_tool_related=bool(tool_schema),
         )
 
         record("llm_response_1", {
@@ -350,7 +351,12 @@ class Generator:
 
         log.info("[STREAM] → Gateway Call 2 (tool-result synthesis)")
         record("llm_call_2_stream", {"messages": synthesis_messages})
-        result2 = await gateway_client.complete(conversation_id=conversation_id, user_id=user_id, messages=synthesis_messages)
+        result2 = await gateway_client.complete(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            messages=synthesis_messages,
+            is_tool_related=bool(tool_schema),
+            )
         answer = result2.get("content") or ""
 
         for word in answer.split(" "):
