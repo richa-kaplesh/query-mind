@@ -37,7 +37,7 @@ class CSVSchema(BaseModel):
 
     def to_prompt_string(self) -> str:
         THRESHOLD = 20
-        print(f"[DEBUG] to_prompt_string called, {len(self.columns)} columns, THRESHOLD={THRESHOLD}")
+       
         """
         Serialise the schema into a compact, human-readable string suitable
         for injection into the LLM system prompt.  Mirrors the format that
