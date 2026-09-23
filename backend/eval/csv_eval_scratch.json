@@ -1,1 +1,54 @@
-[]
+[
+  {
+    "id": "schema_01",
+    "question": "How many columns does this dataset have in total (including the label column)?",
+    "answer": "The dataset contains **618 columns** in total, including the label column. ",
+    "pandas_code": null,
+    "raw_tool_result": null,
+    "golden_value": "618",
+    "tool_used": null,
+    "scores": {
+      "tool_appropriateness": 1.0,
+      "answer_correctness": 1.0
+    }
+  },
+  {
+    "id": "schema_02",
+    "question": "How many feature columns are there, excluding the class/label column?",
+    "answer": "There are 617 feature columns in the dataset (excluding the class/label column). ",
+    "pandas_code": "# compute number of feature columns\nnum_cols = df.shape[1]\nresult = num_cols - 1\n",
+    "raw_tool_result": "{'result': '617'}",
+    "golden_value": "617",
+    "tool_used": "pandas_sandbox",
+    "scores": {
+      "tool_appropriateness": 0.0,
+      "answer_correctness": 1.0
+    }
+  },
+  {
+    "id": "schema_03",
+    "question": "What is the name of the label/target column?",
+    "answer": "The label/target column is named **`class`**. ",
+    "pandas_code": null,
+    "raw_tool_result": null,
+    "golden_value": "class",
+    "tool_used": null,
+    "scores": {
+      "tool_appropriateness": 1.0,
+      "answer_correctness": 1.0
+    }
+  },
+  {
+    "id": "schema_06",
+    "question": "Are the feature columns (f1...f617) numeric or categorical?",
+    "answer": "All of the feature columns (f1 through f617) are numeric. They are stored as floating\u2011point (float64) or integer (int64) values, so they are numeric, not categorical. ",
+    "pandas_code": null,
+    "raw_tool_result": null,
+    "golden_value": "f1      float64\nf2      float64\nf3      float64\nf4      float64\nf5      float64\n         ...   \nf613    float64\nf614    float64\nf615    float64\nf616    float64\nf617    float64\nLength: 617, dtype: object",
+    "tool_used": null,
+    "scores": {
+      "tool_appropriateness": 1.0,
+      "answer_correctness": 0.4
+    }
+  }
+]
