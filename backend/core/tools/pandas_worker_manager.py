@@ -110,7 +110,7 @@ class PandasWorkerManager:
         log.warning("Worker found dead — respawning")
         self.boot()
         if self.current_file_path:
-            self._send("load", self.current_file_path, timeout=30)
+            self._send("load", self.current_file_path, timeout=60)
 
     def _send(self, msg_type: str, payload, timeout: int):
         self.task_queue.put((msg_type, payload))
@@ -123,7 +123,7 @@ class PandasWorkerManager:
         self._ensure_alive()
         if self.current_file_path == file_path:
             return "ok", None  # already loaded — no-op, preserves the whole point of the persistent worker
-        status, err = self._send("load", file_path, timeout=30)
+        status, err = self._send("load", file_path, timeout=60)
         if status == "ok":
             self.current_file_path = file_path
         return status, err
