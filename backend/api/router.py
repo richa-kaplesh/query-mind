@@ -21,7 +21,7 @@ from core.tools.pandas_worker_manager import worker_manager
 
 
 
-log = logging.getLogger("routes")
+log = logging.getLogger("router")
 
 router = APIRouter()
 

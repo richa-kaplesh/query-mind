@@ -10,7 +10,7 @@ class Reranker:
     """
     Calls the Jina AI Rerank API (jina-reranker-v2-base-multilingual).
 
-    Keeps the same rerank(query, chunks, top_k) signature so routes.py
+    Keeps the same rerank(query, chunks, top_k) signature so router.py
     and any other call sites need zero changes.
     """
 

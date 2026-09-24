@@ -33,7 +33,9 @@ class HybridRetriever:
            return (scores-min_s)/(max_s-min_s)
     
         dense_all = np.zeros(len(self.indexer.chunks))
-        dense_all[dense_indices]=dense_scores
+        
+        valid_mask = dense_indices != -1
+        dense_all[dense_indices[valid_mask]] = dense_scores[valid_mask]
 
         dense_all = normalize(dense_all)
         sparse_all = normalize(sparse_scores)

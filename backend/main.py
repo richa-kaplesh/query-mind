@@ -9,7 +9,7 @@ from core.embedder import Embedder
 from core.indexer import Indexer
 from core.retriever import HybridRetriever
 from core.reranker import Reranker
-from api.routes import router
+from backend.api.router import router
 from api.dashboard_routes import router as dashboard_router
 from core.token_tracker import TokenTracker
 from core.tools.pandas_worker_manager import worker_manager
