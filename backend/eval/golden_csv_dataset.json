@@ -186,7 +186,7 @@
     "id": "stat_mean_f10",
     "question": "What is the mean value of column f10?",
     "category": "statistics",
-    "needs_computation": true,
+    "needs_computation": false,
     "golden_pandas_code": "df['f10'].mean()",
     "golden_answer": -0.191763,
     "tolerance": 0.001,
@@ -206,7 +206,7 @@
     "id": "stat_range_f10",
     "question": "What are the min and max values of column f10?",
     "category": "statistics",
-    "needs_computation": true,
+    "needs_computation": false,
     "golden_pandas_code": "df['f10'].min(), df['f10'].max()",
     "golden_answer": [
       -1.0,
