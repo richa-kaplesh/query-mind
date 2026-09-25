@@ -81,7 +81,7 @@ class CSVExtractor(BaseExtractor):
                     file_path,
                     sep=sep,
                     encoding=enc,
-                    low_memory=False,
+                    low_memory=True,
                     on_bad_lines="warn",   # skip malformed rows, don't crash
                 )
                 return strip_stray_quotes(df)
