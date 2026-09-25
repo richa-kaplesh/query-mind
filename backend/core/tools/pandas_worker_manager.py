@@ -94,11 +94,12 @@ class PandasWorkerManager:
         self.current_file_path: str | None = None
 
     def boot(self):
-        self.task_queue = multiprocessing.Queue()
-        self.result_queue = multiprocessing.Queue()
-        self.process = multiprocessing.Process(target=_persistent_worker, args=(self.task_queue, self.result_queue))
-        self.process.daemon = True  # ensures the process dies with its parent, even if nothing
-                                     # explicitly sends a shutdown message (e.g. standalone scripts)
+        ctx = multiprocessing.get_context("spawn")   # avoid fork-after-threads deadlock (faiss/OpenMP
+                                                        # threads are already alive by the time this runs)
+        self.task_queue = ctx.Queue()
+        self.result_queue = ctx.Queue()
+        self.process = ctx.Process(target=_persistent_worker, args=(self.task_queue, self.result_queue))
+        self.process.daemon = True
         self.process.start()
         log.info("Worker manager: process started")
     def is_alive(self) -> bool:
