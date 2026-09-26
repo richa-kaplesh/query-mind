@@ -31,6 +31,11 @@ class IngestionPipeline:
 
         if isinstance(result, PDFExtractionResult):
             self.log.info(f"Extracted {len(result.pages)} pages")
+            
+            self.log.info(f"Extracted {len(result.pages)} pages")
+            for p in result.pages:
+                if p.metadata.warnings:
+                    self.log.warning(f"Page {p.metadata.page}: {p.metadata.warnings}")
 
             self.log.info("Chunking...")
             chunks = self.chunker.chunk_pages(result.pages)
@@ -58,4 +63,4 @@ class IngestionPipeline:
                 "schema": result.schema
             }
         else:
-            raise TypeError(f"Unexpected extraction result type: {type(result)}")
+            raise TypeError(f"Unexpected extraction result type: {type(result)}")

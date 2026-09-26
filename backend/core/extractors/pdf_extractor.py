@@ -138,7 +138,7 @@ class PDFExtractor(BaseExtractor):
         Never raises — a failure here becomes a warning, not a crash,
         so one bad page can't take down the whole document."""
         try:
-            pix = page.get_pixmap(dpi=settings.ocr_dpi)
+            pix = page.get_pixmap(dpi=settings.ocr_dpi, colorspace=fitz.csRGB, alpha=False)
             image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         except Exception as exc:
             return "", f"Page {page_index}: could not rasterize for OCR ({exc})"
