@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # Web search
     web_search_max_results: int = 5
 
+    ocr_provider: str = "tesseract"       # swap point for a future hosted provider
+    ocr_timeout_seconds: int = 20
+    ocr_dpi: int = 200                    # page rasterization resolution for OCR
+    
     tesseract_path: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     gateway_url: str = "https://llm-gateway-qewa.onrender.com"
     class Config:

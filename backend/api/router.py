@@ -2,6 +2,8 @@ from fastapi import APIRouter, UploadFile, File, Form, BackgroundTasks, Request,
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import os
+from core.exceptions import PDFPasswordProtectedError, PDFCorruptError, DocumentExtractionError
+
 import shutil
 import asyncio
 import logging
@@ -72,10 +74,7 @@ async def upload_document(
 
 async def ingest_document(file_path: str, filename: str, app_state) -> None:
     try:
-        pipeline = IngestionPipeline(
-            embedder = app_state.embedder,
-            indexer = app_state.indexer,
-        )
+        pipeline = IngestionPipeline(embedder=app_state.embedder, indexer=app_state.indexer)
         result = await asyncio.to_thread(pipeline.ingest, file_path)
         documents[filename]["status"] = "ready"
 
@@ -84,11 +83,21 @@ async def ingest_document(file_path: str, filename: str, app_state) -> None:
             status, err = worker_manager.load_file(file_path)
             if status == "error":
                 documents[filename]["status"] = "failed"
+                documents[filename]["error"] = err
                 log.error(f"[INGEST] Worker failed to load {filename}: {err}")
 
+    except PDFPasswordProtectedError as e:
+        documents[filename]["status"] = "failed"
+        documents[filename]["error"] = "password_protected"
+        log.warning(f"[INGEST] {filename}: {e}")
+    except PDFCorruptError as e:
+        documents[filename]["status"] = "failed"
+        documents[filename]["error"] = "corrupt_file"
+        log.warning(f"[INGEST] {filename}: {e}")
     except Exception as e:
         documents[filename]["status"] = "failed"
-        log.error(f"[INGEST] Failed for {filename}:{e}", exc_info=True)
+        documents[filename]["error"] = "unknown"
+        log.error(f"[INGEST] Failed for {filename}: {e}", exc_info=True)
 def _get_active_file() -> dict | None:
     return next((v for v in documents.values() if v.get("status") == "ready"), None)
 

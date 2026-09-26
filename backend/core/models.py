@@ -12,6 +12,7 @@ class PageMetadata(BaseModel):
     total_pages: Optional[int] = None
     heading: Optional[str] = None
     warnings: List[str] = []
+    ocr_used: bool = False   # ← new
 
 class ExtractedPage(BaseModel):
     text: str
