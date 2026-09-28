@@ -94,6 +94,10 @@ async def ingest_document(file_path: str, filename: str, app_state) -> None:
         documents[filename]["status"] = "failed"
         documents[filename]["error"] = "corrupt_file"
         log.warning(f"[INGEST] {filename}: {e}")
+    except DocumentExtractionError as e:
+        documents[filename]["status"] = "failed"
+        documents[filename]["error"] = "no_extractable_text"
+        log.warning(f"[INGEST] {filename}: {e}")
     except Exception as e:
         documents[filename]["status"] = "failed"
         documents[filename]["error"] = "unknown"

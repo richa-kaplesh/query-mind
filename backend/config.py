@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     web_search_max_results: int = 5
 
     ocr_provider: str = "tesseract"       # swap point for a future hosted provider
-    ocr_timeout_seconds: int = 20
+    ocr_timeout_seconds: int = 90
     ocr_dpi: int = 200                    # page rasterization resolution for OCR
     
     tesseract_path: str = ""    

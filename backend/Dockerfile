@@ -67,6 +67,7 @@ ENV PORT=8000
 #   JINA_API_KEY   — Jina embeddings + reranking
 ENV GROQ_API_KEY=""
 ENV JINA_API_KEY=""
+ENV OMP_THREAD_LIMIT=1
 
 EXPOSE ${PORT}
 

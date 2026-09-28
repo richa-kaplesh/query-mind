@@ -16,10 +16,8 @@ class TesseractOCREngine(BaseOCREngine):
 
     def _preprocess(self, image: Image.Image) -> Image.Image:
         gray = ImageOps.grayscale(image)
-        contrasted = ImageOps.autocontrast(gray)
-        # simple binarization: anything darker than threshold -> black, else white
-        return contrasted.point(lambda p: 0 if p < self.binarize_threshold else 255)
-
+        return ImageOps.autocontrast(gray)
+    
     def extract_text(self, image: Image.Image) -> OCRResult:
         processed = self._preprocess(image)
         try:
