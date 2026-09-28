@@ -18,6 +18,8 @@ class Indexer:
     
 
     def index(self, chunks: List[dict]) -> None:
+        if not chunks:
+            return
         self.chunks.extend(chunks)             
 
         # rebuild BM25 over ALL chunks

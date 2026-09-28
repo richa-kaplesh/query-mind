@@ -6,7 +6,7 @@ from core.chunker import TextChunker
 from core.embedder import Embedder
 from core.indexer import Indexer
 from pathlib import Path
-
+from core.exceptions import DocumentExtractionError
 
 class IngestionPipeline:
 
@@ -32,7 +32,6 @@ class IngestionPipeline:
         if isinstance(result, PDFExtractionResult):
             self.log.info(f"Extracted {len(result.pages)} pages")
             
-            self.log.info(f"Extracted {len(result.pages)} pages")
             for p in result.pages:
                 if p.metadata.warnings:
                     self.log.warning(f"Page {p.metadata.page}: {p.metadata.warnings}")
@@ -40,7 +39,10 @@ class IngestionPipeline:
             self.log.info("Chunking...")
             chunks = self.chunker.chunk_pages(result.pages)
             self.log.info(f"Created {len(chunks)} chunks")
-
+            if not chunks:
+                raise DocumentExtractionError(
+                    "No text could be extracted from this document. It may be a low-quality scan."
+                )
             self.log.info("Embedding...")
             chunks = self.embedder.embed_chunks(chunks)
             self.log.info("Embedding done")

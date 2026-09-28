@@ -11,10 +11,9 @@ from core.ocr.base_ocr import BaseOCREngine
 from core.ocr.factory import get_ocr_engine
 from config import settings
 
-if settings.tesseract_path:
+if settings.tesseract_path and os.path.exists(settings.tesseract_path):
     pytesseract.pytesseract.tesseract_cmd = settings.tesseract_path
-
-
+    
 class PDFExtractor(BaseExtractor):
     """
     Extracts structured text + tables from a PDF using PyMuPDF (fitz), with an

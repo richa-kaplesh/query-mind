@@ -32,8 +32,10 @@ class Settings(BaseSettings):
     ocr_timeout_seconds: int = 20
     ocr_dpi: int = 200                    # page rasterization resolution for OCR
     
-    tesseract_path: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    tesseract_path: str = ""    
+    
     gateway_url: str = "https://llm-gateway-qewa.onrender.com"
+    
     class Config:
         env_file = ".env"
         extra = "ignore"
