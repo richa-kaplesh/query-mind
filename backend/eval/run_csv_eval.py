@@ -220,8 +220,11 @@ def run_single_csv_eval(question_id: str):
     def tracer(step_type, data):
         if step_type == "tool_input":
             trace_data["pandas_code"] = data.get("input")
+            trace_data.setdefault("all_code", []).append(data.get("input"))
         elif step_type == "tool_output":
             trace_data["raw_tool_result"] = data.get("result")
+        elif step_type == "agent_stop":
+            trace_data["agent"] = data
 
     result = run_csv_query(question, schema, tracer=tracer)
     actual_answer = result["answer"]
@@ -248,6 +251,10 @@ def run_single_csv_eval(question_id: str):
         "answer": actual_answer,
         "pandas_code": trace_data.get("pandas_code"),
         "raw_tool_result": trace_data.get("raw_tool_result"),
+        "pandas_code": trace_data.get("pandas_code"),
+        "raw_tool_result": trace_data.get("raw_tool_result"),
+        "all_code": trace_data.get("all_code"),
+        "agent": trace_data.get("agent"),
         "golden_value": str(golden_value),
         "tool_used": actual_tool_used,
         "scores": {
