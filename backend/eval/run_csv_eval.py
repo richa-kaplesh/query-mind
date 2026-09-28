@@ -395,7 +395,21 @@ def recompute_last_run_scores():
     print(f"Corrected scores: tool={avg_tool:.2f}, correctness={avg_correctness:.2f}")
 if __name__ == "__main__":
     
-    recompute_last_run_scores()
+    run_single_csv_eval("schema_01")
+    run_single_csv_eval("schema_02")
+    run_single_csv_eval("schema_03")
+    run_single_csv_eval("schema_06")
+    run_single_csv_eval("count_03")
+    run_single_csv_eval("count_05")
+    run_single_csv_eval("count_07")
+    run_single_csv_eval("stat_std_f1")
+    run_single_csv_eval("stat_mean_f10")
+    run_single_csv_eval("stat_range_f100")
+    run_single_csv_eval("stat_range_f10")
+    run_single_csv_eval("stat_range_f617")
+    run_single_csv_eval("filter_01")
+    run_single_csv_eval("corr_01")
+    run_single_csv_eval("groupby_02")
     if SAVE_TO_HISTORY:
         from datetime import datetime
         run_record = {
