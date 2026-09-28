@@ -40,6 +40,7 @@ Follow these rules strictly:
    - Do NOT explain the code to the user; only show the final answer
 
 3. Always give a clean, human-readable final answer to the user.
+4. You may call tools more than once. If a tool result is an error, a "Rejected" message, or looks empty or wrong for the question, fix your approach and try again. Only call a tool when you still need information. As soon as you have enough to answer, stop calling tools and give the final answer.
 """
 
 TOOL_PARAMS: dict[str, dict] = {
@@ -276,10 +277,97 @@ class Generator:
 
     # ── Streaming ─────────────────────────────────────────────────────────────
 
+        # ── Agent loop helpers ────────────────────────────────────────────────────
+
+    @staticmethod
+    def _tc_parts(tool_call) -> tuple[str, str, str]:
+        """Return (call_id, tool_name, raw_arguments_json) for a dict or SDK-object tool call."""
+        if isinstance(tool_call, dict):
+            fn = tool_call.get("function") or {}
+            return tool_call.get("id") or "", fn.get("name") or "", fn.get("arguments") or "{}"
+        return (
+            getattr(tool_call, "id", "") or "",
+            tool_call.function.name,
+            tool_call.function.arguments or "{}",
+        )
+
+    @staticmethod
+    def _truncate(text: str) -> str:
+        limit = settings.agent_tool_result_max_chars
+        if len(text) <= limit:
+            return text
+        return text[:limit] + f"\n... [truncated {len(text) - limit} characters]"
+
+    def _run_tool_safely(self, tool_name: str, raw_args: str) -> tuple[str, str]:
+        """Blocking. Never raises: every failure comes back as text, so the model
+        can read it and correct itself on the next loop iteration.
+        Returns (tool_input, result_text)."""
+        tool = self._get_tool_by_name(tool_name)
+        if tool is None:
+            available = ", ".join(t.name for t in self.tools) or "(none)"
+            return "", f"Error: unknown tool '{tool_name}'. Available tools: {available}."
+
+        try:
+            args = json.loads(raw_args) if raw_args else {}
+        except json.JSONDecodeError as e:
+            return "", f"Error: tool arguments were not valid JSON ({e}). Send valid JSON arguments."
+        if not isinstance(args, dict):
+            return "", "Error: tool arguments must be a JSON object."
+
+        tool_input = args.get("code") or args.get("query") or args.get("input", "")
+        try:
+            result = tool.run(tool_input)
+        except Exception as e:
+            log.error(f"[TOOL] '{tool_name}' raised: {e}", exc_info=True)
+            return tool_input, f"Error: tool '{tool_name}' failed: {type(e).__name__}: {e}"
+
+        return tool_input, self._truncate(str(result))
+
+    async def _forced_final_answer(self, original_user_content: str, tool_log: list,
+                                   conversation_id: str, user_id: str, token_tracker=None) -> str:
+        """Last resort when the loop cannot finish on its own (iteration cap hit, LLM error,
+        or an empty reply). Fresh, tool-free messages built from everything the tools returned —
+        the same pattern the old 2-call flow used, so Groq never sees a tool call with no tools."""
+        results_text = "\n\n".join(
+            f"Tool used: {name}\nInput: {tool_input}\nResult: {result}"
+            for name, tool_input, result in tool_log
+        )
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": (
+                f"{original_user_content}\n\n{results_text}\n\n"
+                "The tool work is finished. Do not call any tool or function and do not write code. "
+                "State the answer to the original question in plain language, using only the tool "
+                "results above. If they do not contain the answer, say so plainly."
+            )},
+        ]
+        result = await gateway_client.complete(
+            conversation_id=conversation_id, user_id=user_id,
+            messages=messages, is_tool_related=True,
+        )
+        if token_tracker:
+            token_tracker.log_call(
+                model=result.get("model_used", "gateway"),
+                prompt_tokens=estimate_tokens(str(messages)),
+                completion_tokens=estimate_tokens(result.get("content") or ""),
+                purpose="csv_synthesis", estimated=True,
+            )
+        return (result.get("content") or "").strip()
+
+    # ── Core agent loop (streaming, via the LLM Gateway) ──────────────────────
+
     async def generate_stream(self, query: str, schema: str | CSVSchema = None, conversation_id: str = None,
-                           user_id: str = "query_mind_user", tracer=None, token_tracker=None):
+                              user_id: str = "query_mind_user", tracer=None, token_tracker=None):
+        """Think -> act -> observe loop.
+
+        Each iteration the model either calls one or more tools (we run them, append the
+        results, and ask again) or returns a plain answer (we stop). The model decides how
+        many rounds it needs; settings.agent_max_iterations is only a safety ceiling.
+        """
         tool_schema = self._build_tool_schema(self.tools)
         messages = self._build_messages(query, schema)
+        original_user_content = messages[1]["content"]
+        max_iterations = settings.agent_max_iterations
 
         def record(step_type, data):
             if tracer:
@@ -290,86 +378,121 @@ class Generator:
 
         schema_str = schema.to_prompt_string() if isinstance(schema, CSVSchema) else schema
         record("schema_context", {"schema": schema_str or "(none)"})
-        record("llm_call_1", {"messages": messages, "tools": tool_schema})
-        log.info("[STREAM] → Gateway Call 1 (routing decision)")
 
-        result = await gateway_client.complete(
-            conversation_id=conversation_id, user_id=user_id, messages=messages,
-            tools=tool_schema if tool_schema else None,
-            tool_choice="auto" if tool_schema else None,
-            is_tool_related=bool(tool_schema),
-        )
+        tool_log: list[tuple[str, str, str]] = []      # (tool_name, tool_input, result) in order
+        seen_calls: dict[tuple[str, str], str] = {}    # (tool_name, raw_args) -> result, to catch repeats
+        answer = ""
+        stop_reason = "max_iterations"
+        iterations_used = 0
 
-        record("llm_response_1", {
-            "content": result.get("content"),
-            "tool_calls": result.get("tool_calls"),
-            "finish_reason": result.get("finish_reason"),
+        for iteration in range(1, max_iterations + 1):
+            iterations_used = iteration
+            record(f"llm_call_{iteration}", {
+                "iteration": iteration, "messages": messages, "tools": tool_schema,
+            })
+            log.info(f"[AGENT] → LLM call {iteration}/{max_iterations}")
+
+            try:
+                result = await gateway_client.complete(
+                    conversation_id=conversation_id, user_id=user_id, messages=messages,
+                    tools=tool_schema if tool_schema else None,
+                    tool_choice="auto" if tool_schema else None,
+                    is_tool_related=bool(tool_schema),
+                )
+            except Exception as e:
+                if not tool_log:
+                    raise                      # nothing to salvage — let the router report it
+                log.error(f"[AGENT] LLM call {iteration} failed after tool work: {e}")
+                record("agent_error", {"iteration": iteration, "error": str(e)})
+                stop_reason = "llm_error"
+                break
+
+            tool_calls = result.get("tool_calls")
+            record(f"llm_response_{iteration}", {
+                "content": result.get("content"),
+                "tool_calls": [
+                    {"name": self._tc_parts(tc)[1], "arguments": self._tc_parts(tc)[2]}
+                    for tc in (tool_calls or [])
+                ],
+                "finish_reason": result.get("finish_reason"),
+            })
+            if token_tracker:
+                token_tracker.log_call(
+                    model=result.get("model_used", "gateway"),
+                    prompt_tokens=estimate_tokens(str(messages)),
+                    completion_tokens=estimate_tokens(result.get("content") or ""),
+                    purpose=f"csv_call{iteration}", estimated=True,
+                )
+
+            # ── Stop condition: the model answered without asking for a tool ──
+            if not tool_calls:
+                answer = (result.get("content") or "").strip()
+                stop_reason = "final_answer" if answer else "empty_answer"
+                break
+
+            # ── Act + observe: run every requested tool, answer every call id ──
+            messages.append({
+                "role": "assistant",
+                "content": result.get("content"),
+                "tool_calls": tool_calls,
+            })
+            for tc in tool_calls:
+                call_id, tool_name, raw_args = self._tc_parts(tc)
+                yield f"__tool__:{tool_name}"
+
+                key = (tool_name, raw_args)
+                if key in seen_calls:
+                    log.info(f"[AGENT] Repeated tool call '{tool_name}' — not re-running")
+                    record("duplicate_tool_call", {"tool_name": tool_name, "arguments": raw_args})
+                    tool_result = (
+                        f"{seen_calls[key]}\n\n[Note: you already ran this exact call. Use this "
+                        "result to answer, or try a different approach.]"
+                    )
+                else:
+                    tool_input, tool_result = await asyncio.to_thread(
+                        self._run_tool_safely, tool_name, raw_args
+                    )
+                    seen_calls[key] = tool_result
+                    tool_log.append((tool_name, tool_input, tool_result))
+                    record("tool_input", {"tool_name": tool_name, "input": tool_input})
+                    record("tool_output", {"tool_name": tool_name, "result": tool_result})
+                    log.info(f"[AGENT] Tool '{tool_name}' result preview: {tool_result[:300]}")
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "name": tool_name,
+                    "content": tool_result,
+                })
+
+        # ── Loop ended without a usable answer: force one from what the tools returned ──
+        if not answer:
+            if tool_log:
+                try:
+                    answer = await self._forced_final_answer(
+                        original_user_content, tool_log, conversation_id, user_id, token_tracker
+                    )
+                except Exception as e:
+                    log.error(f"[AGENT] Forced final answer failed: {e}")
+                    answer = f"(Could not finish reasoning. Last tool result: {tool_log[-1][2]})"
+            else:
+                answer = "I couldn't produce an answer for that question."
+
+        tools_used = [name for name, _, _ in tool_log]
+        record("agent_stop", {
+            "reason": stop_reason, "iterations": iterations_used, "tool_calls": len(tool_log),
         })
-        if token_tracker:
-            token_tracker.log_call(
-                model=result.get("model_used", "gateway"),
-                prompt_tokens=estimate_tokens(str(messages)),
-                completion_tokens=estimate_tokens(result.get("content") or ""),
-                purpose="csv_call1", estimated=True,
-            )
-
-        tool_calls = result.get("tool_calls")
-        if not tool_calls:
-            answer = result.get("content") or ""
-            log.info("[STREAM] Direct answer — faking stream from gateway content")
-            record("final_answer", {"answer": answer, "tool_used": None})
-            for word in answer.split(" "):
-                yield word + " "
-                await asyncio.sleep(0.02)
-            return
-
-        tool_call = tool_calls[0]
-        try:
-            tool_name, tool_input, tool_result = self._execute_tool_call(tool_call)
-        except ValueError as e:
-            log.error(f"[STREAM] Tool error: {e}")
-            yield str(e)
-            return
-
-        record("tool_input", {"tool_name": tool_name, "input": tool_input})
-        record("tool_output", {"tool_name": tool_name, "result": tool_result})
-        yield f"__tool__:{tool_name}"
-
-        # Fresh, tool-free synthesis messages — same fix generate_with_tools already
-        # applies, backported here since the streaming path had the same latent bug.
-        original_user_content = messages[1]["content"]
-        synthesis_messages = [
-            {"role": "system", "content": messages[0]["content"]},
-            {"role": "user", "content": (
-                f"{original_user_content}\n\nTool used: {tool_name}\nTool result: {tool_result}\n\n"
-                "The computation has already been done — the result above is final and correct. "
-                "Do not call any tool or function, do not write or execute any code, and do not "
-                "attempt further computation of any kind. Simply state the answer to the original "
-                "question in plain language, using only the tool result provided above."
-            )},
-        ]
-
-        log.info("[STREAM] → Gateway Call 2 (tool-result synthesis)")
-        record("llm_call_2_stream", {"messages": synthesis_messages})
-        result2 = await gateway_client.complete(
-            conversation_id=conversation_id,
-            user_id=user_id,
-            messages=synthesis_messages,
-            is_tool_related=bool(tool_schema),
-            )
-        answer = result2.get("content") or ""
+        record("final_answer", {
+            "answer": answer,
+            "tool_used": tools_used[-1] if tools_used else None,
+            "tools_used": tools_used,
+        })
+        log.info(f"[AGENT] Done — reason={stop_reason} iterations={iterations_used} tools={len(tool_log)}")
 
         for word in answer.split(" "):
             yield word + " "
             await asyncio.sleep(0.02)
-
-        if token_tracker:
-            token_tracker.log_call(
-                model=result2.get("model_used", "gateway"),
-                prompt_tokens=estimate_tokens(str(synthesis_messages)),
-                completion_tokens=estimate_tokens(answer),
-                purpose="csv_call2", estimated=True,
-            )
+            
     # ── RAG streaming (PDF context-stuffing path) ─────────────────────────────
 
     def _build_rag_context(self, chunks: list[dict]) -> str:

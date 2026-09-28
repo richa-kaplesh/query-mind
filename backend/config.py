@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     ocr_dpi: int = 200                    # page rasterization resolution for OCR
     
     tesseract_path: str = ""    
+    agent_max_iterations: int = 6
+    agent_tool_result_max_chars: int = 4000
     
     gateway_url: str = "https://llm-gateway-qewa.onrender.com"
     
