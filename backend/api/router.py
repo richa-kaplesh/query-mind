@@ -19,8 +19,9 @@ from core.ingestion import IngestionPipeline
 from core.tools.pandas_sandbox_tool import PandasSandboxTool
 from core.tracer import TraceStore
 from core.tools.pandas_worker_manager import worker_manager
+from core.reviewer import Reviewer
 
-
+from core.tools.data_inspect_tool import DataInspectTool
 
 
 log = logging.getLogger("router")
@@ -162,6 +163,10 @@ async def query_document_stream(body: QueryRequest, request: Request):
     # ── CSV path ────────────────────────────────────────────────────────
     schema = current_file.get("schema", "")
     generator.tools = [PandasSandboxTool(file_path=file_path)]
+    reviewer = Reviewer(
+        inspect_tool=DataInspectTool(file_path=file_path),
+        max_iterations=settings.reviewer_max_iterations,
+    )
 
     async def event_stream():
         final_answer_parts = []
@@ -173,6 +178,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
                 schema=schema,
                 tracer=tracer,
                 token_tracker=request.app.state.token_tracker,
+                reviewer=reviewer,
             ):
                 if token.startswith("__tool__:"):
                     tool_used = token.split(":", 1)[1]

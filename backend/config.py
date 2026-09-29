@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     tesseract_path: str = ""    
     agent_max_iterations: int = 6
     agent_tool_result_max_chars: int = 4000
-    
+
+    reviewer_max_revisions: int = 2
+    reviewer_max_iterations: int = 3
     gateway_url: str = "https://llm-gateway-qewa.onrender.com"
     
     class Config:

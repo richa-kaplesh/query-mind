@@ -354,19 +354,14 @@ class Generator:
             )
         return (result.get("content") or "").strip()
 
-    # ── Core agent loop (streaming, via the LLM Gateway) ──────────────────────
+        # ── Core agent loop (compute only — no streaming) ──────────────────────────
 
-    async def generate_stream(self, query: str, schema: str | CSVSchema = None, conversation_id: str = None,
-                              user_id: str = "query_mind_user", tracer=None, token_tracker=None):
-        """Think -> act -> observe loop.
-
-        Each iteration the model either calls one or more tools (we run them, append the
-        results, and ask again) or returns a plain answer (we stop). The model decides how
-        many rounds it needs; settings.agent_max_iterations is only a safety ceiling.
-        """
-        tool_schema = self._build_tool_schema(self.tools)
-        messages = self._build_messages(query, schema)
-        original_user_content = messages[1]["content"]
+    async def _run_loop(self, messages: list, tool_schema: list, conversation_id: str, user_id: str,
+                        tracer, token_tracker, tool_log: list, label: str = "") -> tuple[str, str]:
+        """Runs the think -> act -> observe loop to completion on an existing message
+        list (so a revision round continues the same conversation instead of
+        restarting it) and returns (answer, stop_reason). Mutates `messages` and
+        `tool_log` in place so the caller keeps the full transcript across rounds."""
         max_iterations = settings.agent_max_iterations
 
         def record(step_type, data):
@@ -376,21 +371,16 @@ class Generator:
                 except Exception:
                     pass
 
-        schema_str = schema.to_prompt_string() if isinstance(schema, CSVSchema) else schema
-        record("schema_context", {"schema": schema_str or "(none)"})
-
-        tool_log: list[tuple[str, str, str]] = []      # (tool_name, tool_input, result) in order
-        seen_calls: dict[tuple[str, str], str] = {}    # (tool_name, raw_args) -> result, to catch repeats
+        original_user_content = next((m["content"] for m in messages if m["role"] == "user"), "")
+        seen_calls: dict[tuple[str, str], str] = {}
         answer = ""
         stop_reason = "max_iterations"
-        iterations_used = 0
+        iteration = 0
 
         for iteration in range(1, max_iterations + 1):
-            iterations_used = iteration
-            record(f"llm_call_{iteration}", {
-                "iteration": iteration, "messages": messages, "tools": tool_schema,
-            })
-            log.info(f"[AGENT] → LLM call {iteration}/{max_iterations}")
+            tag = f"{label}llm_call_{iteration}"
+            record(tag, {"iteration": iteration, "messages": messages, "tools": tool_schema})
+            log.info(f"[AGENT] {label}→ LLM call {iteration}/{max_iterations}")
 
             try:
                 result = await gateway_client.complete(
@@ -401,14 +391,14 @@ class Generator:
                 )
             except Exception as e:
                 if not tool_log:
-                    raise                      # nothing to salvage — let the router report it
-                log.error(f"[AGENT] LLM call {iteration} failed after tool work: {e}")
-                record("agent_error", {"iteration": iteration, "error": str(e)})
+                    raise
+                log.error(f"[AGENT] {label}LLM call {iteration} failed after tool work: {e}")
+                record(f"{label}agent_error", {"iteration": iteration, "error": str(e)})
                 stop_reason = "llm_error"
                 break
 
             tool_calls = result.get("tool_calls")
-            record(f"llm_response_{iteration}", {
+            record(f"{label}llm_response_{iteration}", {
                 "content": result.get("content"),
                 "tool_calls": [
                     {"name": self._tc_parts(tc)[1], "arguments": self._tc_parts(tc)[2]}
@@ -421,29 +411,22 @@ class Generator:
                     model=result.get("model_used", "gateway"),
                     prompt_tokens=estimate_tokens(str(messages)),
                     completion_tokens=estimate_tokens(result.get("content") or ""),
-                    purpose=f"csv_call{iteration}", estimated=True,
+                    purpose=f"{label}csv_call{iteration}", estimated=True,
                 )
 
-            # ── Stop condition: the model answered without asking for a tool ──
             if not tool_calls:
                 answer = (result.get("content") or "").strip()
                 stop_reason = "final_answer" if answer else "empty_answer"
                 break
 
-            # ── Act + observe: run every requested tool, answer every call id ──
-            messages.append({
-                "role": "assistant",
-                "content": result.get("content"),
-                "tool_calls": tool_calls,
-            })
+            messages.append({"role": "assistant", "content": result.get("content"), "tool_calls": tool_calls})
             for tc in tool_calls:
                 call_id, tool_name, raw_args = self._tc_parts(tc)
-                yield f"__tool__:{tool_name}"
 
                 key = (tool_name, raw_args)
                 if key in seen_calls:
-                    log.info(f"[AGENT] Repeated tool call '{tool_name}' — not re-running")
-                    record("duplicate_tool_call", {"tool_name": tool_name, "arguments": raw_args})
+                    log.info(f"[AGENT] {label}Repeated tool call '{tool_name}' — not re-running")
+                    record(f"{label}duplicate_tool_call", {"tool_name": tool_name, "arguments": raw_args})
                     tool_result = (
                         f"{seen_calls[key]}\n\n[Note: you already ran this exact call. Use this "
                         "result to answer, or try a different approach.]"
@@ -454,18 +437,14 @@ class Generator:
                     )
                     seen_calls[key] = tool_result
                     tool_log.append((tool_name, tool_input, tool_result))
-                    record("tool_input", {"tool_name": tool_name, "input": tool_input})
-                    record("tool_output", {"tool_name": tool_name, "result": tool_result})
-                    log.info(f"[AGENT] Tool '{tool_name}' result preview: {tool_result[:300]}")
+                    record(f"{label}tool_input", {"tool_name": tool_name, "input": tool_input})
+                    record(f"{label}tool_output", {"tool_name": tool_name, "result": tool_result})
+                    log.info(f"[AGENT] {label}Tool '{tool_name}' result preview: {tool_result[:300]}")
 
                 messages.append({
-                    "role": "tool",
-                    "tool_call_id": call_id,
-                    "name": tool_name,
-                    "content": tool_result,
+                    "role": "tool", "tool_call_id": call_id, "name": tool_name, "content": tool_result,
                 })
 
-        # ── Loop ended without a usable answer: force one from what the tools returned ──
         if not answer:
             if tool_log:
                 try:
@@ -473,21 +452,95 @@ class Generator:
                         original_user_content, tool_log, conversation_id, user_id, token_tracker
                     )
                 except Exception as e:
-                    log.error(f"[AGENT] Forced final answer failed: {e}")
+                    log.error(f"[AGENT] {label}Forced final answer failed: {e}")
                     answer = f"(Could not finish reasoning. Last tool result: {tool_log[-1][2]})"
             else:
                 answer = "I couldn't produce an answer for that question."
 
+        record(f"{label}agent_stop", {"reason": stop_reason, "iterations": iteration, "tool_calls": len(tool_log)})
+        log.info(f"[AGENT] {label}Done — reason={stop_reason} iterations={iteration} tools={len(tool_log)}")
+        return answer, stop_reason
+
+    # ── Core agent loop (streaming, via the LLM Gateway) ──────────────────────
+
+    async def generate_stream(self, query: str, schema: str | CSVSchema = None, conversation_id: str = None,
+                              user_id: str = "query_mind_user", tracer=None, token_tracker=None,
+                              reviewer=None):
+        """Generate -> review -> revise -> stream.
+
+        Runs the agent loop for a draft answer, then — if a reviewer is passed in —
+        has it independently fact-check the draft. On failure, the generator gets the
+        reviewer's feedback appended to the SAME conversation and continues (not a
+        fresh start), up to settings.reviewer_max_revisions times.
+
+        Because the draft must be fully checked before the user sees it, tool-use
+        markers can no longer stream live as the loop runs — they're yielded together,
+        right before the answer, once everything is finished. The trace still records
+        every step in order if you need to see the live sequence (llm_call_N, tool_input,
+        tool_output, review_call_N, review_tool_call, ...).
+        """
+        tool_schema = self._build_tool_schema(self.tools)
+        messages = self._build_messages(query, schema)
+
+        def record(step_type, data):
+            if tracer:
+                try:
+                    tracer(step_type, _safe_serialize(data))
+                except Exception:
+                    pass
+
+        schema_str = schema.to_prompt_string() if isinstance(schema, CSVSchema) else schema
+        record("schema_context", {"schema": schema_str or "(none)"})
+
+        tool_log: list[tuple[str, str, str]] = []
+        answer, stop_reason = await self._run_loop(
+            messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
+        )
+
+        revisions = 0
+        if reviewer is not None:
+            max_revisions = settings.reviewer_max_revisions
+            verdict = await reviewer.review(
+                question=query, schema=schema_str, draft_answer=answer, tool_log=tool_log,
+                conversation_id=conversation_id, user_id=user_id, tracer=tracer, token_tracker=token_tracker,
+            )
+            record("review_result", {
+                "passed": verdict.passed, "feedback": verdict.feedback,
+                "revisions_used": revisions, "review_tool_calls": verdict.tool_calls,
+            })
+
+            while not verdict.passed and revisions < max_revisions:
+                revisions += 1
+                messages.append({"role": "user", "content": (
+                    f"A reviewer checked your answer and found a problem: {verdict.feedback}\n\n"
+                    "Please reconsider and give a corrected, complete final answer. Use tools again if needed."
+                )})
+                answer, stop_reason = await self._run_loop(
+                    messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
+                    label=f"revision{revisions}_",
+                )
+                verdict = await reviewer.review(
+                    question=query, schema=schema_str, draft_answer=answer, tool_log=tool_log,
+                    conversation_id=conversation_id, user_id=user_id, tracer=tracer, token_tracker=token_tracker,
+                )
+                record("review_result", {
+                    "passed": verdict.passed, "feedback": verdict.feedback,
+                    "revisions_used": revisions, "review_tool_calls": verdict.tool_calls,
+                })
+
+            if not verdict.passed:
+                log.warning(f"[REVIEWER] Answer still not verified after {max_revisions} revisions")
+                answer = f"{answer}\n\n_(This answer could not be fully verified — treat the figures with care.)_"
+
         tools_used = [name for name, _, _ in tool_log]
-        record("agent_stop", {
-            "reason": stop_reason, "iterations": iterations_used, "tool_calls": len(tool_log),
-        })
         record("final_answer", {
-            "answer": answer,
-            "tool_used": tools_used[-1] if tools_used else None,
-            "tools_used": tools_used,
+            "answer": answer, "tool_used": tools_used[-1] if tools_used else None,
+            "tools_used": tools_used, "revisions": revisions,
         })
-        log.info(f"[AGENT] Done — reason={stop_reason} iterations={iterations_used} tools={len(tool_log)}")
+        log.info(f"[AGENT] Overall done — revisions={revisions} tools={tools_used}")
+
+        for tool_name in tools_used:
+            yield f"__tool__:{tool_name}"
 
         for word in answer.split(" "):
             yield word + " "

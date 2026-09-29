@@ -225,6 +225,8 @@ def run_single_csv_eval(question_id: str):
             trace_data["raw_tool_result"] = data.get("result")
         elif step_type == "agent_stop":
             trace_data["agent"] = data
+        elif step_type == "agent_error":
+            trace_data["agent_error"] = data
 
     result = run_csv_query(question, schema, tracer=tracer)
     actual_answer = result["answer"]
@@ -251,10 +253,10 @@ def run_single_csv_eval(question_id: str):
         "answer": actual_answer,
         "pandas_code": trace_data.get("pandas_code"),
         "raw_tool_result": trace_data.get("raw_tool_result"),
-        "pandas_code": trace_data.get("pandas_code"),
-        "raw_tool_result": trace_data.get("raw_tool_result"),
+        
         "all_code": trace_data.get("all_code"),
         "agent": trace_data.get("agent"),
+        "agent_error": trace_data.get("agent_error"),
         "golden_value": str(golden_value),
         "tool_used": actual_tool_used,
         "scores": {
@@ -402,21 +404,21 @@ def recompute_last_run_scores():
     print(f"Corrected scores: tool={avg_tool:.2f}, correctness={avg_correctness:.2f}")
 if __name__ == "__main__":
     
-    run_single_csv_eval("schema_01")
-    run_single_csv_eval("schema_02")
-    run_single_csv_eval("schema_03")
-    run_single_csv_eval("schema_06")
-    run_single_csv_eval("count_03")
+    # run_single_csv_eval("schema_01")
+    # run_single_csv_eval("schema_02")
+    # run_single_csv_eval("schema_03")
+    # run_single_csv_eval("schema_06")
+    # run_single_csv_eval("count_03")
     run_single_csv_eval("count_05")
-    run_single_csv_eval("count_07")
-    run_single_csv_eval("stat_std_f1")
-    run_single_csv_eval("stat_mean_f10")
-    run_single_csv_eval("stat_range_f100")
-    run_single_csv_eval("stat_range_f10")
-    run_single_csv_eval("stat_range_f617")
-    run_single_csv_eval("filter_01")
-    run_single_csv_eval("corr_01")
-    run_single_csv_eval("groupby_02")
+    # run_single_csv_eval("count_07")
+    # run_single_csv_eval("stat_std_f1")
+    # run_single_csv_eval("stat_mean_f10")
+    # run_single_csv_eval("stat_range_f100")
+    # run_single_csv_eval("stat_range_f10")
+    # run_single_csv_eval("stat_range_f617")
+    # run_single_csv_eval("filter_01")
+    # run_single_csv_eval("corr_01")
+    # run_single_csv_eval("groupby_02")
     if SAVE_TO_HISTORY:
         from datetime import datetime
         run_record = {
