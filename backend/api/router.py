@@ -2,7 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Form, BackgroundTasks, Request,
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import os
-from backend.config import Settings
+from config import settings
 from core.exceptions import PDFPasswordProtectedError, PDFCorruptError, DocumentExtractionError
 
 import shutil
@@ -166,7 +166,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
     generator.tools = [PandasSandboxTool(file_path=file_path)]
     reviewer = Reviewer(
         inspect_tool=DataInspectTool(file_path=file_path),
-        max_iterations=Settings.reviewer_max_iterations,
+        max_iterations=settings.reviewer_max_iterations,
     )
 
     async def event_stream():
