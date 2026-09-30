@@ -25,7 +25,23 @@ Rules you MUST follow:
    "The information was not found in the document."
 5. Be concise, accurate, and structured. Use bullet points or numbered lists when helpful.
 """
+AGENTIC_RAG_SYSTEM_PROMPT = """You are a precise document assistant with access to a `search_documents` \
+tool that retrieves passages from the uploaded document.
 
+Rules you MUST follow:
+1. Call search_documents with a focused, specific query to find the information you need before \
+   answering. Rephrase the user's question into good search terms if that would find better passages \
+   than searching the raw question verbatim.
+2. You may call search_documents more than once with a refined or different query if the first search \
+   doesn't return what you need, or if the question has multiple parts requiring separate searches.
+3. Answer ONLY from passages returned by search_documents. Do not use prior knowledge.
+4. Cite your sources inline using the format [source, p.N] or [source, p.N — Heading] when a heading \
+   is available.
+5. If multiple passages support the answer, cite all of them.
+6. If, after searching, the answer cannot be found in the returned passages, respond exactly with: \
+   "The information was not found in the document."
+7. Be concise, accurate, and structured. Use bullet points or numbered lists when helpful.
+"""
 
 SYSTEM_PROMPT = """You are a data analyst assistant. You are given a CSV dataset schema and access to tools.
 
@@ -61,6 +77,16 @@ TOOL_PARAMS: dict[str, dict] = {
             "description": (
                 "Natural-language description of the statistical analysis to perform "
                 "(e.g. 'correlation matrix', 'distribution of age column')."
+            )
+        }
+    },
+        "search_documents": {
+        "query": {
+            "type": "string",
+            "description": (
+                "A focused search query describing what information to find in the document. "
+                "Rephrase the user's question into clear search terms if that helps. Call again "
+                "with a different query if the first search doesn't find what you need."
             )
         }
     },
@@ -132,6 +158,12 @@ class Generator:
             {"role": "user",   "content": user_content},
         ]
 
+    def _build_rag_tool_messages(self, query: str) -> list[dict]:
+        return [
+            {"role": "system", "content": AGENTIC_RAG_SYSTEM_PROMPT},
+            {"role": "user",   "content": query},
+        ]
+    
     def _execute_tool_call(self, tool_call) -> tuple[str, str, str]:
         if isinstance(tool_call, dict):
             tool_name = tool_call["function"]["name"]
@@ -567,8 +599,64 @@ class Generator:
 
         return "\n\n---\n\n".join(parts)
 
-    async def generate_rag_stream(self, query: str, chunks: list[dict], conversation_id: str,
-                                user_id: str = "query_mind_user", tracer=None, token_tracker=None):
+    # async def generate_rag_stream(self, query: str, chunks: list[dict], conversation_id: str,
+    #                             user_id: str = "query_mind_user", tracer=None, token_tracker=None):
+    #     def record(step_type, data):
+    #         if tracer:
+    #             try:
+    #                 tracer(step_type, _safe_serialize(data))
+    #             except Exception:
+    #                 pass
+
+    #     context = self._build_rag_context(chunks)
+    #     user_content = f"Context passages:\n\n{context}\n\nQuestion: {query}"
+    #     messages = [
+    #         {"role": "system", "content": RAG_SYSTEM_PROMPT},
+    #         {"role": "user", "content": user_content},
+    #     ]
+
+    #     record("rag_context", {"chunk_count": len(chunks), "context_preview": context[:500]})
+    #     record("rag_llm_call", {"query": query})
+    #     log.info(f"[RAG] → Gateway call | {len(chunks)} chunks | query: '{query[:80]}'")
+
+    #     result = await gateway_client.complete(conversation_id=conversation_id, user_id=user_id, messages=messages)
+    #     answer = result.get("content") or ""
+
+    #     for i, word in enumerate(answer.split(" ")):
+    #         yield word if i == 0 else " " + word
+    #         await asyncio.sleep(0.02)
+
+    #     if token_tracker:
+    #         token_tracker.log_call(
+    #             model=result.get("model_used", "gateway"),
+    #             prompt_tokens=estimate_tokens(user_content),
+    #             completion_tokens=estimate_tokens(answer),
+    #             purpose="rag",
+    #             estimated=True,
+    #         )
+
+    #     record("rag_final_answer", {"answer": answer})
+    #     log.info("[RAG] ✓ Gateway call complete")
+
+    # ── Legacy RAG utility (non-streaming, kept for scripts/tests) ────────────
+        # ── Agentic RAG streaming (PDF, retrieval-as-a-tool) ────────────────────────
+
+    async def generate_agentic_rag_stream(self, query: str, conversation_id: str,
+                                           user_id: str = "query_mind_user", tracer=None,
+                                           token_tracker=None, reviewer=None):
+        """Same think -> act -> observe loop as generate_stream, but for PDFs: the
+        model decides WHEN to call search_documents and WITH WHAT QUERY, instead of
+        chunks being retrieved unconditionally before the model ever sees the
+        question. Can search more than once with a refined query per question.
+
+        reviewer is accepted for interface symmetry with generate_stream but not
+        used yet — a RAG-specific reviewer needs its own independent-check tool
+        (e.g. verifying a citation's page actually contains the claimed text),
+        which doesn't exist yet. Passing one in here is a no-op for now.
+        """
+        tool_schema = self._build_tool_schema(self.tools)
+        messages = self._build_rag_tool_messages(query)
+
         def record(step_type, data):
             if tracer:
                 try:
@@ -576,38 +664,25 @@ class Generator:
                 except Exception:
                     pass
 
-        context = self._build_rag_context(chunks)
-        user_content = f"Context passages:\n\n{context}\n\nQuestion: {query}"
-        messages = [
-            {"role": "system", "content": RAG_SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},
-        ]
+        tool_log: list[tuple[str, str, str]] = []
+        answer, stop_reason = await self._run_loop(
+            messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
+        )
 
-        record("rag_context", {"chunk_count": len(chunks), "context_preview": context[:500]})
-        record("rag_llm_call", {"query": query})
-        log.info(f"[RAG] → Gateway call | {len(chunks)} chunks | query: '{query[:80]}'")
+        tools_used = [name for name, _, _ in tool_log]
+        record("final_answer", {
+            "answer": answer, "tool_used": tools_used[-1] if tools_used else None,
+            "tools_used": tools_used,
+        })
+        log.info(f"[AGENT] RAG done — reason={stop_reason} searches={len(tool_log)}")
 
-        result = await gateway_client.complete(conversation_id=conversation_id, user_id=user_id, messages=messages)
-        answer = result.get("content") or ""
+        for tool_name in tools_used:
+            yield f"__tool__:{tool_name}"
 
-        for i, word in enumerate(answer.split(" ")):
-            yield word if i == 0 else " " + word
+        for word in answer.split(" "):
+            yield word + " "
             await asyncio.sleep(0.02)
-
-        if token_tracker:
-            token_tracker.log_call(
-                model=result.get("model_used", "gateway"),
-                prompt_tokens=estimate_tokens(user_content),
-                completion_tokens=estimate_tokens(answer),
-                purpose="rag",
-                estimated=True,
-            )
-
-        record("rag_final_answer", {"answer": answer})
-        log.info("[RAG] ✓ Gateway call complete")
-
-    # ── Legacy RAG utility (non-streaming, kept for scripts/tests) ────────────
-
+            
     def generate_rag(self, query: str, chunks: list[dict]) -> dict:
         context = self._build_rag_context(chunks)
         messages = [

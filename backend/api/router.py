@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import os
 from config import settings
 from core.exceptions import PDFPasswordProtectedError, PDFCorruptError, DocumentExtractionError
-
+from core.tools.rag_tool import RAGTool
 import shutil
 import asyncio
 import logging
@@ -130,31 +130,34 @@ async def query_document_stream(body: QueryRequest, request: Request):
     tracer   = _make_tracer(trace_store, trace_id)
 
     # ── PDF path ────────────────────────────────────────────────────────
+        # ── PDF path (agentic — model decides when/what to search) ────────────
     if file_type == ".pdf":
-        embedder  = request.app.state.embedder
-        retriever = request.app.state.retriever
-        reranker  = request.app.state.reranker
-
-        query_embedding = await asyncio.to_thread(embedder.embed_query, body.question)
-        raw_chunks      = await asyncio.to_thread(retriever.retrieve, body.question, query_embedding)
-        chunks          = await asyncio.to_thread(reranker.rerank, body.question, raw_chunks)
+        generator.tools = [RAGTool(
+            retriever=request.app.state.retriever,
+            embedder=request.app.state.embedder,
+            reranker=request.app.state.reranker,
+        )]
 
         async def event_stream_pdf():
             final_answer_parts = []
+            tool_used = None
             try:
-                async for token in generator.generate_rag_stream(
+                async for token in generator.generate_agentic_rag_stream(
                     query=body.question,
-                    chunks=chunks,
                     conversation_id=conversation_id,
                     tracer=tracer,
                     token_tracker=request.app.state.token_tracker,
                 ):
-                    final_answer_parts.append(token)
-                    yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
-                trace_store.finish_trace(trace_id, "".join(final_answer_parts), None)
+                    if token.startswith("__tool__:"):
+                        tool_used = token.split(":", 1)[1]
+                        yield f"data: {json.dumps({'type': 'tool', 'content': tool_used})}\n\n"
+                    else:
+                        final_answer_parts.append(token)
+                        yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+                trace_store.finish_trace(trace_id, "".join(final_answer_parts), tool_used)
             except Exception as e:
                 log.error(f"[STREAM/PDF] Error: {e}", exc_info=True)
-                trace_store.finish_trace(trace_id, str(e), None, status="error")
+                trace_store.finish_trace(trace_id, str(e), tool_used, status="error")
                 yield f"data: {json.dumps({'type': 'token', 'content': f'[Error: {e}]'})}\n\n"
             finally:
                 yield "data: [DONE]\n\n"
