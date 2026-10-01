@@ -63,9 +63,6 @@ class RAGTool(BaseTool):
 
         total_chunks = len(self.retriever.indexer.chunks)
         query_embedding = self.embedder.embed_query(query)
-        # Cast a generous net before reranking, then let the token budget below —
-        # not a chunk-count guess — decide how many of the best matches actually
-        # get returned.
         candidates = self.retriever.retrieve(query, query_embedding, top_k=min(total_chunks, 30))
         reranked = self.reranker.rerank(query, candidates, top_k=min(total_chunks, 15))
 
@@ -74,8 +71,15 @@ class RAGTool(BaseTool):
         for chunk in reranked:
             chunk_tokens = estimate_tokens(chunk["text"])
             if selected and tokens_so_far + chunk_tokens > MAX_RESULT_TOKENS:
-                break  # always keep at least the single best match, even if it alone is large
+                break
             selected.append(chunk)
             tokens_so_far += chunk_tokens
 
-        return format_passages(selected)
+        passages = format_passages(selected)
+        if selected and len(selected) >= total_chunks:
+            passages += (
+                "\n\n[This is the ENTIRE content of the document — every indexed passage. If what "
+                "you're looking for isn't above, it does not appear in this document. Do not search "
+                "again — answer accordingly.]"
+            )
+        return passages

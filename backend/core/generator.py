@@ -452,17 +452,19 @@ class Generator:
                 break
 
             messages.append({"role": "assistant", "content": result.get("content"), "tool_calls": tool_calls})
+            stuck = False
             for tc in tool_calls:
                 call_id, tool_name, raw_args = self._tc_parts(tc)
 
                 key = (tool_name, raw_args)
                 if key in seen_calls:
-                    log.info(f"[AGENT] {label}Repeated tool call '{tool_name}' — not re-running")
+                    log.info(f"[AGENT] {label}Repeated tool call '{tool_name}' — stopping loop instead of retrying blindly")
                     record(f"{label}duplicate_tool_call", {"tool_name": tool_name, "arguments": raw_args})
                     tool_result = (
                         f"{seen_calls[key]}\n\n[Note: you already ran this exact call. Use this "
                         "result to answer, or try a different approach.]"
                     )
+                    stuck = True
                 else:
                     tool_input, tool_result = await asyncio.to_thread(
                         self._run_tool_safely, tool_name, raw_args
@@ -476,6 +478,10 @@ class Generator:
                 messages.append({
                     "role": "tool", "tool_call_id": call_id, "name": tool_name, "content": tool_result,
                 })
+
+            if stuck:
+                stop_reason = "repeated_tool_call"
+                break
 
         if not answer:
             if tool_log:
