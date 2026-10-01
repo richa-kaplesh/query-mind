@@ -664,17 +664,51 @@ class Generator:
                 except Exception:
                     pass
 
-        tool_log: list[tuple[str, str, str]] = []
+                tool_log: list[tuple[str, str, str]] = []
         answer, stop_reason = await self._run_loop(
             messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
         )
 
+        revisions = 0
+        if reviewer is not None:
+            max_revisions = settings.reviewer_max_revisions
+            verdict = await reviewer.review(
+                question=query, draft_answer=answer, tool_log=tool_log,
+                conversation_id=conversation_id, user_id=user_id, tracer=tracer, token_tracker=token_tracker,
+            )
+            record("review_result", {
+                "passed": verdict.passed, "feedback": verdict.feedback, "revisions_used": revisions,
+            })
+
+            while not verdict.passed and revisions < max_revisions:
+                revisions += 1
+                messages.append({"role": "user", "content": (
+                    f"A reviewer checked your answer and found a problem: {verdict.feedback}\n\n"
+                    "Please reconsider — search again if needed — and give a corrected, complete "
+                    "final answer, using only passages you can actually find."
+                )})
+                answer, stop_reason = await self._run_loop(
+                    messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
+                    label=f"revision{revisions}_",
+                )
+                verdict = await reviewer.review(
+                    question=query, draft_answer=answer, tool_log=tool_log,
+                    conversation_id=conversation_id, user_id=user_id, tracer=tracer, token_tracker=token_tracker,
+                )
+                record("review_result", {
+                    "passed": verdict.passed, "feedback": verdict.feedback, "revisions_used": revisions,
+                })
+
+            if not verdict.passed:
+                log.warning(f"[RAG REVIEWER] Answer still not grounded after {max_revisions} revisions")
+                answer = f"{answer}\n\n_(This answer could not be fully verified against the document.)_"
+
         tools_used = [name for name, _, _ in tool_log]
         record("final_answer", {
             "answer": answer, "tool_used": tools_used[-1] if tools_used else None,
-            "tools_used": tools_used,
+            "tools_used": tools_used, "revisions": revisions,
         })
-        log.info(f"[AGENT] RAG done — reason={stop_reason} searches={len(tool_log)}")
+        log.info(f"[AGENT] RAG done — reason={stop_reason} searches={len(tool_log)} revisions={revisions}")
 
         for tool_name in tools_used:
             yield f"__tool__:{tool_name}"

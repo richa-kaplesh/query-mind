@@ -159,3 +159,92 @@ class Reviewer:
         log.warning(f"[REVIEWER] No verdict after {self.max_iterations} iterations — passing by default")
         record("review_verdict", {"verdict": "pass (default, no verdict reached)", "iterations": self.max_iterations})
         return ReviewResult(passed=True, feedback="", iterations=self.max_iterations, tool_calls=tool_calls_made)
+
+RAG_REVIEW_SYSTEM_PROMPT = """You are a faithfulness checker for a document Q&A assistant. You will be \
+given a question, the passages that were retrieved from the document, and a draft answer built from \
+those passages.
+
+Check ONLY this: is every factual claim in the draft answer actually supported by the passages below — \
+not from outside knowledge, and not invented. A citation that points to the wrong passage, or a claim \
+that isn't backed by any passage at all, should fail.
+
+Do not check style, completeness, or whether this is the best possible answer — only whether what it \
+states is actually grounded in the passages given.
+
+Respond with ONLY this JSON object as your final message, no other text:
+{"verdict": "pass", "feedback": ""}
+or, if a claim is unsupported or a citation is wrong:
+{"verdict": "fail", "feedback": "<specific — which claim is unsupported, and why>"}
+"""
+
+
+class RAGReviewer:
+    """Checks a RAG draft answer for groundedness against the passages that were
+    actually retrieved — no tool calls needed, since everything to check is already
+    in tool_log. Catches invented claims and prior-knowledge leakage, like the
+    invented 'Location' line found during OCR testing. Never edits the answer
+    itself; only returns pass/fail + feedback for the generator to act on."""
+
+    def __init__(self, max_iterations: int = 2):
+        # max_iterations here only bounds "ask again for valid JSON" retries,
+        # not tool-calling rounds — there's no tool, so 2 is just one real
+        # attempt plus one reformat nudge.
+        self.max_iterations = max_iterations
+
+    async def review(self, question: str, draft_answer: str, tool_log: list,
+                      conversation_id: str, user_id: str = "query_mind_user",
+                      tracer=None, token_tracker=None) -> ReviewResult:
+
+        def record(step_type, data):
+            if tracer:
+                try:
+                    tracer(step_type, data)
+                except Exception:
+                    pass
+
+        passages_text = "\n\n".join(result for _, _, result in tool_log) or "(no passages were retrieved)"
+        messages = [
+            {"role": "system", "content": RAG_REVIEW_SYSTEM_PROMPT},
+            {"role": "user", "content": (
+                f"Question: {question}\n\nRetrieved passages:\n{passages_text}\n\n"
+                f"Draft answer to check:\n{draft_answer}"
+            )},
+        ]
+
+        for iteration in range(1, self.max_iterations + 1):
+            record(f"review_call_{iteration}", {"iteration": iteration})
+            try:
+                result = await gateway_client.complete(
+                    conversation_id=f"{conversation_id}:review", user_id=user_id, messages=messages,
+                    is_tool_related=False,
+                )
+            except Exception as e:
+                log.error(f"[RAG REVIEWER] LLM call {iteration} failed: {e}")
+                record("review_error", {"iteration": iteration, "error": str(e)})
+                return ReviewResult(passed=True, feedback="", iterations=iteration, tool_calls=0)
+
+            if token_tracker:
+                token_tracker.log_call(
+                    model=result.get("model_used", "gateway"),
+                    prompt_tokens=estimate_tokens(str(messages)),
+                    completion_tokens=estimate_tokens(result.get("content") or ""),
+                    purpose=f"rag_review_call{iteration}", estimated=True,
+                )
+
+            verdict = _parse_verdict(result.get("content") or "")
+            if verdict is not None:
+                record("review_verdict", {**verdict, "iterations": iteration})
+                return ReviewResult(
+                    passed=verdict["verdict"] == "pass", feedback=verdict.get("feedback", ""),
+                    iterations=iteration, tool_calls=0,
+                )
+
+            messages.append({"role": "assistant", "content": result.get("content")})
+            messages.append({"role": "user", "content": (
+                'Respond with ONLY the JSON object — nothing else. '
+                'Example: {"verdict": "pass", "feedback": ""}'
+            )})
+
+        log.warning(f"[RAG REVIEWER] No verdict after {self.max_iterations} iterations — passing by default")
+        record("review_verdict", {"verdict": "pass (default, no verdict reached)", "iterations": self.max_iterations})
+        return ReviewResult(passed=True, feedback="", iterations=self.max_iterations, tool_calls=0)

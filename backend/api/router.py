@@ -20,7 +20,7 @@ from core.ingestion import IngestionPipeline
 from core.tools.pandas_sandbox_tool import PandasSandboxTool
 from core.tracer import TraceStore
 from core.tools.pandas_worker_manager import worker_manager
-from core.reviewer import Reviewer
+from core.reviewer import Reviewer,RAGReviewer
 
 from core.tools.data_inspect_tool import DataInspectTool
 
@@ -137,6 +137,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
             embedder=request.app.state.embedder,
             reranker=request.app.state.reranker,
         )]
+        rag_reviewer = RAGReviewer(max_iterations=settings.reviewer_max_iterations)
 
         async def event_stream_pdf():
             final_answer_parts = []
@@ -146,6 +147,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
                     query=body.question,
                     conversation_id=conversation_id,
                     tracer=tracer,
+                    reviewer=rag_reviewer,
                     token_tracker=request.app.state.token_tracker,
                 ):
                     if token.startswith("__tool__:"):
