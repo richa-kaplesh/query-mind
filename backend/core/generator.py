@@ -664,7 +664,7 @@ class Generator:
                 except Exception:
                     pass
 
-                tool_log: list[tuple[str, str, str]] = []
+        tool_log: list[tuple[str, str, str]] = []
         answer, stop_reason = await self._run_loop(
             messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
         )
