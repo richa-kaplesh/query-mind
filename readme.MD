@@ -89,35 +89,60 @@ Ingestion failures return typed error codes: `password_protected`, `corrupt_file
 
 ## Evaluation
 
-Both pipelines are checked against golden datasets with known-correct answers, with a labeled, append-only run history for before/after comparison (`backend/eval/eval_history.json`).
+Both pipelines are scored against golden datasets, not spot-checked. Every run is appended to `backend/eval/eval_history.json` with a label, the full pipeline config and per-question results, and the history is viewable on the dashboard. The CSV harness records the model's generated pandas code and the raw sandbox output for each question, not just the final text. This is how most of the bugs below were found.
 
-**CSV path:** custom harness that traces each answer back to the model's generated code and raw tool output, not just its final text. Scoring is deterministic (numeric / range / word-boundary string match against a value computed from golden pandas code) with an LLM-judge fallback. Each run samples 15 of 45 golden questions across schema, count, stat, filter and groupby categories.
+### CSV pipeline
 
-| Run | Tool appropriateness | Answer correctness |
-|---|---|---|
-| Baseline (post-fixes) | 53% | 20% |
-| Post scoring fixes | 73% | 60% |
-| Final (direct provider) | 80% | 93% |
-| Gateway production pass | 87% → 100%* | 87% |
+**Setup:** 15 questions sampled from a 45-question golden set (schema, count, statistics, filter, groupby, correlation), all against one dataset: 617 numeric feature columns plus a `class` label. Runs go through the live production path (`generate_stream()` → LLM Gateway → persistent pandas worker), with the reviewer not enabled.
 
-\* Same answers re-scored after correcting three golden entries that wrongly required computation for schema-derivable questions; no new LLM calls were made.
+**Metrics:**
+- *Tool appropriateness:* whether the model used the sandbox when computation was needed and answered from the schema when it wasn't.
+- *Answer correctness:* a deterministic numeric/range/string match against a value computed from golden pandas code (tolerance 0.001), with an LLM-judge fallback (`gpt-oss-120b`) for fuzzy answers.
 
-Early "wrong answer" cases frequently turned out to be correct model output being mis-scored by the eval itself, which is why the harness traces to the raw code and tool output.
+| Date | Run | Tool appropriateness | Answer correctness |
+|---|---|---|---|
+| 09-01 | Baseline (post-fixes) | 53% | 20% |
+| 09-08 | Post scoring fixes | 73% | 60% |
+| 09-10 | Final (standalone script) | 80% | 93% |
+| 09-24 | Gateway production pass | 87% | 87% (13/15) |
+| 09-24 | Same answers, golden labels corrected* | 100% | 87% (13/15) |
 
-**PDF path:** faithfulness, answer relevancy, context precision and context recall on a 15-question set. Best recorded run: faithfulness 100%, answer relevancy 100%, context recall 100%, context precision ~87%.
-> These PDF numbers were recorded on 2026-08-29 against the earlier forced-retrieval pipeline. They have not yet been re-run against the agentic `search_documents` path, so treat them as a baseline rather than a measurement of the current system.
+\* Three schema-derivable questions had been labeled as requiring computation; the model answered them correctly from the schema and was penalised. The labels were fixed after seeing the results and the same answers were re-scored, so the 100% is a corrected metric, not an improvement.
 
-Real bugs found through evals: a fixed-size chunker merging a data line into an unrelated chunk (fixed with heading-aware chunking), and a hard reranker score threshold dropping a correct chunk ranked #4 by a 0.0009 margin (fixed with rank-based reranking).
+The first four rows used a standalone `generate_with_tools()` script that was later found not to be wired into any live route. The gateway pass is the first run against the real serving path, so its 87% is the current number. It is not a regression from 93%.
 
-## Design decisions
+**What the 20% → 93% climb was:** almost entirely harness and data bugs, not model improvements.
+- *Scoring:* the number extractor matched digits inside column names (`f1`, `f617`) before the real answer, missed Unicode dashes as minus signs, and picked up question parameters instead of results. It now anchors on linking words ("is", "equals"). Tolerance had also been set to 0.0001, which implicitly demanded 4+ decimals in prose answers.
+- *Data:* the `class` column contained literal quote characters, so `df['class'] == 1` silently matched zero rows. The fix was applied in two independent CSV loaders (extractor and sandbox worker), which had drifted apart, so cleaning moved to one shared utility.
+- *Prompt:* schema truncation computed a summary for columns past the first 20 but never appended it, so 597 columns were invisible to the model. "Column doesn't exist" answers were correct inferences from an incomplete prompt.
+- *Synthesis:* `gpt-oss-20b` sometimes attempts an unprompted tool call during the no-tools synthesis step, which crashed it. Fixed with a try/except fallback and a tightened instruction.
 
-- **Retrieval as a tool, with a reviewer as the safety net.** An earlier design forced retrieval before generation; the current design lets the model search as many times as needed and uses `RAGReviewer` to catch answers not grounded in what was retrieved.
-- **Rank-based reranking, not absolute thresholds.** The same Jina score meant "relevant" for one query and "noise" for another, and a fixed cutoff silently dropped a correct answer.
-- **Sandboxed code execution for CSV, not templated queries.** The model writes arbitrary pandas, so it is not limited to a fixed set of operations; the attribute allowlist, runtime proxies and process limits contain it.
-- **Independent review, not self-review.** The CSV reviewer cannot execute code and uses a fixed lookup menu, so it cannot repeat the generator's mistake the same way.
-- **Persistent worker instead of per-query subprocess.** Removes repeated pandas import and CSV-load overhead.
-- **Single active document, by design.** Each `/upload` clears previous state and resets the index. Queries resolve to the first ready file; multi-document Q&A is a deferred extension.
-- **Eval-driven development.** Every fix traces to a specific, reproduced failure.
+**Bugs found by the gateway pass:**
+- The gateway's semantic cache was caching synthesis calls (they carry no tools, so they looked cacheable). One question's answer leaked into others (33% hit rate on requests that should never be cached). Fixed with an explicit `is_tool_related` flag.
+- The pandas worker's queues had no lock, so concurrent callers could consume each other's results. Fixed with a lock around the send/receive exchange.
+- A duplicate `route()` definition meant the new retry-with-backoff code never ran across several redeploys. Found by inspecting the pushed repo.
+
+**The two remaining failures** are scoring-design gaps per the run notes, not execution bugs: `schema_06` (correct prose answer, golden value is a raw `.dtypes` repr) and `count_05` (a two-part question, "which class *and* how many", scored against one value).
+
+### PDF pipeline
+
+**Setup:** 15 questions over one document (an HDFC International Funds GIFT Outbound leaflet). An LLM judge (`gpt-oss-120b`) scores each question 0–1 on faithfulness, answer relevancy, context precision and context recall.
+
+| Run | Faithfulness | Answer relevancy | Context precision | Context recall |
+|---|---|---|---|---|
+| Baseline, 7 reruns of identical config (08-26 to 08-29) | 0.93 – 1.00 | 1.00 | 0.48 – 0.79 | 0.87 – 1.00 |
+| After chunker + reranker fix (08-29) | 1.00 | 1.00 | 0.87 | 1.00 |
+
+**Bug found:** Q13 (a registration-number lookup) failed recall. Two stacked causes: the fixed-size chunker had merged the registration line into an unrelated marketing chunk, and a hardcoded reranker cutoff (`min_score = 0.3`) dropped the right chunk at 0.2991, which ranked #4 of 20. Fixes: heading-aware, line-boundary chunking, and rank-based reranking with no absolute threshold. A duplicate `httpx.post()` call that was double-billing every rerank request was also removed.
+
+### Limitations of this evaluation
+
+- **The PDF eval does not test the current PDF pipeline.** The harness uses forced retrieval (top-20 → rerank top-5 → single-shot generation). Production now uses the agentic `search_documents` tool and `RAGReviewer`. These scores describe the earlier architecture.
+- **The reviewer has not been evaluated** in either pipeline. The CSV harness runs without it. There is no measurement of how often it catches real errors, or how often it fails good answers.
+- **Small and narrow:** 15 questions per pipeline, one PDF, one CSV. The CSV score is sampled from 45 questions, and the PDF result is a single run after the fix, so there is no variance estimate.
+- **Judge noise is visible in the data.** Seven runs of an identical pipeline gave context precision from 0.48 to 0.79. The post-fix 0.87 is above that range, but a single run on a changed pipeline is weak evidence.
+- **The judge and generator are from the same model family** (`gpt-oss-120b` judging `gpt-oss-20b`), which can bias scoring.
+- **Golden labels were adjusted after seeing results** (the three relabeled questions, the 0.0001 → 0.001 tolerance change). Each change was justified in the run notes, but it means the scores are not purely pre-registered.
 
 ## Known limitations
 
