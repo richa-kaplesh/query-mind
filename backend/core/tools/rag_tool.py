@@ -4,10 +4,6 @@ from core.retriever import HybridRetriever
 from core.reranker import Reranker
 from core.token_utils import estimate_tokens
 
-# How much of a search result's content budget is "safe" to hand back in one
-# tool call. Not a page or chunk-count guess — an actual constraint (context
-# cost), so it scales naturally: many small chunks can all fit; a few large
-# ones won't.
 MAX_RESULT_TOKENS = 3000
 
 
@@ -36,6 +32,14 @@ class RAGTool(BaseTool):
     """Lets the agent loop decide WHEN to search the document and WITH WHAT QUERY,
     instead of always retrieving before the model has even seen the question.
     Can be called more than once per question with a refined query."""
+
+    # Sized around MAX_RESULT_TOKENS (~3000 tokens, roughly 4 chars/token) plus
+    # headroom for citation formatting and the full-document notice, with a
+    # safety margin for a worst-case oversized single chunk. Deliberately set
+    # on this tool, not left to the shared default — a flat global character
+    # limit sized for short pandas results would silently clip a normal RAG
+    # result before the token budget above even kicks in.
+    max_result_chars = 18000
 
     def __init__(self, retriever: HybridRetriever, embedder: Embedder, reranker: Reranker):
         self.retriever = retriever
@@ -77,9 +81,9 @@ class RAGTool(BaseTool):
 
         passages = format_passages(selected)
         if selected and len(selected) >= total_chunks:
-            passages += (
-                "\n\n[This is the ENTIRE content of the document — every indexed passage. If what "
-                "you're looking for isn't above, it does not appear in this document. Do not search "
-                "again — answer accordingly.]"
+            passages = (
+                "[This is the ENTIRE content of the document — every indexed passage. If what "
+                "you're looking for isn't below, it does not appear in this document. Do not "
+                "search again — answer accordingly.]\n\n" + passages
             )
         return passages

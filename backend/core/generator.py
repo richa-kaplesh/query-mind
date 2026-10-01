@@ -324,12 +324,11 @@ class Generator:
         )
 
     @staticmethod
-    def _truncate(text: str) -> str:
-        limit = settings.agent_tool_result_max_chars
+    def _truncate(text: str, limit: int) -> str:
         if len(text) <= limit:
             return text
         return text[:limit] + f"\n... [truncated {len(text) - limit} characters]"
-
+    
     def _run_tool_safely(self, tool_name: str, raw_args: str) -> tuple[str, str]:
         """Blocking. Never raises: every failure comes back as text, so the model
         can read it and correct itself on the next loop iteration.
@@ -352,11 +351,13 @@ class Generator:
         except Exception as e:
             log.error(f"[TOOL] '{tool_name}' raised: {e}", exc_info=True)
             return tool_input, f"Error: tool '{tool_name}' failed: {type(e).__name__}: {e}"
-
-        return tool_input, self._truncate(str(result))
+        
+        limit = getattr(tool, "max_result_chars", settings.agent_tool_result_max_chars)
+        return tool_input, self._truncate(str(result), limit)
 
     async def _forced_final_answer(self, original_user_content: str, tool_log: list,
-                                   conversation_id: str, user_id: str, token_tracker=None) -> str:
+                                   conversation_id: str, user_id: str, token_tracker=None,
+                                   system_prompt: str = None, purpose_prefix: str = "csv") -> str:
         """Last resort when the loop cannot finish on its own (iteration cap hit, LLM error,
         or an empty reply). Fresh, tool-free messages built from everything the tools returned —
         the same pattern the old 2-call flow used, so Groq never sees a tool call with no tools."""
@@ -365,7 +366,7 @@ class Generator:
             for name, tool_input, result in tool_log
         )
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt or SYSTEM_PROMPT},
             {"role": "user", "content": (
                 f"{original_user_content}\n\n{results_text}\n\n"
                 "The tool work is finished. Do not call any tool or function and do not write code. "
@@ -382,14 +383,15 @@ class Generator:
                 model=result.get("model_used", "gateway"),
                 prompt_tokens=estimate_tokens(str(messages)),
                 completion_tokens=estimate_tokens(result.get("content") or ""),
-                purpose="csv_synthesis", estimated=True,
+                purpose=f"{purpose_prefix}_synthesis", estimated=True,
             )
         return (result.get("content") or "").strip()
 
         # ── Core agent loop (compute only — no streaming) ──────────────────────────
 
     async def _run_loop(self, messages: list, tool_schema: list, conversation_id: str, user_id: str,
-                        tracer, token_tracker, tool_log: list, label: str = "") -> tuple[str, str]:
+                        tracer, token_tracker, tool_log: list, label: str = "",
+                        system_prompt: str = None, purpose_prefix: str = "csv") -> tuple[str, str]:
         """Runs the think -> act -> observe loop to completion on an existing message
         list (so a revision round continues the same conversation instead of
         restarting it) and returns (answer, stop_reason). Mutates `messages` and
@@ -443,7 +445,7 @@ class Generator:
                     model=result.get("model_used", "gateway"),
                     prompt_tokens=estimate_tokens(str(messages)),
                     completion_tokens=estimate_tokens(result.get("content") or ""),
-                    purpose=f"{label}csv_call{iteration}", estimated=True,
+                    purpose=f"{label}{purpose_prefix}_call{iteration}"                
                 )
 
             if not tool_calls:
@@ -487,7 +489,8 @@ class Generator:
             if tool_log:
                 try:
                     answer = await self._forced_final_answer(
-                        original_user_content, tool_log, conversation_id, user_id, token_tracker
+                        original_user_content, tool_log, conversation_id, user_id, token_tracker,
+                        system_prompt=system_prompt or SYSTEM_PROMPT, purpose_prefix=purpose_prefix,
                     )
                 except Exception as e:
                     log.error(f"[AGENT] {label}Forced final answer failed: {e}")
@@ -533,6 +536,8 @@ class Generator:
         tool_log: list[tuple[str, str, str]] = []
         answer, stop_reason = await self._run_loop(
             messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
+            system_prompt=AGENTIC_RAG_SYSTEM_PROMPT, purpose_prefix="rag",
+        
         )
 
         revisions = 0
@@ -556,6 +561,8 @@ class Generator:
                 answer, stop_reason = await self._run_loop(
                     messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
                     label=f"revision{revisions}_",
+                    system_prompt=AGENTIC_RAG_SYSTEM_PROMPT, purpose_prefix="rag",
+        
                 )
                 verdict = await reviewer.review(
                     question=query, schema=schema_str, draft_answer=answer, tool_log=tool_log,
@@ -655,11 +662,10 @@ class Generator:
         chunks being retrieved unconditionally before the model ever sees the
         question. Can search more than once with a refined query per question.
 
-        reviewer is accepted for interface symmetry with generate_stream but not
-        used yet — a RAG-specific reviewer needs its own independent-check tool
-        (e.g. verifying a citation's page actually contains the claimed text),
-        which doesn't exist yet. Passing one in here is a no-op for now.
+                reviewer, if passed, independently fact-checks the draft against the passages
+        that were actually retrieved (see RAGReviewer) before the user sees it.
         """
+        
         tool_schema = self._build_tool_schema(self.tools)
         messages = self._build_rag_tool_messages(query)
 
