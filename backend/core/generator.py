@@ -536,46 +536,19 @@ class Generator:
         tool_log: list[tuple[str, str, str]] = []
         answer, stop_reason = await self._run_loop(
             messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
-            system_prompt=AGENTIC_RAG_SYSTEM_PROMPT, purpose_prefix="rag",
-        
+            system_prompt=SYSTEM_PROMPT, purpose_prefix="csv",
         )
 
-        revisions = 0
-        if reviewer is not None:
-            max_revisions = settings.reviewer_max_revisions
-            verdict = await reviewer.review(
-                question=query, schema=schema_str, draft_answer=answer, tool_log=tool_log,
+        async def review_fn(ans, tlog):
+            return await reviewer.review(
+                question=query, schema=schema_str, draft_answer=ans, tool_log=tlog,
                 conversation_id=conversation_id, user_id=user_id, tracer=tracer, token_tracker=token_tracker,
             )
-            record("review_result", {
-                "passed": verdict.passed, "feedback": verdict.feedback,
-                "revisions_used": revisions, "review_tool_calls": verdict.tool_calls,
-            })
 
-            while not verdict.passed and revisions < max_revisions:
-                revisions += 1
-                messages.append({"role": "user", "content": (
-                    f"A reviewer checked your answer and found a problem: {verdict.feedback}\n\n"
-                    "Please reconsider and give a corrected, complete final answer. Use tools again if needed."
-                )})
-                answer, stop_reason = await self._run_loop(
-                    messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
-                    label=f"revision{revisions}_",
-                    system_prompt=AGENTIC_RAG_SYSTEM_PROMPT, purpose_prefix="rag",
-        
-                )
-                verdict = await reviewer.review(
-                    question=query, schema=schema_str, draft_answer=answer, tool_log=tool_log,
-                    conversation_id=conversation_id, user_id=user_id, tracer=tracer, token_tracker=token_tracker,
-                )
-                record("review_result", {
-                    "passed": verdict.passed, "feedback": verdict.feedback,
-                    "revisions_used": revisions, "review_tool_calls": verdict.tool_calls,
-                })
-
-            if not verdict.passed:
-                log.warning(f"[REVIEWER] Answer still not verified after {max_revisions} revisions")
-                answer = f"{answer}\n\n_(This answer could not be fully verified — treat the figures with care.)_"
+        answer, revisions = await self._review_and_revise(
+            reviewer, review_fn, messages, tool_schema, conversation_id, user_id, tracer, token_tracker,
+            tool_log, answer, stop_reason, system_prompt=SYSTEM_PROMPT, purpose_prefix="csv", record=record,
+        )
 
         tools_used = [name for name, _, _ in tool_log]
         record("final_answer", {
