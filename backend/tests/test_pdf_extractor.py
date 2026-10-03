@@ -37,3 +37,39 @@ def test_password_protected_pdf_raises(tmp_path):
     doc.close()
     with pytest.raises(PDFPasswordProtectedError):
         PDFExtractor().extract(str(locked))
+
+def test_normal_pdf_returns_text_and_metadata(tmp_path):
+    pdf_path = tmp_path / "normal.pdf"
+    doc = fitz.open()
+    doc.new_page().insert_text((72, 72), "Hello QueryMind page one")
+    doc.new_page().insert_text((72, 72), "Second page here")
+    doc.save(str(pdf_path))
+    doc.close()
+
+    result = PDFExtractor().extract(str(pdf_path))
+
+    assert len(result.pages) == 2
+    first, second = result.pages
+    assert "Hello QueryMind page one" in first.text
+    assert "Second page here" in second.text
+    assert first.metadata.page == 0
+    assert second.metadata.page == 1
+    assert first.metadata.total_pages == 2
+    assert first.metadata.source == "normal.pdf"
+    assert first.metadata.file_type == "pdf"
+    assert first.metadata.ocr_used is False
+    assert first.metadata.warnings == []
+
+
+def test_blank_page_gives_warning_not_crash(tmp_path):
+    blank = tmp_path / "blank.pdf"
+    doc = fitz.open()
+    doc.new_page()          # a page with nothing on it
+    doc.save(str(blank))
+    doc.close()
+
+    result = PDFExtractor().extract(str(blank))
+
+    assert len(result.pages) == 1
+    assert result.pages[0].text == ""
+    assert len(result.pages[0].metadata.warnings) >= 1
