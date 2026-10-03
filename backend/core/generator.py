@@ -635,10 +635,9 @@ class Generator:
         chunks being retrieved unconditionally before the model ever sees the
         question. Can search more than once with a refined query per question.
 
-                reviewer, if passed, independently fact-checks the draft against the passages
+        reviewer, if passed, independently fact-checks the draft against the passages
         that were actually retrieved (see RAGReviewer) before the user sees it.
         """
-        
         tool_schema = self._build_tool_schema(self.tools)
         messages = self._build_rag_tool_messages(query)
 
@@ -652,41 +651,20 @@ class Generator:
         tool_log: list[tuple[str, str, str]] = []
         answer, stop_reason = await self._run_loop(
             messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
+            system_prompt=AGENTIC_RAG_SYSTEM_PROMPT, purpose_prefix="rag",
         )
 
-        revisions = 0
-        if reviewer is not None:
-            max_revisions = settings.reviewer_max_revisions
-            verdict = await reviewer.review(
-                question=query, draft_answer=answer, tool_log=tool_log,
+        async def review_fn(ans, tlog):
+            return await reviewer.review(
+                question=query, draft_answer=ans, tool_log=tlog,
                 conversation_id=conversation_id, user_id=user_id, tracer=tracer, token_tracker=token_tracker,
             )
-            record("review_result", {
-                "passed": verdict.passed, "feedback": verdict.feedback, "revisions_used": revisions,
-            })
 
-            while not verdict.passed and revisions < max_revisions:
-                revisions += 1
-                messages.append({"role": "user", "content": (
-                    f"A reviewer checked your answer and found a problem: {verdict.feedback}\n\n"
-                    "Please reconsider — search again if needed — and give a corrected, complete "
-                    "final answer, using only passages you can actually find."
-                )})
-                answer, stop_reason = await self._run_loop(
-                    messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
-                    label=f"revision{revisions}_",
-                )
-                verdict = await reviewer.review(
-                    question=query, draft_answer=answer, tool_log=tool_log,
-                    conversation_id=conversation_id, user_id=user_id, tracer=tracer, token_tracker=token_tracker,
-                )
-                record("review_result", {
-                    "passed": verdict.passed, "feedback": verdict.feedback, "revisions_used": revisions,
-                })
-
-            if not verdict.passed:
-                log.warning(f"[RAG REVIEWER] Answer still not grounded after {max_revisions} revisions")
-                answer = f"{answer}\n\n_(This answer could not be fully verified against the document.)_"
+        answer, revisions = await self._review_and_revise(
+            reviewer, review_fn, messages, tool_schema, conversation_id, user_id, tracer, token_tracker,
+            tool_log, answer, stop_reason,
+            system_prompt=AGENTIC_RAG_SYSTEM_PROMPT, purpose_prefix="rag", record=record,
+        )
 
         tools_used = [name for name, _, _ in tool_log]
         record("final_answer", {
@@ -713,3 +691,65 @@ class Generator:
 
     def generate(self, query: str, schema: str | CSVSchema = None) -> dict:
         return self.generate_with_tools(query, schema=schema)
+
+async def _review_and_revise(self, reviewer, review_fn, messages: list, tool_schema: list,
+                                  conversation_id: str, user_id: str, tracer, token_tracker,
+                                  tool_log: list, answer: str, stop_reason: str,
+                                  system_prompt: str, purpose_prefix: str, record) -> tuple[str, int]:
+        """Runs reviewer.review on a draft answer and, on failure, feeds the feedback back
+        into the SAME conversation for another generator pass, up to
+        settings.reviewer_max_revisions times. Returns (final_answer, revisions_used).
+
+        If stop_reason is "llm_error" — the gateway/provider call itself failed, not a
+        quality problem with the answer — review and revision are skipped entirely, both
+        here and after each revision round. A reviewer can't fix a broken request, and
+        revising just resends the same conversation that already failed, which fails the
+        same way again (this was a real, observed bug: a revision round retried a Gemini
+        call that was deterministically malformed, not transiently flaky).
+        """
+        revisions = 0
+        if reviewer is None:
+            return answer, revisions
+
+        if stop_reason == "llm_error":
+            log.warning("[REVIEWER] Skipped — answer came from a forced fallback after an upstream LLM error")
+            record("review_skipped", {"reason": "llm_error", "revisions_used": 0})
+            return answer, revisions
+
+        max_revisions = settings.reviewer_max_revisions
+        verdict = await review_fn(answer, tool_log)
+        record("review_result", {
+            "passed": verdict.passed, "feedback": verdict.feedback,
+            "revisions_used": revisions, "review_tool_calls": getattr(verdict, "tool_calls", 0),
+        })
+
+        while not verdict.passed and revisions < max_revisions:
+            revisions += 1
+            messages.append({"role": "user", "content": (
+                f"A reviewer checked your answer and found a problem: {verdict.feedback}\n\n"
+                "Please reconsider — search again if needed — and give a corrected, complete "
+                "final answer, using only information you can actually find."
+            )})
+            answer, stop_reason = await self._run_loop(
+                messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
+                label=f"revision{revisions}_", system_prompt=system_prompt, purpose_prefix=purpose_prefix,
+            )
+            if stop_reason == "llm_error":
+                log.warning(
+                    f"[REVIEWER] Stopping — upstream LLM error on revision {revisions}; "
+                    "further attempts would likely fail the same way"
+                )
+                record("review_skipped", {"reason": "llm_error", "revisions_used": revisions})
+                return answer, revisions
+
+            verdict = await review_fn(answer, tool_log)
+            record("review_result", {
+                "passed": verdict.passed, "feedback": verdict.feedback,
+                "revisions_used": revisions, "review_tool_calls": getattr(verdict, "tool_calls", 0),
+            })
+
+        if not verdict.passed:
+            log.warning(f"[REVIEWER] Answer still not verified after {max_revisions} revisions")
+            answer = f"{answer}\n\n_(This answer could not be fully verified — treat it with care.)_"
+
+        return answer, revisions
