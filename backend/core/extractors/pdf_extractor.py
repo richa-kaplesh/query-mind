@@ -3,7 +3,7 @@ import pytesseract
 from collections import Counter
 from pathlib import Path
 from PIL import Image
-
+import os
 from core.models import ExtractedPage, PageMetadata, PDFExtractionResult
 from core.extractors.base_extractor import BaseExtractor
 from core.exceptions import PDFPasswordProtectedError, PDFCorruptError
