@@ -416,6 +416,7 @@ class Generator:
             record(tag, {"iteration": iteration, "messages": messages, "tools": tool_schema})
             log.info(f"[AGENT] {label}→ LLM call {iteration}/{max_iterations}")
 
+            llm_start = time.perf_counter()
             try:
                 result = await gateway_client.complete(
                     conversation_id=conversation_id, user_id=user_id, messages=messages,
@@ -431,7 +432,17 @@ class Generator:
                 stop_reason = "llm_error"
                 break
 
+            llm_ms = (time.perf_counter() - llm_start) * 1000
             tool_calls = result.get("tool_calls")
+            log.info(
+                f"[AGENT] {label}← LLM call {iteration} done",
+                extra={"fields": {
+                    "event": "llm_call", "iteration": iteration, "label": label,
+                    "latency_ms": round(llm_ms), "model": result.get("model_used"),
+                    "tool_calls_requested": len(tool_calls or []),
+                    "finish_reason": result.get("finish_reason"),
+                }},
+            )
             record(f"{label}llm_response_{iteration}", {
                 "content": result.get("content"),
                 "tool_calls": [
@@ -468,14 +479,22 @@ class Generator:
                     )
                     stuck = True
                 else:
+                    tool_start = time.perf_counter()
                     tool_input, tool_result = await asyncio.to_thread(
                         self._run_tool_safely, tool_name, raw_args
                     )
+                    tool_ms = (time.perf_counter() - tool_start) * 1000
                     seen_calls[key] = tool_result
                     tool_log.append((tool_name, tool_input, tool_result))
                     record(f"{label}tool_input", {"tool_name": tool_name, "input": tool_input})
                     record(f"{label}tool_output", {"tool_name": tool_name, "result": tool_result})
-                    log.info(f"[AGENT] {label}Tool '{tool_name}' result preview: {tool_result[:300]}")
+                    log.info(
+                        f"[AGENT] {label}Tool '{tool_name}' finished",
+                        extra={"fields": {
+                            "event": "tool_call", "tool": tool_name, "label": label,
+                            "duration_ms": round(tool_ms), "result_chars": len(tool_result),
+                        }},
+                    )
 
                 messages.append({
                     "role": "tool", "tool_call_id": call_id, "name": tool_name, "content": tool_result,
@@ -499,7 +518,13 @@ class Generator:
                 answer = "I couldn't produce an answer for that question."
 
         record(f"{label}agent_stop", {"reason": stop_reason, "iterations": iteration, "tool_calls": len(tool_log)})
-        log.info(f"[AGENT] {label}Done — reason={stop_reason} iterations={iteration} tools={len(tool_log)}")
+        log.info(
+            f"[AGENT] {label}Done — reason={stop_reason} iterations={iteration} tools={len(tool_log)}",
+            extra={"fields": {
+                "event": "agent_loop_done", "label": label, "stop_reason": stop_reason,
+                "iterations": iteration, "tool_calls": len(tool_log),
+            }},
+        )
         return answer, stop_reason
 
     # ── Core agent loop (streaming, via the LLM Gateway) ──────────────────────
@@ -520,6 +545,7 @@ class Generator:
         every step in order if you need to see the live sequence (llm_call_N, tool_input,
         tool_output, review_call_N, review_tool_call, ...).
         """
+        request_start = time.perf_counter()
         tool_schema = self._build_tool_schema(self.tools)
         messages = self._build_messages(query, schema)
 
@@ -555,7 +581,15 @@ class Generator:
             "answer": answer, "tool_used": tools_used[-1] if tools_used else None,
             "tools_used": tools_used, "revisions": revisions,
         })
-        log.info(f"[AGENT] Overall done — revisions={revisions} tools={tools_used}")
+        log.info(
+            f"[AGENT] Overall done — revisions={revisions} tools={tools_used}",
+            extra={"fields": {
+                "event": "request_summary", "pipeline": "csv",
+                "draft_stop_reason": stop_reason, "tools_used": tools_used,
+                "revisions": revisions,
+                "total_ms": round((time.perf_counter() - request_start) * 1000),
+            }},
+        )
 
         for tool_name in tools_used:
             yield f"__tool__:{tool_name}"
@@ -638,6 +672,7 @@ class Generator:
         reviewer, if passed, independently fact-checks the draft against the passages
         that were actually retrieved (see RAGReviewer) before the user sees it.
         """
+        request_start = time.perf_counter()
         tool_schema = self._build_tool_schema(self.tools)
         messages = self._build_rag_tool_messages(query)
 
@@ -671,7 +706,15 @@ class Generator:
             "answer": answer, "tool_used": tools_used[-1] if tools_used else None,
             "tools_used": tools_used, "revisions": revisions,
         })
-        log.info(f"[AGENT] RAG done — reason={stop_reason} searches={len(tool_log)} revisions={revisions}")
+        log.info(
+            f"[AGENT] RAG done — reason={stop_reason} searches={len(tool_log)} revisions={revisions}",
+            extra={"fields": {
+                "event": "request_summary", "pipeline": "pdf",
+                "draft_stop_reason": stop_reason, "tools_used": tools_used,
+                "searches": len(tool_log), "revisions": revisions,
+                "total_ms": round((time.perf_counter() - request_start) * 1000),
+            }},
+        )
 
         for tool_name in tools_used:
             yield f"__tool__:{tool_name}"
@@ -722,6 +765,13 @@ class Generator:
             "passed": verdict.passed, "feedback": verdict.feedback,
             "revisions_used": revisions, "review_tool_calls": getattr(verdict, "tool_calls", 0),
         })
+        log.info(
+            f"[REVIEWER] verdict passed={verdict.passed}",
+            extra={"fields": {
+                "event": "review_verdict", "passed": verdict.passed,
+                "revision": revisions, "feedback": str(verdict.feedback)[:200],
+            }},
+        )
 
         while not verdict.passed and revisions < max_revisions:
             revisions += 1
@@ -747,6 +797,13 @@ class Generator:
                 "passed": verdict.passed, "feedback": verdict.feedback,
                 "revisions_used": revisions, "review_tool_calls": getattr(verdict, "tool_calls", 0),
             })
+            log.info(
+                f"[REVIEWER] verdict passed={verdict.passed}",
+                extra={"fields": {
+                    "event": "review_verdict", "passed": verdict.passed,
+                    "revision": revisions, "feedback": str(verdict.feedback)[:200],
+                }},
+            )
 
         if not verdict.passed:
             log.warning(f"[REVIEWER] Answer still not verified after {max_revisions} revisions")

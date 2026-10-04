@@ -24,6 +24,7 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
             "req_id": request_id_var.get(),
         }
+        payload.update(getattr(record, "fields", {}))
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(payload)
