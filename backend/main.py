@@ -13,12 +13,10 @@ from api.router import router
 from api.dashboard_routes import router as dashboard_router
 from core.token_tracker import TokenTracker
 from core.tools.pandas_worker_manager import worker_manager
+import uuid
+from core.logging_setup import setup_logging, request_id_var
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    datefmt="%H:%M:%S"
-)
+setup_logging()
 log = logging.getLogger("main")
 
 
@@ -52,12 +50,18 @@ async def root():
 
 @app.middleware("http")
 async def log_requests(request, call_next):
+    req_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+    token = request_id_var.set(req_id)
     start = time.time()
-    log.info(f"→ {request.method} {request.url.path}")
-    response = await call_next(request)
-    duration = (time.time() - start) * 1000
-    log.info(f"← {request.method} {request.url.path} | {response.status_code} | {duration:.1f}ms")
-    return response
+    try:
+        log.info(f"→ {request.method} {request.url.path}")
+        response = await call_next(request)
+        duration = (time.time() - start) * 1000
+        log.info(f"← {request.method} {request.url.path} | {response.status_code} | {duration:.1f}ms")
+        response.headers["X-Request-ID"] = req_id
+        return response
+    finally:
+        request_id_var.reset(token)
 
 log.info("Loading components...")
 
