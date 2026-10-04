@@ -692,7 +692,7 @@ class Generator:
     def generate(self, query: str, schema: str | CSVSchema = None) -> dict:
         return self.generate_with_tools(query, schema=schema)
 
-async def _review_and_revise(self, reviewer, review_fn, messages: list, tool_schema: list,
+    async def _review_and_revise(self, reviewer, review_fn, messages: list, tool_schema: list,
                                   conversation_id: str, user_id: str, tracer, token_tracker,
                                   tool_log: list, answer: str, stop_reason: str,
                                   system_prompt: str, purpose_prefix: str, record) -> tuple[str, int]:
