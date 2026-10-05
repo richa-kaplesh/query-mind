@@ -16,6 +16,22 @@ SAFE_BUILTINS = {
 }
 
 
+def _current_vmsize_bytes() -> int:
+    """Address space this process already holds (inherited from the parent)."""
+    try:
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("VmSize:"):
+                    return int(line.split()[1]) * 1024
+    except OSError:
+        pass
+    return 0
+
+
+# How much the worker may allocate ON TOP of what it inherited from the main app.
+WORKER_MEMORY_HEADROOM_MB = 600
+
+
 def _apply_resource_limits():
     """resource is POSIX-only — real protection on Render (Linux), silent
     no-op on Windows dev machines, which don't have this module at all."""
@@ -23,7 +39,8 @@ def _apply_resource_limits():
         return
     try:
         import resource
-        resource.setrlimit(resource.RLIMIT_AS, (500 * 1024 * 1024, 500 * 1024 * 1024))
+        limit = _current_vmsize_bytes() + WORKER_MEMORY_HEADROOM_MB * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
         resource.setrlimit(resource.RLIMIT_CPU, (10, 10))
     except Exception as e:
         log.warning(f"Could not apply resource limits: {e}")

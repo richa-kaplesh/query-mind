@@ -5,7 +5,11 @@ class Settings(BaseSettings):
     groq_api_key: str
     model_name: str = "openai/gpt-oss-20b"
     temperature: float = 0.1
-
+    max_upload_mb: int = 25
+    session_ttl_seconds: int = 1800
+    max_sessions: int = 20            # free: ~10-20, paid: raise
+    max_concurrent_ingests: int = 1   # free: 1, paid: 3-5
+    upload_dir: str = "uploads"
     # Jina AI (embeddings + reranking)
     jina_api_key: str = ""
     jina_embed_model: str = "jina-embeddings-v3"
@@ -39,6 +43,7 @@ class Settings(BaseSettings):
     reviewer_max_revisions: int = 2
     reviewer_max_iterations: int = 3
     gateway_url: str = "https://llm-gateway-qewa.onrender.com"
+
     
     class Config:
         env_file = ".env"
