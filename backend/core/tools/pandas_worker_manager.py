@@ -25,7 +25,6 @@ def _apply_resource_limits():
         import resource
         resource.setrlimit(resource.RLIMIT_AS, (500 * 1024 * 1024, 500 * 1024 * 1024))
         resource.setrlimit(resource.RLIMIT_CPU, (10, 10))
-        resource.setrlimit(resource.RLIMIT_NPROC, (1, 1))
     except Exception as e:
         log.warning(f"Could not apply resource limits: {e}")
 
