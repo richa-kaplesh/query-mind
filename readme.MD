@@ -49,7 +49,7 @@ The model writes arbitrary pandas code against a pre-loaded DataFrame `df` and a
 |---|---|
 | **Static validation** (`CodeValidator`, before execution) | Attribute **allowlist** (only listed DataFrame/Series/`pd` methods); no imports, lambdas or function definitions; blocks `eval`/`exec`/`open`/`getattr`/`query` etc.; no dunder access; max 3000 characters and 400 AST nodes |
 | **Runtime proxies** (`SafeModuleProxy`, `SafeDataFrameProxy`) | A second, independent allowlist check at attribute-access time for `pd` and `df`; restricted builtins; each query runs on a copy of the DataFrame |
-| **Process isolation** | Dedicated worker process (`spawn`); 15 s per-query timeout (worker is killed and respawned on timeout); on Linux, `RLIMIT_AS` 500 MB, `RLIMIT_CPU` 10 s, `RLIMIT_NPROC`; result truncated to 5000 characters |
+| **Process isolation** | Dedicated worker process (`spawn`); 15 s per-query timeout (worker is killed and respawned on timeout); on Linux, `RLIMIT_AS` (the address space the worker inherits from the main app, plus 600 MB of headroom) and `RLIMIT_CPU` 10 s; result truncated to 5000 characters |
 
 **Persistent worker:** pandas is imported once when the FastAPI app boots (lifespan hook), and the dataset is loaded once per upload instead of per query. The worker is self-healing: if it dies, it is respawned and the current file is reloaded.
 
@@ -66,9 +66,22 @@ LLM calls go through `gateway_client` to a separate, independently deployed rout
 
 ### Observability
 
-- **Traces:** every request produces a trace of its steps (LLM calls, tool calls, review calls and verdicts, final answer, timings). Held in memory, last 200 retained.
+- **Request correlation:** a middleware gives every request an ID (or reuses an incoming `X-Request-ID`) and stores it in a `ContextVar`, so every log line written while handling that request carries it without passing it through function signatures. The ID is sent to the LLM Gateway in the same header and returned in the response headers, so one ID finds a question's logs in both services.
+- **Structured logs:** all logs are JSON (timestamp, level, logger, message, `req_id`, plus event fields). Key events: `llm_call` (latency, model, tool calls requested), `tool_call` (duration, result size), `agent_loop_done` (iterations, stop reason), `review_verdict`, and one `request_summary` per question (pipeline, total time, tools used, revisions).
+- **Log shipping:** logs go to stdout (Render's log viewer) and, when `LOKI_URL` is set, to Grafana Cloud Loki through a queue-and-batch handler running in a background thread, so a slow or unreachable log backend cannot slow down or break a request. Logs can be filtered by `req_id`, event or level. Grafana Cloud's free plan keeps them for 14 days.
+- **Traces:** every request also produces a trace of its steps (LLM calls, tool calls, review calls and verdicts, final answer, timings). Held in memory, last 200 retained.
 - **Token tracking:** every call is logged by purpose (agent, review, revision, forced final answer) to `backend/logs/token_log.json`. Gateway-routed calls use estimated counts, flagged as such.
 - **Dashboard:** the frontend `/logs` page shows live traces (SSE), eval run history, and token usage.
+
+**Problems the logs surfaced:**
+- A production `AttributeError` for `_review_and_revise`: after a manual merge the method had ended up outside the `Generator` class because of its indentation.
+- CSV uploads failing on Render with `C error: out of memory` for a 31 MB file. The worker's fixed 500 MB address-space cap was applied after the process had inherited the main app's address space, leaving almost no headroom (about 500 MB already reserved in a local reproduction). The cap is now the inherited size plus 600 MB.
+- A 53-second gateway call: the provider SDK's own retry waited 51 seconds on a rate limit, so the gateway's fallback never had a chance to run.
+
+### CI/CD
+
+- **CI (GitHub Actions)** on every push and pull request to `main`: the backend job installs dependencies on Python 3.11 and runs the pytest suite in `backend/tests` (extractors, chunker, sandbox security, safe namespace, token tracker and others); the frontend job runs `npm ci` and the type-check and build on Node 22.
+- **Deployment:** the backend deploys to Render (Docker) only after the CI checks pass on `main`; the frontend deploys to Vercel from `main`.
 
 ## API
 
@@ -135,10 +148,18 @@ The first four rows used a standalone `generate_with_tools()` script that was la
 
 **Bug found:** Q13 (a registration-number lookup) failed recall. Two stacked causes: the fixed-size chunker had merged the registration line into an unrelated marketing chunk, and a hardcoded reranker cutoff (`min_score = 0.3`) dropped the right chunk at 0.2991, which ranked #4 of 20. Fixes: heading-aware, line-boundary chunking, and rank-based reranking with no absolute threshold. A duplicate `httpx.post()` call that was double-billing every rerank request was also removed.
 
+### Live end-to-end runner
+
+`backend/eval/run_live_eval.py` sends the golden questions through the deployed API (`/upload`, then `/query/stream`) exactly as the frontend does, so the whole production path is exercised: middleware, tools, reviewer and gateway. Each request carries `X-Request-ID: eval-<run_id>-<question_id>`, so a whole run, or a single question, can be found in the logs of both services. Each run is saved to `backend/eval/live_runs/<run_id>.json` (answer, scores, total time, time to first token), and the runner prints correctness, tool appropriateness, latency percentiles and per-category scores. Scoring is shared with the earlier harness (`scoring.py`).
+
+The CSV set is the 45 hand-written questions plus 72 generated by `make_csv_questions.py`, whose golden values are computed directly from the data with pandas (117 in total). The PDF set is the same 15 questions as above, scored here by an LLM judge on the final answer only, with no retrieval metrics.
+
+**First run (2026-10-05, 10 CSV questions, deployed backend):** 7 of the 10 answers were scored and all 7 were correct. 3 were not scored: one because the scorer did not handle thousands separators (a correct "7,797" did not match 7797), and two because the LLM-judge call failed. Tool appropriateness was 7/10. The run also showed latency: median about 35 s, mean about 68 s and slowest 242 s per question, with time to first token almost equal to total time.
+
 ### Limitations of this evaluation
 
-- **The PDF eval does not test the current PDF pipeline.** The harness uses forced retrieval (top-20 → rerank top-5 → single-shot generation). Production now uses the agentic `search_documents` tool and `RAGReviewer`. These scores describe the earlier architecture.
-- **The reviewer has not been evaluated** in either pipeline. The CSV harness runs without it. There is no measurement of how often it catches real errors, or how often it fails good answers.
+- **The RAGAS PDF scores do not describe the current PDF pipeline.** `run_pdf_eval.py` uses forced retrieval (top-20 → rerank top-5 → single-shot generation), while production now uses the agentic `search_documents` tool and `RAGReviewer`. The live runner does go through the current path, but it has not been run on the PDF set yet and gives no retrieval metrics.
+- **The reviewer's effect has not been measured.** The earlier CSV harness ran without it; the live runner includes it because it is part of the production path, but there is no with/without comparison yet, so no measurement of how often it catches real errors or fails good answers.
 - **Small and narrow:** 15 questions per pipeline, one PDF, one CSV. The CSV score is sampled from 45 questions, and the PDF result is a single run after the fix, so there is no variance estimate.
 - **Judge noise is visible in the data.** Seven runs of an identical pipeline gave context precision from 0.48 to 0.79. The post-fix 0.87 is above that range, but a single run on a changed pipeline is weak evidence.
 - **The judge and generator are from the same model family** (`gpt-oss-120b` judging `gpt-oss-20b`), which can bias scoring.
@@ -148,7 +169,7 @@ The first four rows used a standalone `generate_with_tools()` script that was la
 
 - **Sandbox is hardened, not hardened-for-hostile-tenants.** The allowlist is name-based, not type-aware (`sum` is allowed on any object), and objects returned from allowed calls (a Series, a GroupBy) are not re-wrapped by the runtime proxies. Resource limits only apply on Linux. Suitable for a demo / self-hosted deployment, not for untrusted multi-tenant use.
 - **Reviewer fails open and checks narrowly.** The CSV reviewer spot-checks at most two claims; any reviewer error lets the draft through unverified.
-- **Streaming is cosmetic.** The agent loop and review complete first, then the finished answer is emitted word by word. Time-to-first-token includes the full generate → review → revise cycle.
+- **Streaming is cosmetic, and latency is high.** The agent loop and review complete first, then the finished answer is emitted word by word, so time to first token includes the whole generate → review → revise cycle. In the first live run, answers took a median of about 35 s (slowest 242 s) on the free tier, even for questions that used no tool. Per-call and per-tool timings are now logged, and finding where the time goes is the next step.
 - **In-memory, single-process state.** The document registry, FAISS/BM25 index, traces and conversation ID live in process memory (single worker by design; use a real vector store to scale), so state is lost on restart and not safe to share across concurrent users.
 - **Wide CSVs:** only the first 20 columns get full detail in the schema prompt; the rest are summarised by dtype. The model is instructed to verify other columns via the sandbox, but this relies on it doing so.
 - **CSV pipeline tested on a small set of datasets.** Quote-stripping and numeric coercion are written generically, but have not been stress-tested across many differently-messy CSVs (mixed types, unusual delimiters).
@@ -157,12 +178,14 @@ The first four rows used a standalone `generate_with_tools()` script that was la
 
 ## Future scope
 
+- Find and reduce the latency, using the per-call and per-tool timings now in the logs.
+- Keep a per-question summary (time, tokens, provider, revisions) in a database so history outlives the 14-day log window.
+- Support several concurrent users within free-tier limits: per-session state instead of one active document, and a persistent vector store.
 - Re-run the PDF eval on the agentic path and add agentic-specific metrics (searches per question, revision rate).
 - Measure the reviewer's effect: eval runs with and without it, tracking false-fail and missed-error rates.
 - Real token streaming.
-- Multi-document support and a persistent vector store.
-- Stress-testing against more CSV shapes and PDF layouts.
-- Compound-answer-aware scoring in the eval harness.
+- Stress-testing against more CSV shapes and PDF layouts; compound-answer-aware scoring in the eval harness.
+- Later: LangGraph orchestration and MCP tool integration.
 
 ## Tech stack
 
@@ -173,7 +196,9 @@ The first four rows used a standalone `generate_with_tools()` script that was la
 - **PDF extraction:** PyMuPDF, Tesseract OCR fallback
 - **CSV execution:** pandas, AST-allowlist validator, runtime proxies, `multiprocessing` worker with `resource` limits
 - **Frontend:** React, TypeScript, Vite, deployed on Vercel
-- **Eval:** custom harness per pipeline with per-question tracing
+- **Eval:** custom harness per pipeline with per-question tracing, plus a live end-to-end runner
+- **Observability:** JSON logging with `contextvars` request IDs, Grafana Cloud (Loki)
+- **CI:** GitHub Actions (pytest, frontend build)
 
 ## Running locally
 
@@ -185,6 +210,7 @@ pip install -r requirements.txt
 # GROQ_API_KEY=...
 # JINA_API_KEY=...
 # GATEWAY_URL=...   (optional; defaults to the hosted gateway)
+# LOKI_URL=... LOKI_USER=... LOKI_TOKEN=...   (optional; ship logs to Grafana Cloud)
 uvicorn main:app --reload
 ```
 Or with Docker: `docker build -t querymind backend && docker run -p 8000:8000 -e GROQ_API_KEY=... -e JINA_API_KEY=... querymind`
@@ -194,4 +220,9 @@ Or with Docker: `docker build -t querymind backend && docker run -p 8000:8000 -e
 cd frontend
 npm install
 VITE_API_BASE=http://127.0.0.1:8000 npm run dev
+```
+
+**Live eval** (from `backend/`; uses the deployed or local API, not a mock)
+```bash
+python eval/run_live_eval.py --base-url https://query-mind.onrender.com --mode csv --limit 10
 ```

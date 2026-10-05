@@ -1,0 +1,177 @@
+{
+  "run_id": "20261005-0910",
+  "base_url": "https://query-mind.onrender.com",
+  "finished_at": "2026-10-05T09:22:29.017210+00:00",
+  "results": [
+    {
+      "id": "schema_01",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-20261005-0910-schema_01",
+      "question": "How many columns does this dataset have in total (including the label column)?",
+      "golden": 618,
+      "answer": "The dataset contains **618 columns** in total, including the label column.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "total_ms": 40094,
+      "ttft_ms": 39797,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "schema_02",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-20261005-0910-schema_02",
+      "question": "How many feature columns are there, excluding the class/label column?",
+      "golden": 617,
+      "answer": "There are **617 feature columns** (the dataset has 618 columns in total, and one of them is the `class` label).",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 22052,
+      "ttft_ms": 21592,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_03",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-20261005-0910-schema_03",
+      "question": "What is the name of the label/target column?",
+      "golden": "class",
+      "answer": "The target (label) column in this dataset is named **`class`**.",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 29381,
+      "ttft_ms": 29117,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_04",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-20261005-0910-schema_04",
+      "question": "What is the name of the first feature column?",
+      "golden": "f1",
+      "answer": "The first feature column is **`f1`**.",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 27420,
+      "ttft_ms": 27297,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_05",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-20261005-0910-schema_05",
+      "question": "What is the name of the last feature column before the class column?",
+      "golden": "f617",
+      "answer": "The last feature column before the `class` column is **`f617`**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "total_ms": 105480,
+      "ttft_ms": 105271,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "schema_06",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-20261005-0910-schema_06",
+      "question": "Are the feature columns (f1...f617) numeric or categorical?",
+      "golden": "numeric (float)",
+      "answer": "All of the feature columns (`f1` through `f617`) are numeric. The dataset uses floating\u2011point (float64) or integer (int64) values for every feature, and none of them are encoded as categorical types.",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 28838,
+      "ttft_ms": 28208,
+      "scores": {
+        "answer_correctness": null,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_07",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-20261005-0910-schema_07",
+      "question": "Is the class column numeric or categorical/string type?",
+      "golden": "categorical/string",
+      "answer": "The `class` column is numeric (int64).",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 29483,
+      "ttft_ms": 29359,
+      "scores": {
+        "answer_correctness": null,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_01",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-20261005-0910-count_01",
+      "question": "How many rows (samples) are in the dataset?",
+      "golden": 7797,
+      "answer": "There are 7,797 rows (samples) in the dataset.",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 45893,
+      "ttft_ms": 45731,
+      "scores": {
+        "answer_correctness": null,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "count_02",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-20261005-0910-count_02",
+      "question": "How many unique classes are there in the label column?",
+      "golden": 26,
+      "answer": "The label column (`class`) contains **26 unique classes**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "total_ms": 112115,
+      "ttft_ms": 111952,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_03",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-20261005-0910-count_03",
+      "question": "How many samples belong to class 6?",
+      "golden": 298,
+      "answer": "There are **298** samples that belong to class\u202f6.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "total_ms": 242095,
+      "ttft_ms": 242090,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    }
+  ]
+}
