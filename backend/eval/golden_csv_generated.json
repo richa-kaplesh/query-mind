@@ -1,0 +1,755 @@
+[
+  {
+    "id": "gen_mean_f115",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f115?",
+    "golden_pandas_code": "df['f115'].mean()",
+    "golden_answer": 0.40708,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f282",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f282?",
+    "golden_pandas_code": "df['f282'].std()",
+    "golden_answer": 0.361378,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f229",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f229?",
+    "golden_pandas_code": "df['f229'].std()",
+    "golden_answer": 0.400214,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_gt0_f105",
+    "category": "filtering",
+    "needs_computation": true,
+    "question": "How many rows have a value of f105 greater than 0?",
+    "golden_pandas_code": "(df['f105'] > 0).sum()",
+    "golden_answer": 3242,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f559",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f559?",
+    "golden_pandas_code": "df['f559'].mean()",
+    "golden_answer": 0.566645,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f609",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f609?",
+    "golden_pandas_code": "df['f609'].min(), df['f609'].max()",
+    "golden_answer": [
+      -0.8034,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f33",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f33?",
+    "golden_pandas_code": "df['f33'].mean()",
+    "golden_answer": -0.41449,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f96",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f96?",
+    "golden_pandas_code": "df['f96'].std()",
+    "golden_answer": 0.470272,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f239",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f239 have?",
+    "golden_pandas_code": "df['f239'].nunique()",
+    "golden_answer": 930,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f28",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f28 have?",
+    "golden_pandas_code": "df['f28'].nunique()",
+    "golden_answer": 4435,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_gt0_f204",
+    "category": "filtering",
+    "needs_computation": true,
+    "question": "How many rows have a value of f204 greater than 0?",
+    "golden_pandas_code": "(df['f204'] > 0).sum()",
+    "golden_answer": 1977,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f559",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f559?",
+    "golden_pandas_code": "df['f559'].min(), df['f559'].max()",
+    "golden_answer": [
+      -0.5588,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f226",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f226?",
+    "golden_pandas_code": "df['f226'].min(), df['f226'].max()",
+    "golden_answer": [
+      -1.0,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_median_f608",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the median value of column f608?",
+    "golden_pandas_code": "df['f608'].median()",
+    "golden_answer": 0.3662,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f7",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f7?",
+    "golden_pandas_code": "df['f7'].std()",
+    "golden_answer": 0.559704,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_median_f433",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the median value of column f433?",
+    "golden_pandas_code": "df['f433'].median()",
+    "golden_answer": -0.7714,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f285",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f285?",
+    "golden_pandas_code": "df['f285'].std()",
+    "golden_answer": 0.36262,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_median_f221",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the median value of column f221?",
+    "golden_pandas_code": "df['f221'].median()",
+    "golden_answer": 0.0802,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f105",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f105?",
+    "golden_pandas_code": "df['f105'].mean()",
+    "golden_answer": -0.084861,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f390",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f390?",
+    "golden_pandas_code": "df['f390'].mean()",
+    "golden_answer": -0.849357,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_median_f368",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the median value of column f368?",
+    "golden_pandas_code": "df['f368'].median()",
+    "golden_answer": 0.6284,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f271",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f271?",
+    "golden_pandas_code": "df['f271'].mean()",
+    "golden_answer": 0.270496,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f471",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f471 have?",
+    "golden_pandas_code": "df['f471'].nunique()",
+    "golden_answer": 4946,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f128",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f128?",
+    "golden_pandas_code": "df['f128'].min(), df['f128'].max()",
+    "golden_answer": [
+      -1.0,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f81",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f81 have?",
+    "golden_pandas_code": "df['f81'].nunique()",
+    "golden_answer": 4809,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_gt0_f301",
+    "category": "filtering",
+    "needs_computation": true,
+    "question": "How many rows have a value of f301 greater than 0?",
+    "golden_pandas_code": "(df['f301'] > 0).sum()",
+    "golden_answer": 3312,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f371",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f371 have?",
+    "golden_pandas_code": "df['f371'].nunique()",
+    "golden_answer": 5014,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_gt0_f197",
+    "category": "filtering",
+    "needs_computation": true,
+    "question": "How many rows have a value of f197 greater than 0?",
+    "golden_pandas_code": "(df['f197'] > 0).sum()",
+    "golden_answer": 4279,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f72",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f72?",
+    "golden_pandas_code": "df['f72'].mean()",
+    "golden_answer": -0.008815,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_median_f234",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the median value of column f234?",
+    "golden_pandas_code": "df['f234'].median()",
+    "golden_answer": -0.15,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f82",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f82?",
+    "golden_pandas_code": "df['f82'].std()",
+    "golden_answer": 0.429581,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f104",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f104?",
+    "golden_pandas_code": "df['f104'].min(), df['f104'].max()",
+    "golden_answer": [
+      -0.9944,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f285",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f285?",
+    "golden_pandas_code": "df['f285'].min(), df['f285'].max()",
+    "golden_answer": [
+      -0.95,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f374",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f374?",
+    "golden_pandas_code": "df['f374'].std()",
+    "golden_answer": 0.32707,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_median_f380",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the median value of column f380?",
+    "golden_pandas_code": "df['f380'].median()",
+    "golden_answer": -0.9744,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_gt0_f215",
+    "category": "filtering",
+    "needs_computation": true,
+    "question": "How many rows have a value of f215 greater than 0?",
+    "golden_pandas_code": "(df['f215'] > 0).sum()",
+    "golden_answer": 5302,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_gt0_f274",
+    "category": "filtering",
+    "needs_computation": true,
+    "question": "How many rows have a value of f274 greater than 0?",
+    "golden_pandas_code": "(df['f274'] > 0).sum()",
+    "golden_answer": 6722,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f74",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f74 have?",
+    "golden_pandas_code": "df['f74'].nunique()",
+    "golden_answer": 5172,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f176",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f176 have?",
+    "golden_pandas_code": "df['f176'].nunique()",
+    "golden_answer": 5056,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f251",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f251?",
+    "golden_pandas_code": "df['f251'].std()",
+    "golden_answer": 0.362011,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f474",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f474?",
+    "golden_pandas_code": "df['f474'].min(), df['f474'].max()",
+    "golden_answer": [
+      -0.9764,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_gt0_f277",
+    "category": "filtering",
+    "needs_computation": true,
+    "question": "How many rows have a value of f277 greater than 0?",
+    "golden_pandas_code": "(df['f277'] > 0).sum()",
+    "golden_answer": 7244,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f571",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f571?",
+    "golden_pandas_code": "df['f571'].std()",
+    "golden_answer": 0.372476,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f333",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f333?",
+    "golden_pandas_code": "df['f333'].mean()",
+    "golden_answer": 0.652019,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f235",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f235?",
+    "golden_pandas_code": "df['f235'].mean()",
+    "golden_answer": -0.066129,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f324",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f324?",
+    "golden_pandas_code": "df['f324'].min(), df['f324'].max()",
+    "golden_answer": [
+      -1.0,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f275",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f275?",
+    "golden_pandas_code": "df['f275'].mean()",
+    "golden_answer": 0.524675,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f217",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f217 have?",
+    "golden_pandas_code": "df['f217'].nunique()",
+    "golden_answer": 4905,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f323",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f323?",
+    "golden_pandas_code": "df['f323'].std()",
+    "golden_answer": 0.194662,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f512",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f512?",
+    "golden_pandas_code": "df['f512'].min(), df['f512'].max()",
+    "golden_answer": [
+      -0.983,
+      0.7988
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f470",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f470?",
+    "golden_pandas_code": "df['f470'].std()",
+    "golden_answer": 0.590281,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f272",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f272?",
+    "golden_pandas_code": "df['f272'].std()",
+    "golden_answer": 0.424954,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_gt0_f253",
+    "category": "filtering",
+    "needs_computation": true,
+    "question": "How many rows have a value of f253 greater than 0?",
+    "golden_pandas_code": "(df['f253'] > 0).sum()",
+    "golden_answer": 6618,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f575",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f575 have?",
+    "golden_pandas_code": "df['f575'].nunique()",
+    "golden_answer": 4309,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_gt0_f270",
+    "category": "filtering",
+    "needs_computation": true,
+    "question": "How many rows have a value of f270 greater than 0?",
+    "golden_pandas_code": "(df['f270'] > 0).sum()",
+    "golden_answer": 4784,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f603",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f603?",
+    "golden_pandas_code": "df['f603'].min(), df['f603'].max()",
+    "golden_answer": [
+      -0.6818,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_range_f602",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What are the min and max values of column f602?",
+    "golden_pandas_code": "df['f602'].min(), df['f602'].max()",
+    "golden_answer": [
+      -0.756,
+      1.0
+    ],
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_std_f371",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the standard deviation of column f371?",
+    "golden_pandas_code": "df['f371'].std()",
+    "golden_answer": 0.440992,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_nunique_f142",
+    "category": "aggregation",
+    "needs_computation": true,
+    "question": "How many unique values does column f142 have?",
+    "golden_pandas_code": "df['f142'].nunique()",
+    "golden_answer": 4987,
+    "tolerance": null,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_mean_f506",
+    "category": "statistics",
+    "needs_computation": null,
+    "question": "What is the mean value of column f506?",
+    "golden_pandas_code": "df['f506'].mean()",
+    "golden_answer": 0.394663,
+    "tolerance": 0.001,
+    "notes": "generated"
+  },
+  {
+    "id": "gen_corr_f49_f113",
+    "category": "correlation",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the Pearson correlation coefficient between f49 and f113?",
+    "golden_pandas_code": "df['f49'].corr(df['f113'])",
+    "golden_answer": 0.663125,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_corr_f157_f164",
+    "category": "correlation",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the Pearson correlation coefficient between f157 and f164?",
+    "golden_pandas_code": "df['f157'].corr(df['f164'])",
+    "golden_answer": -0.228363,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_corr_f433_f615",
+    "category": "correlation",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the Pearson correlation coefficient between f433 and f615?",
+    "golden_pandas_code": "df['f433'].corr(df['f615'])",
+    "golden_answer": 0.087,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_corr_f66_f395",
+    "category": "correlation",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the Pearson correlation coefficient between f66 and f395?",
+    "golden_pandas_code": "df['f66'].corr(df['f395'])",
+    "golden_answer": 0.207388,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_corr_f391_f615",
+    "category": "correlation",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the Pearson correlation coefficient between f391 and f615?",
+    "golden_pandas_code": "df['f391'].corr(df['f615'])",
+    "golden_answer": -0.080625,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_corr_f480_f542",
+    "category": "correlation",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the Pearson correlation coefficient between f480 and f542?",
+    "golden_pandas_code": "df['f480'].corr(df['f542'])",
+    "golden_answer": -0.132488,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_grp_f258_class18",
+    "category": "groupby",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the average value of f258 for rows in class 18?",
+    "golden_pandas_code": "df[df['class'].astype(str).str.strip(\"'\\\" \") == '18']['f258'].mean()",
+    "golden_answer": -0.102509,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_grp_f12_class22",
+    "category": "groupby",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the average value of f12 for rows in class 22?",
+    "golden_pandas_code": "df[df['class'].astype(str).str.strip(\"'\\\" \") == '22']['f12'].mean()",
+    "golden_answer": -0.312463,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_grp_f118_class22",
+    "category": "groupby",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the average value of f118 for rows in class 22?",
+    "golden_pandas_code": "df[df['class'].astype(str).str.strip(\"'\\\" \") == '22']['f118'].mean()",
+    "golden_answer": 0.661448,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_grp_f550_class25",
+    "category": "groupby",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the average value of f550 for rows in class 25?",
+    "golden_pandas_code": "df[df['class'].astype(str).str.strip(\"'\\\" \") == '25']['f550'].mean()",
+    "golden_answer": 0.23949,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_grp_f274_class25",
+    "category": "groupby",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the average value of f274 for rows in class 25?",
+    "golden_pandas_code": "df[df['class'].astype(str).str.strip(\"'\\\" \") == '25']['f274'].mean()",
+    "golden_answer": -0.08162,
+    "tolerance": 0.001
+  },
+  {
+    "id": "gen_grp_f349_class4",
+    "category": "groupby",
+    "needs_computation": true,
+    "notes": "generated",
+    "question": "What is the average value of f349 for rows in class 4?",
+    "golden_pandas_code": "df[df['class'].astype(str).str.strip(\"'\\\" \") == '4']['f349'].mean()",
+    "golden_answer": -0.980829,
+    "tolerance": 0.001
+  }
+]
