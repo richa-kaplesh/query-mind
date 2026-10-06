@@ -51,7 +51,7 @@ async def stream_traces(request: Request):
         init_payload = {'event': 'init', 'traces': store.get_all()}
         yield f'data: {json.dumps(init_payload)}\n\n'
 
-        last_ping_time = asyncio.get_event_loop().time()
+        last_ping_time = asyncio.get_running_loop().time()
 
         while True:
             if await request.is_disconnected():
@@ -63,7 +63,7 @@ async def stream_traces(request: Request):
                 yield f'data: {json.dumps(update_payload)}\n\n'
                 last_version = current_version
             
-            current_time = asyncio.get_event_loop().time()
+            current_time = asyncio.get_running_loop().time()
             if current_time - last_ping_time >= 15:
                 ping_payload = {'event': 'ping'}
                 yield f'data: {json.dumps(ping_payload)}\n\n'

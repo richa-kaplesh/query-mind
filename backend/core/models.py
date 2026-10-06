@@ -37,83 +37,54 @@ class CSVSchema(BaseModel):
     warnings: List[str] = []
 
     def to_prompt_string(self) -> str:
-        THRESHOLD = 20
-       
         """
         Serialise the schema into a compact, human-readable string suitable
-        for injection into the LLM system prompt.  Mirrors the format that
-        the old _format_schema_to_text() produced so the prompt stays stable.
+        for injection into the LLM system prompt.
         """
+        THRESHOLD = 20
+
+        def _format_col(col) -> str:
+            line = (
+                f"  Col: {col.name} | dtype: {col.dtype} "
+                f"| Nulls: {col.null_count} | Samples: {col.samples}"
+            )
+            if col.min is not None:
+                line += f" | Min: {col.min} | Max: {col.max} | Mean: {col.mean}"
+            if col.unique_count is not None:
+                line += f" | Unique: {col.unique_count}"
+            if col.unique_values is not None:
+                line += f" | Values: {col.unique_values}"
+            return line
+
         lines = [
             f"File: {self.source} | Rows: {self.row_count} | Cols: {len(self.columns)}"
         ]
-       
-        if len(self.columns)>THRESHOLD:
-                detailed_cols = self.columns[:THRESHOLD]
-                remaining_cols = self.columns[THRESHOLD:]
-                for col in detailed_cols:
-                    line = (
-                            f"  Col: {col.name} | dtype: {col.dtype} "
-                            f"| Nulls: {col.null_count} | Samples: {col.samples}"
-                            )
-                    if col.min is not None:
-                            line += f" | Min: {col.min} | Max: {col.max} | Mean: {col.mean}"
-                    if col.unique_count is not None:
-                            line += f" | Unique: {col.unique_count}"
-                    if col.unique_values is not None:
-                            line += f" | Values: {col.unique_values}"
-                    lines.append(line)
-                groups: dict[str, list] = {}
-                for col in remaining_cols:
-                    if col.dtype not in groups:
-                        groups[col.dtype] = []
-                    groups[col.dtype].append(col)
-                print(groups)
-                for dtype, cols in groups.items():
-                        col_names = ", ".join(c.name for c in cols)
-                        lines.append(f"  +{len(cols)} more {dtype} columns not detailed above: {col_names}")
 
-                lines.append(
-                        "Note: some columns are only listed by name above, not in full detail. "
-                        "If asked about a column not shown in detail, do not assume it doesn't exist — "
-                        "use the pandas_sandbox tool to check df.columns or inspect it directly."
-                )
-                if self.warnings:
-                    lines.append("Warnings: " + "; ".join(self.warnings))
+        if len(self.columns) > THRESHOLD:
+            for col in self.columns[:THRESHOLD]:
+                lines.append(_format_col(col))
 
-                result = "\n".join(lines)
-                print(f"[DEBUG] final schema string length: {len(result)} chars")
-                return result
+            # Group remaining columns by dtype and list them compactly
+            groups: dict[str, list] = {}
+            for col in self.columns[THRESHOLD:]:
+                groups.setdefault(col.dtype, []).append(col)
+            for dtype, cols in groups.items():
+                col_names = ", ".join(c.name for c in cols)
+                lines.append(f"  +{len(cols)} more {dtype} columns not detailed above: {col_names}")
 
-                
-                     
-                     
+            lines.append(
+                "Note: some columns are only listed by name above, not in full detail. "
+                "If asked about a column not shown in detail, do not assume it doesn't exist — "
+                "use the pandas_sandbox tool to check df.columns or inspect it directly."
+            )
         else:
-            detailed_cols = self.columns
-            remaining_cols = []
-            for col in detailed_cols:
-                    line = (
-                        f"  Col: {col.name} | dtype: {col.dtype} "
-                        f"| Nulls: {col.null_count} | Samples: {col.samples}"
-                        )
-                    if col.min is not None:
-                            line += f" | Min: {col.min} | Max: {col.max} | Mean: {col.mean}"
-                    if col.unique_count is not None:
-                            line += f" | Unique: {col.unique_count}"
-                    if col.unique_values is not None:
-                            line += f" | Values: {col.unique_values}"
-                    lines.append(line)
-            if self.warnings:
-                lines.append("Warnings: " + "; ".join(self.warnings))
-            
-            return "\n".join(lines)
-                  
-                    
-            
+            for col in self.columns:
+                lines.append(_format_col(col))
 
+        if self.warnings:
+            lines.append("Warnings: " + "; ".join(self.warnings))
 
-
-            
+        return "\n".join(lines)
 
 
 class ExtractionResult(BaseModel):

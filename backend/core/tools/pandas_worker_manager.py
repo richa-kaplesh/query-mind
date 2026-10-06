@@ -2,6 +2,7 @@ import multiprocessing
 import queue as queue_module
 import logging
 import platform
+import threading
 import pandas as pd
 from core.utils.data_cleaning import strip_stray_quotes
 from core.tools.safe_namespace import build_safe_pd, build_safe_df
@@ -49,6 +50,10 @@ def _apply_resource_limits():
 def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multiprocessing.Queue):
     """Lives for the whole backend process. pandas is imported ONCE, here —
     never again, no matter how many datasets get loaded/swapped over its life."""
+    # In a spawned subprocess the parent's logging handlers do not exist — set
+    # up a fresh console handler so log calls here are not silently dropped.
+    from core.logging_setup import setup_logging
+    setup_logging()
     _apply_resource_limits()
     log.info("Persistent pandas worker booting — importing pandas once")
 
@@ -108,6 +113,7 @@ class PandasWorkerManager:
         self.task_queue: multiprocessing.Queue | None = None
         self.result_queue: multiprocessing.Queue | None = None
         self.current_file_path: str | None = None
+        self._boot_lock = threading.Lock()   # prevents concurrent respawns
 
     def boot(self):
         ctx = multiprocessing.get_context("spawn")   # avoid fork-after-threads deadlock (faiss/OpenMP
@@ -118,16 +124,18 @@ class PandasWorkerManager:
         self.process.daemon = True
         self.process.start()
         log.info("Worker manager: process started")
+
     def is_alive(self) -> bool:
         return self.process is not None and self.process.is_alive()
 
     def _ensure_alive(self):
-        if self.is_alive():
-            return
-        log.warning("Worker found dead — respawning")
-        self.boot()
-        if self.current_file_path:
-            self._send("load", self.current_file_path, timeout=60)
+        with self._boot_lock:
+            if self.is_alive():
+                return
+            log.warning("Worker found dead — respawning")
+            self.boot()
+            if self.current_file_path:
+                self._send("load", self.current_file_path, timeout=60)
 
     def _send(self, msg_type: str, payload, timeout: int):
         self.task_queue.put((msg_type, payload))

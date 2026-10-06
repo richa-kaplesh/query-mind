@@ -8,6 +8,11 @@ _LOG_PATH = os.path.join(
     "logs", "token_log.json"
 )
 
+# Maximum number of token-log entries kept in memory (and on disk).
+# When this is exceeded, the oldest half is trimmed so the log never grows
+# without bound on a long-running server.
+_MAX_ENTRIES = 10_000
+
 class TokenTracker:
     def __init__(self):
         self.lock = Lock()
@@ -39,6 +44,9 @@ class TokenTracker:
         }
         with self.lock:
             self._entries.append(entry)
+            # Trim oldest half when the cap is hit so the list never grows without bound
+            if len(self._entries) > _MAX_ENTRIES:
+                self._entries = self._entries[_MAX_ENTRIES // 2:]
             self._save()
 
     def get_all(self):

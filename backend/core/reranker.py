@@ -1,6 +1,9 @@
+import logging
 import httpx
 from typing import List
 from config import settings
+
+log = logging.getLogger("reranker")
 
 # Jina rerank endpoint
 _RERANK_URL = "https://api.jina.ai/v1/rerank"
@@ -42,10 +45,15 @@ class Reranker:
             "top_n":     top_k,
         }
 
-        resp = httpx.post(_RERANK_URL, headers=self._headers, json=payload, timeout=30.0)
+        try:
+            resp = httpx.post(_RERANK_URL, headers=self._headers, json=payload, timeout=30.0)
+        except Exception as e:
+            log.warning(f"[RERANKER] HTTP call failed ({type(e).__name__}: {e}); returning candidates in original order")
+            return chunks[:top_k]
 
         if resp.status_code != 200:
-            raise RuntimeError(f"Jina rerank API error {resp.status_code}: {resp.text[:400]}")
+            log.warning(f"[RERANKER] API error {resp.status_code}: {resp.text[:200]}; returning candidates in original order")
+            return chunks[:top_k]
 
         data = resp.json()
 

@@ -345,7 +345,12 @@ class Generator:
         if not isinstance(args, dict):
             return "", "Error: tool arguments must be a JSON object."
 
-        tool_input = args.get("code") or args.get("query") or args.get("input", "")
+        tool_input = args.get("code") or args.get("query") or args.get("input")
+        if not tool_input:
+            return "", (
+                f"Error: tool '{tool_name}' was called with no recognisable input argument. "
+                "Expected one of: 'code', 'query', or 'input'. Send a valid JSON object."
+            )
         try:
             result = tool.run(tool_input)
         except Exception as e:

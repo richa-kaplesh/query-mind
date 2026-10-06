@@ -73,12 +73,17 @@ class Embedder:
                 "input":      batch,
             }
 
-            resp = httpx.post(
-                _EMBED_URL,
-                headers=self._headers,
-                json=payload,
-                timeout=60.0,
-            )
+            try:
+                resp = httpx.post(
+                    _EMBED_URL,
+                    headers=self._headers,
+                    json=payload,
+                    timeout=60.0,
+                )
+            except Exception as e:
+                raise RuntimeError(
+                    f"Jina embed API request failed ({type(e).__name__}: {e})"
+                ) from e
 
             if resp.status_code != 200:
                 raise RuntimeError(

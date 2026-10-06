@@ -32,9 +32,8 @@ router = APIRouter()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# In-memory document store: { filename → {status, file_path, schema, ...} }
+# In-memory document store: { filename → {status, file_path, schema, conversation_id, ...} }
 documents: dict = {}
-conversation_id: str | None = None
 
 @router.post("/upload")
 async def upload_document(
@@ -42,8 +41,6 @@ async def upload_document(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
 ): 
-    global conversation_id
-    conversation_id = str(uuid.uuid4())
     documents.clear()
     request.app.state.indexer.reset()
     uploaded=[]
@@ -55,7 +52,8 @@ async def upload_document(
             "status":"processing",
             "file_path": file_path,
             "file_type": Path(file.filename).suffix.lower(),
-            "schema": None
+            "schema": None,
+            "conversation_id": str(uuid.uuid4()),   # unique ID per document, not a shared global
         }
         # background_tasks.add_task(fn, **kwargs)
         background_tasks.add_task(
@@ -125,6 +123,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
     trace_store = request.app.state.trace_store
     file_path   = current_file["file_path"]
     file_type   = current_file.get("file_type", ".csv")
+    conversation_id = current_file.get("conversation_id") or str(uuid.uuid4())
 
     trace_id = trace_store.start_trace(_filename_for_path(file_path), body.question)
     tracer   = _make_tracer(trace_store, trace_id)

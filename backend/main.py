@@ -36,10 +36,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="QueryMind - CSV Engine", lifespan=lifespan)
 
 # CORS setup for frontend connectivity
+# NOTE: allow_credentials=True is incompatible with allow_origins=["*"] per the CORS spec.
+# Browsers reject credentialed requests when the response carries a wildcard origin.
+# Credentials are not needed for this API, so the flag is omitted entirely.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
 )

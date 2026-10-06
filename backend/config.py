@@ -2,7 +2,9 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # LLM
-    groq_api_key: str
+    # Optional: only needed if the legacy synchronous Groq path is used.
+    # The active agent loop routes through gateway_client, not the Groq SDK directly.
+    groq_api_key: str = ""
     model_name: str = "openai/gpt-oss-20b"
     temperature: float = 0.1
     max_upload_mb: int = 25
