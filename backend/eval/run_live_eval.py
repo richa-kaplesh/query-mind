@@ -9,7 +9,11 @@ so in Grafana you can filter one eval run, or one question, with:
 
 Run from the backend/ folder:
     python eval/run_live_eval.py --base-url https://query-mind.onrender.com --mode csv --limit 10
-    python eval/run_live_eval.py --base-url http://localhost:8000 --mode all
+    python eval/run_live_eval.py --base-url http://localhost:8000 --mode all --repeat 3
+
+--repeat N runs the whole selection N times (re-uploading each time) and reports the
+range across runs, not a single number. Results are saved after EVERY question, so an
+interrupted run keeps what it finished (the file says "complete": false).
 
 The app keeps ONE active document, so the runner uploads the CSV, runs all CSV
 questions, then uploads the PDF and runs the PDF questions. Don't use the app by
@@ -59,7 +63,7 @@ def upload_and_wait(client: httpx.Client, base: str, path: str, run_id: str, tim
             print("  document ready")
             return
         if status == "failed":
-            raise RuntimeError(f"Ingestion failed for {name}")
+            raise RuntimeError(f"Ingestion failed for {name} (search the server logs for INGEST)")
         time.sleep(3)
     raise TimeoutError(f"{name} not ready after {timeout_s}s")
 
@@ -122,6 +126,7 @@ def load_csv_questions(paths):
                 "id": q["id"], "question": q["question"], "category": q.get("category", "csv"),
                 "golden": q["golden_answer"], "tolerance": q.get("tolerance"),
                 "needs_computation": q.get("needs_computation"),
+                "must_include": q.get("must_include"),
             })
     return items
 
@@ -132,13 +137,27 @@ def load_pdf_questions(path):
         items.append({
             "id": f"pdf_{i:02d}", "question": q["question"], "category": "pdf",
             "golden": q["ground_truth"], "tolerance": None, "needs_computation": None,
+            "must_include": None,
         })
     return items
 
 
+# ── Saving ───────────────────────────────────────────────────────────────────
+
+def save_run(run_id, base, results, complete):
+    os.makedirs(RUNS_DIR, exist_ok=True)
+    path = os.path.join(RUNS_DIR, f"{run_id}.json")
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"run_id": run_id, "base_url": base, "complete": complete,
+                   "saved_at": datetime.now(timezone.utc).isoformat(), "results": results}, f, indent=2)
+    os.replace(tmp, path)  # never leaves a half-written file behind
+    return path
+
+
 # ── Runner ───────────────────────────────────────────────────────────────────
 
-def run_set(client, base, items, kind, run_id, delay, use_judge):
+def run_set(client, base, items, kind, run_id, delay, use_judge, checkpoint):
     results = []
     for n, item in enumerate(items, 1):
         req_id = f"eval-{run_id}-{item['id']}"
@@ -147,14 +166,13 @@ def run_set(client, base, items, kind, run_id, delay, use_judge):
 
         if out["error"]:
             correctness, tool_score = 0.0, None
+        elif kind == "pdf":
+            correctness = llm_judge(item["golden"], out["answer"], item["question"], use_judge)
+            tool_score = None
         else:
-            if kind == "pdf":
-                correctness = llm_judge(item["golden"], out["answer"], item["question"], use_judge)
-                tool_score = None
-            else:
-                correctness = score_correctness(item["golden"], out["answer"], item["tolerance"],
-                                                item["question"], use_judge)
-                tool_score = check_tool_app(item["needs_computation"], out["tool_used"])
+            correctness = score_correctness(item["golden"], out["answer"], item["tolerance"],
+                                            item["question"], use_judge, item["must_include"])
+            tool_score = check_tool_app(item["needs_computation"], out["tool_used"])
 
         flag = "ERROR " + out["error"] if out["error"] else f"correct={correctness}"
         print(f"    {flag} | {out['total_ms']} ms | tool={out['tool_used']}")
@@ -165,9 +183,40 @@ def run_set(client, base, items, kind, run_id, delay, use_judge):
             "total_ms": out["total_ms"], "ttft_ms": out["ttft_ms"],
             "scores": {"answer_correctness": correctness, "tool_appropriateness": tool_score},
         })
+        checkpoint(results)
         time.sleep(delay)
     return results
 
+
+def run_once(client, base, args, run_id, use_judge):
+    finished = []  # results of sets that are already complete (csv, then pdf)
+
+    def checkpoint(current_set_results):
+        save_run(run_id, base, finished + current_set_results, False)
+
+    if args.mode in ("csv", "all"):
+        items = load_csv_questions(args.csv_sets)
+        if args.only:
+            items = [i for i in items if i["id"] in args.only]
+        items = items[: args.limit] if args.limit else items
+        if items:
+            upload_and_wait(client, base, args.csv_path, run_id)
+            finished += run_set(client, base, items, "csv", run_id, args.delay, use_judge, checkpoint)
+
+    if args.mode in ("pdf", "all"):
+        items = load_pdf_questions(args.pdf_set)
+        if args.only:
+            items = [i for i in items if i["id"] in args.only]
+        items = items[: args.limit] if args.limit else items
+        if items:
+            upload_and_wait(client, base, args.pdf_path, run_id)
+            finished += run_set(client, base, items, "pdf", run_id, args.delay, use_judge, checkpoint)
+
+    path = save_run(run_id, base, finished, True)
+    return finished, path
+
+
+# ── Metrics & reporting ──────────────────────────────────────────────────────
 
 def pct(values, p):
     if not values:
@@ -176,28 +225,64 @@ def pct(values, p):
     return values[min(len(values) - 1, round(p / 100 * (len(values) - 1)))]
 
 
-def summarize(results):
-    print("\n" + "=" * 60 + "\nSUMMARY\n" + "=" * 60)
+def metrics(results):
+    """Per-kind metrics for one run."""
+    out = {}
     for kind in sorted({r["kind"] for r in results}):
         rs = [r for r in results if r["kind"] == kind]
         scored = [r["scores"]["answer_correctness"] for r in rs if r["scores"]["answer_correctness"] is not None]
         tools = [r["scores"]["tool_appropriateness"] for r in rs if r["scores"]["tool_appropriateness"] is not None]
         lat = [r["total_ms"] for r in rs if not r["error"]]
-        errors = sum(1 for r in rs if r["error"])
-        print(f"\n{kind.upper()}: {len(rs)} questions, {errors} errors")
-        if scored:
-            print(f"  answer correctness : {statistics.mean(scored):.3f}  (scored {len(scored)}/{len(rs)})")
-        if tools:
-            print(f"  tool appropriateness: {statistics.mean(tools):.3f}")
-        if lat:
-            print(f"  latency ms          : p50={pct(lat,50)}  p95={pct(lat,95)}  max={max(lat)}")
         cats = {}
         for r in rs:
             s = r["scores"]["answer_correctness"]
             if s is not None:
                 cats.setdefault(r["category"], []).append(s)
-        for c, v in sorted(cats.items()):
-            print(f"    {c:<14} {statistics.mean(v):.2f}  (n={len(v)})")
+        out[kind] = {
+            "n": len(rs),
+            "errors": sum(1 for r in rs if r["error"]),
+            "unscored": [r["id"] for r in rs if r["scores"]["answer_correctness"] is None],
+            "scored": len(scored),
+            "correctness": statistics.mean(scored) if scored else None,
+            "tool": statistics.mean(tools) if tools else None,
+            "p50": pct(lat, 50), "p95": pct(lat, 95), "max": max(lat) if lat else None,
+            "categories": {c: (statistics.mean(v), len(v)) for c, v in cats.items()},
+        }
+    return out
+
+
+def fmt_range(values, fmt="{:.3f}"):
+    values = [v for v in values if v is not None]
+    if not values:
+        return "n/a"
+    if len(values) == 1:
+        return fmt.format(values[0])
+    return f"{fmt.format(min(values))} - {fmt.format(max(values))}  (mean {fmt.format(statistics.mean(values))})"
+
+
+def summarize(all_metrics):
+    """all_metrics: list of per-run metrics dicts (one entry when --repeat 1)."""
+    runs = len(all_metrics)
+    print("\n" + "=" * 62 + f"\nSUMMARY  ({runs} run{'s' if runs > 1 else ''})\n" + "=" * 62)
+    for kind in sorted({k for m in all_metrics for k in m}):
+        ms = [m[kind] for m in all_metrics if kind in m]
+        print(f"\n{kind.upper()}: {ms[0]['n']} questions per run, errors per run: {[m['errors'] for m in ms]}")
+        print(f"  answer correctness  : {fmt_range([m['correctness'] for m in ms])}")
+        scored_txt = [str(m["scored"]) + "/" + str(m["n"]) for m in ms]
+        print(f"  scored questions    : {scored_txt}")
+        if any(m["tool"] is not None for m in ms):
+            print(f"  tool appropriateness: {fmt_range([m['tool'] for m in ms])}")
+        print(f"  latency p50 (ms)    : {fmt_range([m['p50'] for m in ms], '{:.0f}')}")
+        print(f"  latency p95 (ms)    : {fmt_range([m['p95'] for m in ms], '{:.0f}')}")
+        print(f"  latency max (ms)    : {fmt_range([m['max'] for m in ms], '{:.0f}')}")
+        cats = sorted({c for m in ms for c in m["categories"]})
+        for c in cats:
+            vals = [m["categories"][c][0] for m in ms if c in m["categories"]]
+            n = next(m["categories"][c][1] for m in ms if c in m["categories"])
+            print(f"    {c:<14} {fmt_range(vals, '{:.2f}')}  (n={n})")
+        unscored = sorted({q for m in ms for q in m["unscored"]})
+        if unscored:
+            print(f"  UNSCORED (judge off/failed): {unscored}")
 
 
 def main():
@@ -210,6 +295,7 @@ def main():
     ap.add_argument("--pdf-set", default=DEFAULT_PDF_SET)
     ap.add_argument("--limit", type=int, default=None, help="max questions per set")
     ap.add_argument("--only", nargs="+", default=None, help="run only these question ids")
+    ap.add_argument("--repeat", type=int, default=1, help="run the whole selection N times and report ranges")
     ap.add_argument("--delay", type=float, default=3.0, help="seconds between questions (rate limits)")
     ap.add_argument("--read-timeout", type=float, default=300.0)
     ap.add_argument("--no-judge", action="store_true", help="skip LLM-judge scoring (offline / cheaper)")
@@ -219,41 +305,24 @@ def main():
     base = args.base_url.rstrip("/")
     use_judge = not args.no_judge
     timeout = httpx.Timeout(connect=60.0, read=args.read_timeout, write=60.0, pool=60.0)
-    results = []
+    all_metrics, paths, run_ids = [], [], []
 
-    print(f"Run ID: {args.run_id}\nTarget: {base}\n")
+    print(f"Run ID: {args.run_id}   repeats: {args.repeat}\nTarget: {base}\n")
     with httpx.Client(timeout=timeout) as client:
         client.get(f"{base}/")  # wake a sleeping free-tier instance
+        for i in range(1, args.repeat + 1):
+            run_id = args.run_id if args.repeat == 1 else f"{args.run_id}-r{i}"
+            run_ids.append(run_id)
+            print(f"\n######## run {i}/{args.repeat}: {run_id} ########")
+            results, path = run_once(client, base, args, run_id, use_judge)
+            all_metrics.append(metrics(results))
+            paths.append(path)
 
-        if args.mode in ("csv", "all"):
-            items = load_csv_questions(args.csv_sets)
-            if args.only:
-                items = [i for i in items if i["id"] in args.only]
-            items = items[: args.limit] if args.limit else items
-            if items:
-                upload_and_wait(client, base, args.csv_path, args.run_id)
-                results += run_set(client, base, items, "csv", args.run_id, args.delay, use_judge)
-
-        if args.mode in ("pdf", "all"):
-            items = load_pdf_questions(args.pdf_set)
-            if args.only:
-                items = [i for i in items if i["id"] in args.only]
-            items = items[: args.limit] if args.limit else items
-            if items:
-                upload_and_wait(client, base, args.pdf_path, args.run_id)
-                results += run_set(client, base, items, "pdf", args.run_id, args.delay, use_judge)
-
-    os.makedirs(RUNS_DIR, exist_ok=True)
-    out_path = os.path.join(RUNS_DIR, f"{args.run_id}.json")
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump({"run_id": args.run_id, "base_url": base,
-                   "finished_at": datetime.now(timezone.utc).isoformat(), "results": results}, f, indent=2)
-
-    summarize(results)
-    print(f"\nSaved: {out_path}")
+    summarize(all_metrics)
+    print("\nSaved:\n  " + "\n  ".join(paths))
     print("\nIn Grafana (Explore -> Code):")
-    print(f'  all of this run : {{service="query-mind"}} | json | req_id=~"eval-{args.run_id}-.*"')
-    print(f'  summaries       : {{service="query-mind"}} | json | event="request_summary" | req_id=~"eval-{args.run_id}-.*"')
+    for rid in run_ids:
+        print(f'  {rid}: {{service="query-mind"}} | json | req_id=~"eval-{rid}-.*"')
 
 
 if __name__ == "__main__":

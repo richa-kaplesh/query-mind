@@ -55,9 +55,9 @@
     "category": "schema",
     "needs_computation": false,
     "golden_pandas_code": "df[df.columns[df.columns.str.startswith('f')]].dtypes",
-    "golden_answer": "numeric (float)",
+    "golden_answer": "numeric (mostly float64; a few columns are int64; none are categorical)",
     "tolerance": null,
-    "notes": "613 float64, small number int64 due to values like -1/0/1 being read as ints in some columns"
+    "notes": "613 float64, small number int64 due to values like -1/0/1 being read as ints in some columns. Label clarified before the 2026-10 baseline; the old value was a raw dtypes repr."
   },
   {
     "id": "schema_07",
@@ -116,8 +116,9 @@
     "needs_computation": true,
     "golden_pandas_code": "df['class'].value_counts().idxmin()",
     "golden_answer": "class 6 with 298 samples",
+    "must_include": ["6", "298"],
     "tolerance": null,
-    "notes": ""
+    "notes": "two-part answer: both the class and the count must appear"
   },
   {
     "id": "count_06",

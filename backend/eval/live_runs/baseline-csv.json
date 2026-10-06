@@ -1,0 +1,2048 @@
+{
+  "run_id": "baseline-csv",
+  "base_url": "https://query-mind.onrender.com",
+  "complete": true,
+  "saved_at": "2026-10-06T06:09:22.114823+00:00",
+  "results": [
+    {
+      "id": "schema_01",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_01",
+      "question": "How many columns does this dataset have in total (including the label column)?",
+      "golden": 618,
+      "answer": "The dataset has **618 columns** in total, including the label column.",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 36576,
+      "ttft_ms": 36320,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_02",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_02",
+      "question": "How many feature columns are there, excluding the class/label column?",
+      "golden": 617,
+      "answer": "There are **617** feature columns (all columns except the single label column `class`).",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 114494,
+      "ttft_ms": 114228,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_03",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_03",
+      "question": "What is the name of the label/target column?",
+      "golden": "class",
+      "answer": "The target (label) column is named **`class`**.",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 121698,
+      "ttft_ms": 121553,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_04",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_04",
+      "question": "What is the name of the first feature column?",
+      "golden": "f1",
+      "answer": "The first feature column is **`f1`**.",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 82265,
+      "ttft_ms": 82141,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_05",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_05",
+      "question": "What is the name of the last feature column before the class column?",
+      "golden": "f617",
+      "answer": "The last feature column before the `class` column is **`f617`**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "total_ms": 159477,
+      "ttft_ms": 159229,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "schema_06",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_06",
+      "question": "Are the feature columns (f1...f617) numeric or categorical?",
+      "golden": "numeric (mostly float64; a few columns are int64; none are categorical)",
+      "answer": "All of the feature columns (f1 through f617) are numeric.  \n- Columns f1\u2011f577 and f578\u2011f580, f585 are typed as **float64** or **int64** in the schema.  \n- No categorical (object/string) type is listed for any of the feature columns.  \nHence every feature is numeric.",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 117238,
+      "ttft_ms": 116302,
+      "scores": {
+        "answer_correctness": null,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_07",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_07",
+      "question": "Is the class column numeric or categorical/string type?",
+      "golden": "categorical/string",
+      "answer": "The `class` column is an **integer numeric** column (dtype `int64`).",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 110050,
+      "ttft_ms": 109792,
+      "scores": {
+        "answer_correctness": null,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_01",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_01",
+      "question": "How many rows (samples) are in the dataset?",
+      "golden": 7797,
+      "answer": "There are **7,797 rows** (samples) in the dataset.",
+      "tool_used": null,
+      "error": null,
+      "total_ms": 75561,
+      "ttft_ms": 75425,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "count_02",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_02",
+      "question": "How many unique classes are there in the label column?",
+      "golden": 26,
+      "answer": "There are **26** unique classes in the `class` label column.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "total_ms": 115778,
+      "ttft_ms": 115612,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_03",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_03",
+      "question": "How many samples belong to class 6?",
+      "golden": 298,
+      "answer": "",
+      "tool_used": null,
+      "error": "RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
+      "total_ms": 1146939,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "count_04",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_04",
+      "question": "How many samples belong to class 13?",
+      "golden": 299,
+      "answer": "",
+      "tool_used": null,
+      "error": "ConnectError: [Errno 11001] getaddrinfo failed",
+      "total_ms": 149,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "count_05",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_05",
+      "question": "Which class has the fewest samples, and how many?",
+      "golden": "class 6 with 298 samples",
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 32471,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "count_06",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_06",
+      "question": "Which class(es) have the most samples, and how many?",
+      "golden": "most classes tie at 300 samples (classes: ['1', '10', '11', '12', '14']...)",
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 378,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "count_07",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_07",
+      "question": "Is the dataset perfectly class-balanced (same number of rows per class)?",
+      "golden": "No",
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 383,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "count_08",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_08",
+      "question": "Are there any missing (null) values anywhere in the dataset?",
+      "golden": "No, 0 missing values",
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 437,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_mean_f1",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f1",
+      "question": "What is the mean value of column f1?",
+      "golden": -0.385396,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 555,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_std_f1",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f1",
+      "question": "What is the standard deviation of column f1?",
+      "golden": 0.236721,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 372,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_range_f1",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f1",
+      "question": "What are the min and max values of column f1?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 368,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_mean_f10",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f10",
+      "question": "What is the mean value of column f10?",
+      "golden": -0.191763,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 426,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_std_f10",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f10",
+      "question": "What is the standard deviation of column f10?",
+      "golden": 0.515343,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 373,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_range_f10",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f10",
+      "question": "What are the min and max values of column f10?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 363,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_mean_f100",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f100",
+      "question": "What is the mean value of column f100?",
+      "golden": 0.439993,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 371,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_std_f100",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f100",
+      "question": "What is the standard deviation of column f100?",
+      "golden": 0.31005,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 420,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_range_f100",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f100",
+      "question": "What are the min and max values of column f100?",
+      "golden": [
+        -0.9208,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 380,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_mean_f300",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f300",
+      "question": "What is the mean value of column f300?",
+      "golden": -0.046931,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 458,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_std_f300",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f300",
+      "question": "What is the standard deviation of column f300?",
+      "golden": 0.514015,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 905,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_range_f300",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f300",
+      "question": "What are the min and max values of column f300?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 957,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_mean_f617",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f617",
+      "question": "What is the mean value of column f617?",
+      "golden": -0.281416,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 418,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_std_f617",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f617",
+      "question": "What is the standard deviation of column f617?",
+      "golden": 0.354418,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 442,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_range_f617",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f617",
+      "question": "What are the min and max values of column f617?",
+      "golden": [
+        -0.9626,
+        0.8898
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 424,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_01",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_01",
+      "question": "Which feature column (among f1..f617) has the highest overall mean value?",
+      "golden": "f430",
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 490,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_02",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_02",
+      "question": "Which feature column has the highest standard deviation (most variance)?",
+      "golden": "f580",
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 421,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_03",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_03",
+      "question": "What is the overall minimum value found anywhere across all f1..f617 columns?",
+      "golden": -1.0,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 383,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "stat_04",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_04",
+      "question": "What is the overall maximum value found anywhere across all f1..f617 columns?",
+      "golden": 1.0,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 454,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "row_01",
+      "kind": "csv",
+      "category": "row_lookup",
+      "req_id": "eval-baseline-csv-row_01",
+      "question": "What class label does the first row (row index 0) belong to?",
+      "golden": "1",
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 371,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "row_02",
+      "kind": "csv",
+      "category": "row_lookup",
+      "req_id": "eval-baseline-csv-row_02",
+      "question": "What is the value of f1 in row index 0?",
+      "golden": -0.4394,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 465,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "row_03",
+      "kind": "csv",
+      "category": "row_lookup",
+      "req_id": "eval-baseline-csv-row_03",
+      "question": "What is the value of f5 in row index 4999?",
+      "golden": 0.1126,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 386,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "row_04",
+      "kind": "csv",
+      "category": "row_lookup",
+      "req_id": "eval-baseline-csv-row_04",
+      "question": "What class does the last row in the dataset belong to?",
+      "golden": "26",
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 350,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "filter_01",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-filter_01",
+      "question": "How many rows have a value of f1 greater than 0?",
+      "golden": 467,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 422,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "filter_02",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-filter_02",
+      "question": "Among rows belonging to class 1, how many have a negative value for f10?",
+      "golden": 214,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 413,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "filter_03",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-filter_03",
+      "question": "How many rows have f617 exactly equal to 1.0?",
+      "golden": 0,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 421,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "corr_01",
+      "kind": "csv",
+      "category": "correlation",
+      "req_id": "eval-baseline-csv-corr_01",
+      "question": "What is the Pearson correlation coefficient between f1 and f2?",
+      "golden": 0.736602,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 417,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "groupby_01",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-groupby_01",
+      "question": "Which class has the highest average value of f1?",
+      "golden": "21",
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 357,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "groupby_02",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-groupby_02",
+      "question": "What is the average value of f300 for rows in class 20?",
+      "golden": -0.485631,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 379,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "extreme_01",
+      "kind": "csv",
+      "category": "extremes",
+      "req_id": "eval-baseline-csv-extreme_01",
+      "question": "What is the row index of the maximum value of f1, and what class does that row belong to?",
+      "golden": {
+        "row_index": 3764,
+        "class": "21"
+      },
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 379,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f115",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f115",
+      "question": "What is the mean value of column f115?",
+      "golden": 0.40708,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 455,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f282",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f282",
+      "question": "What is the standard deviation of column f282?",
+      "golden": 0.361378,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 435,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f229",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f229",
+      "question": "What is the standard deviation of column f229?",
+      "golden": 0.400214,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 401,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f105",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f105",
+      "question": "How many rows have a value of f105 greater than 0?",
+      "golden": 3242,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 414,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f559",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f559",
+      "question": "What is the mean value of column f559?",
+      "golden": 0.566645,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 419,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f609",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f609",
+      "question": "What are the min and max values of column f609?",
+      "golden": [
+        -0.8034,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 517,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f33",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f33",
+      "question": "What is the mean value of column f33?",
+      "golden": -0.41449,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 393,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f96",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f96",
+      "question": "What is the standard deviation of column f96?",
+      "golden": 0.470272,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 438,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f239",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f239",
+      "question": "How many unique values does column f239 have?",
+      "golden": 930,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 419,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f28",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f28",
+      "question": "How many unique values does column f28 have?",
+      "golden": 4435,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 419,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f204",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f204",
+      "question": "How many rows have a value of f204 greater than 0?",
+      "golden": 1977,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 384,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f559",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f559",
+      "question": "What are the min and max values of column f559?",
+      "golden": [
+        -0.5588,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 399,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f226",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f226",
+      "question": "What are the min and max values of column f226?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 411,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f608",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f608",
+      "question": "What is the median value of column f608?",
+      "golden": 0.3662,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 351,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f7",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f7",
+      "question": "What is the standard deviation of column f7?",
+      "golden": 0.559704,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 633,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f433",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f433",
+      "question": "What is the median value of column f433?",
+      "golden": -0.7714,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 1526,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f285",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f285",
+      "question": "What is the standard deviation of column f285?",
+      "golden": 0.36262,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 460,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f221",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f221",
+      "question": "What is the median value of column f221?",
+      "golden": 0.0802,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 799,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f105",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f105",
+      "question": "What is the mean value of column f105?",
+      "golden": -0.084861,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 369,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f390",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f390",
+      "question": "What is the mean value of column f390?",
+      "golden": -0.849357,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 4070,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f368",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f368",
+      "question": "What is the median value of column f368?",
+      "golden": 0.6284,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 410,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f271",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f271",
+      "question": "What is the mean value of column f271?",
+      "golden": 0.270496,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 728,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f471",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f471",
+      "question": "How many unique values does column f471 have?",
+      "golden": 4946,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 1072,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f128",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f128",
+      "question": "What are the min and max values of column f128?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 454,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f81",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f81",
+      "question": "How many unique values does column f81 have?",
+      "golden": 4809,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 346,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f301",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f301",
+      "question": "How many rows have a value of f301 greater than 0?",
+      "golden": 3312,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 675,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f371",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f371",
+      "question": "How many unique values does column f371 have?",
+      "golden": 5014,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 1605,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f197",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f197",
+      "question": "How many rows have a value of f197 greater than 0?",
+      "golden": 4279,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 460,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f72",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f72",
+      "question": "What is the mean value of column f72?",
+      "golden": -0.008815,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 608,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f234",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f234",
+      "question": "What is the median value of column f234?",
+      "golden": -0.15,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 415,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f82",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f82",
+      "question": "What is the standard deviation of column f82?",
+      "golden": 0.429581,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 348,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f104",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f104",
+      "question": "What are the min and max values of column f104?",
+      "golden": [
+        -0.9944,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 448,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f285",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f285",
+      "question": "What are the min and max values of column f285?",
+      "golden": [
+        -0.95,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 524,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f374",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f374",
+      "question": "What is the standard deviation of column f374?",
+      "golden": 0.32707,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 355,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f380",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f380",
+      "question": "What is the median value of column f380?",
+      "golden": -0.9744,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 468,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f215",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f215",
+      "question": "How many rows have a value of f215 greater than 0?",
+      "golden": 5302,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 411,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f274",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f274",
+      "question": "How many rows have a value of f274 greater than 0?",
+      "golden": 6722,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 415,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f74",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f74",
+      "question": "How many unique values does column f74 have?",
+      "golden": 5172,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 366,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f176",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f176",
+      "question": "How many unique values does column f176 have?",
+      "golden": 5056,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 630,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f251",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f251",
+      "question": "What is the standard deviation of column f251?",
+      "golden": 0.362011,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 332,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f474",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f474",
+      "question": "What are the min and max values of column f474?",
+      "golden": [
+        -0.9764,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 528,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f277",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f277",
+      "question": "How many rows have a value of f277 greater than 0?",
+      "golden": 7244,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 473,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f571",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f571",
+      "question": "What is the standard deviation of column f571?",
+      "golden": 0.372476,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 461,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f333",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f333",
+      "question": "What is the mean value of column f333?",
+      "golden": 0.652019,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 407,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f235",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f235",
+      "question": "What is the mean value of column f235?",
+      "golden": -0.066129,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 374,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f324",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f324",
+      "question": "What are the min and max values of column f324?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 464,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f275",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f275",
+      "question": "What is the mean value of column f275?",
+      "golden": 0.524675,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 419,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f217",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f217",
+      "question": "How many unique values does column f217 have?",
+      "golden": 4905,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 408,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f323",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f323",
+      "question": "What is the standard deviation of column f323?",
+      "golden": 0.194662,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 383,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f512",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f512",
+      "question": "What are the min and max values of column f512?",
+      "golden": [
+        -0.983,
+        0.7988
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 450,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f470",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f470",
+      "question": "What is the standard deviation of column f470?",
+      "golden": 0.590281,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 404,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f272",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f272",
+      "question": "What is the standard deviation of column f272?",
+      "golden": 0.424954,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 398,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f253",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f253",
+      "question": "How many rows have a value of f253 greater than 0?",
+      "golden": 6618,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 430,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f575",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f575",
+      "question": "How many unique values does column f575 have?",
+      "golden": 4309,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 409,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f270",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f270",
+      "question": "How many rows have a value of f270 greater than 0?",
+      "golden": 4784,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 371,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f603",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f603",
+      "question": "What are the min and max values of column f603?",
+      "golden": [
+        -0.6818,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 457,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f602",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f602",
+      "question": "What are the min and max values of column f602?",
+      "golden": [
+        -0.756,
+        1.0
+      ],
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 390,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f371",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f371",
+      "question": "What is the standard deviation of column f371?",
+      "golden": 0.440992,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 374,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f142",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f142",
+      "question": "How many unique values does column f142 have?",
+      "golden": 4987,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 469,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f506",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f506",
+      "question": "What is the mean value of column f506?",
+      "golden": 0.394663,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 356,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_corr_f49_f113",
+      "kind": "csv",
+      "category": "correlation",
+      "req_id": "eval-baseline-csv-gen_corr_f49_f113",
+      "question": "What is the Pearson correlation coefficient between f49 and f113?",
+      "golden": 0.663125,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 464,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_corr_f157_f164",
+      "kind": "csv",
+      "category": "correlation",
+      "req_id": "eval-baseline-csv-gen_corr_f157_f164",
+      "question": "What is the Pearson correlation coefficient between f157 and f164?",
+      "golden": -0.228363,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 392,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_corr_f433_f615",
+      "kind": "csv",
+      "category": "correlation",
+      "req_id": "eval-baseline-csv-gen_corr_f433_f615",
+      "question": "What is the Pearson correlation coefficient between f433 and f615?",
+      "golden": 0.087,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 533,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_corr_f66_f395",
+      "kind": "csv",
+      "category": "correlation",
+      "req_id": "eval-baseline-csv-gen_corr_f66_f395",
+      "question": "What is the Pearson correlation coefficient between f66 and f395?",
+      "golden": 0.207388,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 356,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_corr_f391_f615",
+      "kind": "csv",
+      "category": "correlation",
+      "req_id": "eval-baseline-csv-gen_corr_f391_f615",
+      "question": "What is the Pearson correlation coefficient between f391 and f615?",
+      "golden": -0.080625,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 386,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_corr_f480_f542",
+      "kind": "csv",
+      "category": "correlation",
+      "req_id": "eval-baseline-csv-gen_corr_f480_f542",
+      "question": "What is the Pearson correlation coefficient between f480 and f542?",
+      "golden": -0.132488,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 1928,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_grp_f258_class18",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-gen_grp_f258_class18",
+      "question": "What is the average value of f258 for rows in class 18?",
+      "golden": -0.102509,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 5410,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_grp_f12_class22",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-gen_grp_f12_class22",
+      "question": "What is the average value of f12 for rows in class 22?",
+      "golden": -0.312463,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 1516,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_grp_f118_class22",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-gen_grp_f118_class22",
+      "question": "What is the average value of f118 for rows in class 22?",
+      "golden": 0.661448,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 2980,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_grp_f550_class25",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-gen_grp_f550_class25",
+      "question": "What is the average value of f550 for rows in class 25?",
+      "golden": 0.23949,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 2116,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_grp_f274_class25",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-gen_grp_f274_class25",
+      "question": "What is the average value of f274 for rows in class 25?",
+      "golden": -0.08162,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 2849,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_grp_f349_class4",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-gen_grp_f349_class4",
+      "question": "What is the average value of f349 for rows in class 4?",
+      "golden": -0.980829,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_400",
+      "total_ms": 1848,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    }
+  ]
+}
