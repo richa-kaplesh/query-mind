@@ -23,6 +23,7 @@ import argparse
 import json
 import mimetypes
 import os
+import re
 import statistics
 import sys
 import time
@@ -43,6 +44,24 @@ DEFAULT_CSV_SETS = [
 ]
 DEFAULT_PDF_SET = os.path.join(HERE, "golden_dataset.json")
 RUNS_DIR = os.path.join(HERE, "live_runs")
+
+# ── Gateway failure policy ───────────────────────────────────────────────────
+# 5xx -> the gateway is broken: stop the whole run immediately, no retry.
+# 429 -> rate limited: up to MAX_429_ATTEMPTS tries for that question in total
+#        (first try + retries), then stop the whole run.
+MAX_429_ATTEMPTS = 3
+RETRY_429_DELAY_S = 20.0  # wait before a retry, doubles each time (--retry-delay)
+# The app reports gateway failures as an HTTP status, or inside the stream as
+# "[Error: Client error '429 Too Many Requests' for url ...]"
+_STATUS_RE = re.compile(r"'(429|5\d\d)\s")
+
+
+class GatewayAbort(Exception):
+    """The gateway is failing; more requests would not help. Stop the run."""
+
+    def __init__(self, message, partial=None):
+        super().__init__(message)
+        self.partial = partial or []
 
 
 # ── API helpers ──────────────────────────────────────────────────────────────
@@ -102,13 +121,46 @@ def ask(client: httpx.Client, base: str, question: str, req_id: str) -> dict:
     answer = "".join(parts).strip()
     if error is None and answer.startswith("[Error"):
         error = "server_error"
+
+    status = None  # HTTP status of a failure, if we can tell
+    if error and error.startswith("http_"):
+        status = int(error[5:])
+    elif error == "server_error":
+        m = _STATUS_RE.search(answer)
+        status = int(m.group(1)) if m else None
     return {
         "answer": answer,
         "tool_used": tool_used,
         "error": error,
+        "status": status,
         "total_ms": round((time.perf_counter() - started) * 1000),
         "ttft_ms": round(first_token_ms) if first_token_ms is not None else None,
     }
+
+
+def ask_guarded(client, base, question, req_id):
+    """ask() plus the gateway failure policy. Sets out["abort"] when the run must stop."""
+    delay = RETRY_429_DELAY_S
+    out = None
+    for attempt in range(1, MAX_429_ATTEMPTS + 1):
+        rid = req_id if attempt == 1 else f"{req_id}-try{attempt}"
+        out = ask(client, base, question, rid)
+        out["attempts"] = attempt
+        status = out["status"]
+
+        if status is not None and status >= 500:
+            out["abort"] = f"gateway returned {status} (no retry)"
+            return out
+        if status == 429:
+            if attempt == MAX_429_ATTEMPTS:
+                out["abort"] = f"gateway still returning 429 after {attempt} attempts"
+                return out
+            print(f"    429 (attempt {attempt}/{MAX_429_ATTEMPTS}), waiting {delay:.0f}s before retry")
+            time.sleep(delay)
+            delay *= 2
+            continue
+        return out
+    return out
 
 
 # ── Dataset loading ──────────────────────────────────────────────────────────
@@ -144,12 +196,13 @@ def load_pdf_questions(path):
 
 # ── Saving ───────────────────────────────────────────────────────────────────
 
-def save_run(run_id, base, results, complete):
+def save_run(run_id, base, results, complete, abort_reason=None):
     os.makedirs(RUNS_DIR, exist_ok=True)
     path = os.path.join(RUNS_DIR, f"{run_id}.json")
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump({"run_id": run_id, "base_url": base, "complete": complete,
+                   "abort_reason": abort_reason,
                    "saved_at": datetime.now(timezone.utc).isoformat(), "results": results}, f, indent=2)
     os.replace(tmp, path)  # never leaves a half-written file behind
     return path
@@ -162,7 +215,7 @@ def run_set(client, base, items, kind, run_id, delay, use_judge, checkpoint):
     for n, item in enumerate(items, 1):
         req_id = f"eval-{run_id}-{item['id']}"
         print(f"[{kind} {n}/{len(items)}] {item['id']}: {item['question'][:70]}")
-        out = ask(client, base, item["question"], req_id)
+        out = ask_guarded(client, base, item["question"], req_id)
 
         if out["error"]:
             correctness, tool_score = 0.0, None
@@ -180,10 +233,13 @@ def run_set(client, base, items, kind, run_id, delay, use_judge, checkpoint):
             "id": item["id"], "kind": kind, "category": item["category"], "req_id": req_id,
             "question": item["question"], "golden": item["golden"], "answer": out["answer"],
             "tool_used": out["tool_used"], "error": out["error"],
+            "status": out["status"], "attempts": out["attempts"],
             "total_ms": out["total_ms"], "ttft_ms": out["ttft_ms"],
             "scores": {"answer_correctness": correctness, "tool_appropriateness": tool_score},
         })
         checkpoint(results)
+        if out.get("abort"):
+            raise GatewayAbort(f"{item['id']}: {out['abort']}", results)
         time.sleep(delay)
     return results
 
@@ -194,6 +250,15 @@ def run_once(client, base, args, run_id, use_judge):
     def checkpoint(current_set_results):
         save_run(run_id, base, finished + current_set_results, False)
 
+    try:
+        return _run_sets(client, base, args, run_id, use_judge, finished, checkpoint)
+    except GatewayAbort as e:
+        e.partial = finished + e.partial
+        save_run(run_id, base, e.partial, False, abort_reason=str(e))
+        raise
+
+
+def _run_sets(client, base, args, run_id, use_judge, finished, checkpoint):
     if args.mode in ("csv", "all"):
         items = load_csv_questions(args.csv_sets)
         if args.only:
@@ -286,6 +351,7 @@ def summarize(all_metrics):
 
 
 def main():
+    global RETRY_429_DELAY_S
     ap = argparse.ArgumentParser(description="Live end-to-end eval runner for QueryMind")
     ap.add_argument("--base-url", default=os.getenv("QUERYMIND_URL", "http://localhost:8000"))
     ap.add_argument("--mode", choices=["csv", "pdf", "all"], default="all")
@@ -297,15 +363,20 @@ def main():
     ap.add_argument("--only", nargs="+", default=None, help="run only these question ids")
     ap.add_argument("--repeat", type=int, default=1, help="run the whole selection N times and report ranges")
     ap.add_argument("--delay", type=float, default=3.0, help="seconds between questions (rate limits)")
+    ap.add_argument("--retry-delay", type=float, default=RETRY_429_DELAY_S,
+                    help="seconds to wait before retrying a 429 (doubles each retry, max 3 tries total)")
     ap.add_argument("--read-timeout", type=float, default=300.0)
     ap.add_argument("--no-judge", action="store_true", help="skip LLM-judge scoring (offline / cheaper)")
     ap.add_argument("--run-id", default=datetime.now(timezone.utc).strftime("%Y%m%d-%H%M"))
     args = ap.parse_args()
 
+    RETRY_429_DELAY_S = args.retry_delay
+
     base = args.base_url.rstrip("/")
     use_judge = not args.no_judge
     timeout = httpx.Timeout(connect=60.0, read=args.read_timeout, write=60.0, pool=60.0)
     all_metrics, paths, run_ids = [], [], []
+    aborted = None
 
     print(f"Run ID: {args.run_id}   repeats: {args.repeat}\nTarget: {base}\n")
     with httpx.Client(timeout=timeout) as client:
@@ -314,15 +385,28 @@ def main():
             run_id = args.run_id if args.repeat == 1 else f"{args.run_id}-r{i}"
             run_ids.append(run_id)
             print(f"\n######## run {i}/{args.repeat}: {run_id} ########")
-            results, path = run_once(client, base, args, run_id, use_judge)
+            try:
+                results, path = run_once(client, base, args, run_id, use_judge)
+            except GatewayAbort as e:
+                aborted = e
+                if e.partial:
+                    all_metrics.append(metrics(e.partial))
+                paths.append(os.path.join(RUNS_DIR, f"{run_id}.json"))
+                break
             all_metrics.append(metrics(results))
             paths.append(path)
 
-    summarize(all_metrics)
+    if aborted:
+        print(f"\n!!! STOPPED EARLY: {aborted}")
+        print("    Results so far were saved (run marked incomplete). Numbers below cover only what finished.")
+    if all_metrics:
+        summarize(all_metrics)
     print("\nSaved:\n  " + "\n  ".join(paths))
     print("\nIn Grafana (Explore -> Code):")
     for rid in run_ids:
         print(f'  {rid}: {{service="query-mind"}} | json | req_id=~"eval-{rid}-.*"')
+    if aborted:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
