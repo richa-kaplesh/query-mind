@@ -39,6 +39,7 @@ class ReviewResult:
     feedback: str
     iterations: int
     tool_calls: int
+    unverified: bool = False  # True when the reviewer itself failed (e.g. gateway error): no real verdict
 
 
 def _tc_parts(tool_call) -> tuple[str, str, str]:
@@ -122,7 +123,8 @@ class Reviewer:
             except Exception as e:
                 log.error(f"[REVIEWER] LLM call {iteration} failed: {e}")
                 record("review_error", {"iteration": iteration, "error": str(e)})
-                return ReviewResult(passed=True, feedback="", iterations=iteration, tool_calls=tool_calls_made)
+                return ReviewResult(passed=True, feedback="", iterations=iteration,
+                                    tool_calls=tool_calls_made, unverified=True)
 
             if token_tracker:
                 token_tracker.log_call(
@@ -221,7 +223,8 @@ class RAGReviewer:
             except Exception as e:
                 log.error(f"[RAG REVIEWER] LLM call {iteration} failed: {e}")
                 record("review_error", {"iteration": iteration, "error": str(e)})
-                return ReviewResult(passed=True, feedback="", iterations=iteration, tool_calls=0)
+                return ReviewResult(passed=True, feedback="", iterations=iteration,
+                                    tool_calls=0, unverified=True)
 
             if token_tracker:
                 token_tracker.log_call(

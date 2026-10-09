@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import os
 from config import settings
 from core.exceptions import PDFPasswordProtectedError, PDFCorruptError, DocumentExtractionError
+from core import gateway_client
 from core.tools.rag_tool import RAGTool
 import shutil
 import asyncio
@@ -139,6 +140,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
         rag_reviewer = RAGReviewer(max_iterations=settings.reviewer_max_iterations)
 
         async def event_stream_pdf():
+            gateway_client.start_call_budget()
             final_answer_parts = []
             tool_used = None
             try:
@@ -159,6 +161,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
             except Exception as e:
                 log.error(f"[STREAM/PDF] Error: {e}", exc_info=True)
                 trace_store.finish_trace(trace_id, str(e), tool_used, status="error")
+                yield f"data: {json.dumps({'type': 'error', 'status': getattr(e, 'status', None), 'reason': getattr(e, 'reason', None), 'content': str(e)})}\n\n"
                 yield f"data: {json.dumps({'type': 'token', 'content': f'[Error: {e}]'})}\n\n"
             finally:
                 yield "data: [DONE]\n\n"
@@ -174,6 +177,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
     )
 
     async def event_stream():
+        gateway_client.start_call_budget()
         final_answer_parts = []
         tool_used = None
         try:
@@ -195,6 +199,7 @@ async def query_document_stream(body: QueryRequest, request: Request):
         except Exception as e:
             log.error(f"[STREAM] Error: {e}", exc_info=True)
             trace_store.finish_trace(trace_id, str(e), tool_used, status="error")
+            yield f"data: {json.dumps({'type': 'error', 'status': getattr(e, 'status', None), 'reason': getattr(e, 'reason', None), 'content': str(e)})}\n\n"
             yield f"data: {json.dumps({'type': 'token', 'content': f'[Error: {e}]'})}\n\n"
         finally:
             yield "data: [DONE]\n\n"
@@ -228,4 +233,3 @@ async def reset_session():
 
 def _test_worker(queue):
     queue.put("hello from subprocess")
-

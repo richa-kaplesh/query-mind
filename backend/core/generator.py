@@ -2,6 +2,7 @@ from groq import Groq
 from typing import List
 from core.tools.base_tool import BaseTool
 from core import gateway_client
+from core.exceptions import GatewayError
 from core.token_utils import estimate_tokens
 from core.models import CSVSchema
 from config import settings
@@ -11,6 +12,8 @@ import logging
 import time
 
 log = logging.getLogger("generator")
+
+UNVERIFIED_NOTE = "\n\n_(This answer could not be fully verified — treat it with care.)_"
 
 RAG_SYSTEM_PROMPT = """You are a precise document assistant. You are given extracted passages \
 from a PDF document, each preceded by its citation (source file, page number, and section \
@@ -432,6 +435,12 @@ class Generator:
             except Exception as e:
                 if not tool_log:
                     raise
+                if isinstance(e, GatewayError) and e.fatal:
+                    # Rate limited / gateway down / budget spent: another request (including
+                    # the forced final answer below) can only add load. Stop and surface it.
+                    log.error(f"[AGENT] {label}Gateway failed (status={e.status}) after tool work — stopping: {e}")
+                    record(f"{label}agent_error", {"iteration": iteration, "error": str(e), "status": e.status})
+                    raise
                 log.error(f"[AGENT] {label}LLM call {iteration} failed after tool work: {e}")
                 record(f"{label}agent_error", {"iteration": iteration, "error": str(e)})
                 stop_reason = "llm_error"
@@ -517,6 +526,10 @@ class Generator:
                         system_prompt=system_prompt or SYSTEM_PROMPT, purpose_prefix=purpose_prefix,
                     )
                 except Exception as e:
+                    if isinstance(e, GatewayError) and e.fatal:
+                        log.error(f"[AGENT] {label}Gateway failed (status={e.status}) on forced answer — stopping: {e}")
+                        record(f"{label}agent_error", {"error": str(e), "status": e.status})
+                        raise
                     log.error(f"[AGENT] {label}Forced final answer failed: {e}")
                     answer = f"(Could not finish reasoning. Last tool result: {tool_log[-1][2]})"
             else:
@@ -766,6 +779,10 @@ class Generator:
 
         max_revisions = settings.reviewer_max_revisions
         verdict = await review_fn(answer, tool_log)
+        if verdict.unverified:
+            log.warning("[REVIEWER] Reviewer call failed — returning draft marked unverified, no revisions")
+            record("review_skipped", {"reason": "reviewer_error", "revisions_used": 0})
+            return f"{answer}{UNVERIFIED_NOTE}", revisions
         record("review_result", {
             "passed": verdict.passed, "feedback": verdict.feedback,
             "revisions_used": revisions, "review_tool_calls": getattr(verdict, "tool_calls", 0),
@@ -785,10 +802,18 @@ class Generator:
                 "Please reconsider — search again if needed — and give a corrected, complete "
                 "final answer, using only information you can actually find."
             )})
-            answer, stop_reason = await self._run_loop(
-                messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
-                label=f"revision{revisions}_", system_prompt=system_prompt, purpose_prefix=purpose_prefix,
-            )
+            try:
+                answer, stop_reason = await self._run_loop(
+                    messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
+                    label=f"revision{revisions}_", system_prompt=system_prompt, purpose_prefix=purpose_prefix,
+                )
+            except GatewayError as e:
+                if not e.fatal:
+                    raise
+                # `answer` still holds the previous draft: ship that instead of failing the request.
+                log.warning(f"[REVIEWER] Gateway failed (status={e.status}) on revision {revisions} — keeping previous draft")
+                record("review_skipped", {"reason": "gateway_error", "status": e.status, "revisions_used": revisions})
+                return f"{answer}{UNVERIFIED_NOTE}", revisions
             if stop_reason == "llm_error":
                 log.warning(
                     f"[REVIEWER] Stopping — upstream LLM error on revision {revisions}; "
@@ -798,6 +823,10 @@ class Generator:
                 return answer, revisions
 
             verdict = await review_fn(answer, tool_log)
+            if verdict.unverified:
+                log.warning(f"[REVIEWER] Reviewer call failed after revision {revisions} — marking unverified")
+                record("review_skipped", {"reason": "reviewer_error", "revisions_used": revisions})
+                return f"{answer}{UNVERIFIED_NOTE}", revisions
             record("review_result", {
                 "passed": verdict.passed, "feedback": verdict.feedback,
                 "revisions_used": revisions, "review_tool_calls": getattr(verdict, "tool_calls", 0),
@@ -812,6 +841,6 @@ class Generator:
 
         if not verdict.passed:
             log.warning(f"[REVIEWER] Answer still not verified after {max_revisions} revisions")
-            answer = f"{answer}\n\n_(This answer could not be fully verified — treat it with care.)_"
+            answer = f"{answer}{UNVERIFIED_NOTE}"
 
         return answer, revisions

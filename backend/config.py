@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     reviewer_max_revisions: int = 2
     reviewer_max_iterations: int = 3
     gateway_url: str = "https://llm-gateway-qewa.onrender.com"
+    # Hard cap on gateway requests for ONE user question (agent loop + reviewer + revisions).
+    # Worst case without a cap is ~27; this stops a rate-limited run from piling on.
+    gateway_max_calls_per_request: int = 20
 
     
     class Config:

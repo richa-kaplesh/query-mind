@@ -51,9 +51,10 @@ RUNS_DIR = os.path.join(HERE, "live_runs")
 #        (first try + retries), then stop the whole run.
 MAX_429_ATTEMPTS = 3
 RETRY_429_DELAY_S = 20.0  # wait before a retry, doubles each time (--retry-delay)
-# The app reports gateway failures as an HTTP status, or inside the stream as
-# "[Error: Client error '429 Too Many Requests' for url ...]"
-_STATUS_RE = re.compile(r"'(429|5\d\d)\s")
+# The app reports a gateway failure as an SSE event {"type": "error", "status": 429, "reason": ...}
+# (current backend), or as an HTTP status, or as text inside the stream such as
+# "[Error: gateway returned 429]" / "[Error: Client error '429 Too Many Requests' ...]" (older backend).
+_STATUS_RE = re.compile(r"gateway returned (429|5\d\d)|'(429|5\d\d)\s")
 
 
 class GatewayAbort(Exception):
@@ -93,6 +94,7 @@ def ask(client: httpx.Client, base: str, question: str, req_id: str) -> dict:
     first_token_ms = None
     parts, tool_used = [], None
     error = None
+    err_status, err_reason = None, None  # from the stream's "error" event
     try:
         with client.stream("POST", f"{base}/query/stream", json={"question": question},
                            headers={"X-Request-ID": req_id}) as r:
@@ -111,6 +113,8 @@ def ask(client: httpx.Client, base: str, question: str, req_id: str) -> dict:
                         continue
                     if event.get("type") == "tool":
                         tool_used = event.get("content")
+                    elif event.get("type") == "error":
+                        err_status, err_reason = event.get("status"), event.get("reason")
                     elif event.get("type") == "token":
                         if first_token_ms is None:
                             first_token_ms = (time.perf_counter() - started) * 1000
@@ -126,13 +130,17 @@ def ask(client: httpx.Client, base: str, question: str, req_id: str) -> dict:
     if error and error.startswith("http_"):
         status = int(error[5:])
     elif error == "server_error":
-        m = _STATUS_RE.search(answer)
-        status = int(m.group(1)) if m else None
+        if err_status is not None:
+            status = int(err_status)
+        else:
+            m = _STATUS_RE.search(answer)
+            status = int(m.group(1) or m.group(2)) if m else None
     return {
         "answer": answer,
         "tool_used": tool_used,
         "error": error,
         "status": status,
+        "reason": err_reason,
         "total_ms": round((time.perf_counter() - started) * 1000),
         "ttft_ms": round(first_token_ms) if first_token_ms is not None else None,
     }
@@ -150,6 +158,9 @@ def ask_guarded(client, base, question, req_id):
 
         if status is not None and status >= 500:
             out["abort"] = f"gateway returned {status} (no retry)"
+            return out
+        if out.get("reason") == "unreachable":
+            out["abort"] = "gateway unreachable (timeout / connection failure, no retry)"
             return out
         if status == 429:
             if attempt == MAX_429_ATTEMPTS:

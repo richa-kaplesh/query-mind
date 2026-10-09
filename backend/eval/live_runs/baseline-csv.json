@@ -2,7 +2,8 @@
   "run_id": "baseline-csv",
   "base_url": "https://query-mind.onrender.com",
   "complete": false,
-  "saved_at": "2026-10-07T05:55:00.684529+00:00",
+  "abort_reason": null,
+  "saved_at": "2026-10-07T10:37:46.619432+00:00",
   "results": [
     {
       "id": "schema_01",
@@ -11,11 +12,13 @@
       "req_id": "eval-baseline-csv-schema_01",
       "question": "How many columns does this dataset have in total (including the label column)?",
       "golden": 618,
-      "answer": "The dataset has **618** columns in total.",
+      "answer": "The dataset contains **618 columns in total**, including the label column (`class`).",
       "tool_used": null,
       "error": null,
-      "total_ms": 26205,
-      "ttft_ms": 26055,
+      "status": null,
+      "attempts": 1,
+      "total_ms": 46722,
+      "ttft_ms": 46440,
       "scores": {
         "answer_correctness": 1.0,
         "tool_appropriateness": 1.0
@@ -28,14 +31,16 @@
       "req_id": "eval-baseline-csv-schema_02",
       "question": "How many feature columns are there, excluding the class/label column?",
       "golden": 617,
-      "answer": "[Error: Server error '500 Internal Server Error' for url 'https://llm-gateway-qewa.onrender.com/query'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500]",
-      "tool_used": null,
-      "error": "server_error",
-      "total_ms": 6697,
-      "ttft_ms": 6696,
+      "answer": "(Could not finish reasoning. Last tool result: {'result': '617'})",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "total_ms": 65695,
+      "ttft_ms": 65528,
       "scores": {
-        "answer_correctness": 0.0,
-        "tool_appropriateness": null
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
       }
     },
     {
@@ -45,14 +50,35 @@
       "req_id": "eval-baseline-csv-schema_03",
       "question": "What is the name of the label/target column?",
       "golden": "class",
-      "answer": "The label (target) column is named **`class`**.",
+      "answer": "[Error: ]",
       "tool_used": null,
-      "error": null,
-      "total_ms": 68945,
-      "ttft_ms": 68802,
+      "error": "server_error",
+      "status": null,
+      "attempts": 1,
+      "total_ms": 61078,
+      "ttft_ms": 61078,
       "scores": {
-        "answer_correctness": 1.0,
-        "tool_appropriateness": 1.0
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "schema_04",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_04",
+      "question": "What is the name of the first feature column?",
+      "golden": "f1",
+      "answer": "",
+      "tool_used": null,
+      "error": "RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
+      "status": null,
+      "attempts": 1,
+      "total_ms": 707046,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
       }
     }
   ]
