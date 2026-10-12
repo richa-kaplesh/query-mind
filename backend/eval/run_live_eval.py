@@ -69,8 +69,20 @@ class GatewayAbort(Exception):
 
 # ── API helpers ──────────────────────────────────────────────────────────────
 
-def upload_and_wait(client: httpx.Client, base: str, path: str, run_id: str, timeout_s: int = 400):
+def upload_and_wait(client: httpx.Client, base: str, path: str, run_id: str, timeout_s: int = 400,
+                    force: bool = False):
     name = os.path.basename(path)
+    if not force:
+        # Every upload makes the server parse the whole file again (twice for a CSV: once for the
+        # schema, once in the pandas worker) - the biggest memory spike on a small instance. If this
+        # exact file is still loaded from the previous batch, reuse it. After a server restart the
+        # document list is empty, so it gets uploaded again automatically.
+        try:
+            if client.get(f"{base}/documents").json().get(name) == "ready":
+                print(f"{name} is already loaded on the server - skipping upload (use --force-upload to redo it)")
+                return
+        except (httpx.HTTPError, ValueError, AttributeError):
+            pass  # can't tell: fall through and upload
     mime = mimetypes.guess_type(name)[0] or "application/octet-stream"
     print(f"Uploading {name} ...")
     with open(path, "rb") as fh:
@@ -368,7 +380,7 @@ def _run_sets(client, base, args, run_id, use_judge, finished, checkpoint):
             todo = todo[:budget]
             budget -= len(todo)
         if todo:
-            upload_and_wait(client, base, upload_path, run_id)
+            upload_and_wait(client, base, upload_path, run_id, force=args.force_upload)
             finished += run_set(client, base, todo, kind, run_id, args.delay, use_judge, checkpoint)
 
     total = sum(len(items) for _, items, _ in sets)
@@ -470,6 +482,8 @@ def main():
     ap.add_argument("--delay", type=float, default=3.0, help="seconds between questions (rate limits)")
     ap.add_argument("--retry-delay", type=float, default=RETRY_429_DELAY_S,
                     help="seconds to wait before retrying a 429 (doubles each retry, max 3 tries total)")
+    ap.add_argument("--force-upload", action="store_true",
+                    help="upload the dataset even if the server already has it loaded")
     ap.add_argument("--read-timeout", type=float, default=300.0)
     ap.add_argument("--no-judge", action="store_true", help="skip LLM-judge scoring (offline / cheaper)")
     ap.add_argument("--run-id", default=None, help="name of this run (default: timestamp)")

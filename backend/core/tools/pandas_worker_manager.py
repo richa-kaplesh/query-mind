@@ -1,8 +1,11 @@
+import gc
+import math
 import multiprocessing
 import queue as queue_module
 import logging
 import platform
 import threading
+import time
 import pandas as pd
 from core.utils.data_cleaning import strip_stray_quotes
 from core.tools.safe_namespace import build_safe_pd, build_safe_df
@@ -42,9 +45,28 @@ def _apply_resource_limits():
         import resource
         limit = _current_vmsize_bytes() + WORKER_MEMORY_HEADROOM_MB * 1024 * 1024
         resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
-        resource.setrlimit(resource.RLIMIT_CPU, (10, 10))
+        # NOTE: no fixed RLIMIT_CPU here. That limit counts CPU time over the WHOLE life of the
+        # process, so a fixed 10 s killed a perfectly healthy worker after ~10 s of total work
+        # (every ~11 describe() queries on a big CSV), forcing a respawn + full CSV reload each
+        # time. The CPU budget is re-armed per task by _set_cpu_budget() below instead.
     except Exception as e:
         log.warning(f"Could not apply resource limits: {e}")
+
+
+CPU_SECONDS_PER_LOAD = 30
+CPU_SECONDS_PER_QUERY = 10
+
+
+def _set_cpu_budget(seconds: int):
+    """Allow this ONE task `seconds` of CPU on top of what the process already used."""
+    if platform.system() == "Windows":
+        return
+    try:
+        import resource
+        soft = math.ceil(time.process_time()) + seconds
+        resource.setrlimit(resource.RLIMIT_CPU, (soft, resource.RLIM_INFINITY))
+    except Exception as e:
+        log.warning(f"Could not set per-task CPU budget: {e}")
 
 
 def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multiprocessing.Queue):
@@ -68,8 +90,13 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
 
         elif msg_type == "load":
             try:
+                df = None          # drop the previous dataset BEFORE parsing the new one (never hold two)
+                gc.collect()
+                _set_cpu_budget(CPU_SECONDS_PER_LOAD)
                 loaded = pd.read_csv(payload, low_memory=False)
                 df = strip_stray_quotes(loaded)
+                del loaded
+                gc.collect()
                 log.info(f"Loaded {payload}, shape={df.shape}")
                 result_queue.put(("ok", None))
             except Exception as e:
@@ -88,6 +115,8 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
             # Code arriving here was already validated by CodeValidator in
             # the calling process (PandasSandboxTool) — the safe proxies
             # below are the SECOND, independent gate, not the first.
+            local_vars = restricted_globals = None
+            _set_cpu_budget(CPU_SECONDS_PER_QUERY)
             try:
                 local_vars = {
                     "pd": build_safe_pd(),
@@ -102,6 +131,11 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
                 result_queue.put(("ok", result_str))
             except Exception as e:
                 result_queue.put(("error", str(e)))
+            finally:
+                # Without this the per-query df.copy() (a full second copy of the dataset) stayed
+                # alive after the answer was sent, until the NEXT query overwrote it.
+                local_vars = restricted_globals = None
+                gc.collect()
 
 
 class PandasWorkerManager:
