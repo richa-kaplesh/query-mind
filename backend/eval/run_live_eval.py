@@ -24,9 +24,11 @@ import json
 import mimetypes
 import os
 import re
+import shutil
 import statistics
 import sys
 import time
+import traceback
 from datetime import datetime, timezone
 
 import httpx
@@ -215,8 +217,58 @@ def save_run(run_id, base, results, complete, abort_reason=None):
         json.dump({"run_id": run_id, "base_url": base, "complete": complete,
                    "abort_reason": abort_reason,
                    "saved_at": datetime.now(timezone.utc).isoformat(), "results": results}, f, indent=2)
+    if os.path.exists(path):
+        try:
+            shutil.copyfile(path, path + ".bak")  # last good copy, used if the main file ever gets corrupted
+        except OSError:
+            pass
     os.replace(tmp, path)  # never leaves a half-written file behind
     return path
+
+
+def load_prior(run_id, base):
+    """Results from earlier batches of this run-id. Questions that errored are dropped
+    so they get asked again; everything that answered cleanly is kept and never re-run."""
+    path = os.path.join(RUNS_DIR, f"{run_id}.json")
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, encoding="utf-8") as f:
+            saved = json.load(f)
+    except (OSError, ValueError) as e:
+        try:
+            with open(path + ".bak", encoding="utf-8") as f:
+                saved = json.load(f)
+            print(f"WARNING: {path} was unreadable ({e}); recovered from the .bak copy "
+                  f"(at most the last question is lost and will simply be asked again).")
+        except (OSError, ValueError):
+            sys.exit(f"ERROR: {path} exists but cannot be read ({e}) and there is no usable .bak.\n"
+                     f"       Pick a different --run-id, or delete that file to start over.")
+
+    # normal format: {"run_id":..., "base_url":..., "results": [...]}; also accept a bare list
+    if isinstance(saved, dict):
+        old_results, old_base = saved.get("results", []), saved.get("base_url")
+    elif isinstance(saved, list):
+        old_results, old_base = saved, None
+    else:
+        old_results, old_base = None, None
+
+    needed = ("id", "kind", "scores")
+    usable = isinstance(old_results, list) and all(
+        isinstance(r, dict) and all(k in r for k in needed) for r in old_results)
+    if not usable:
+        sys.exit(f"ERROR: {path} already exists but is not a results file written by this runner "
+                 f"(a different script or an older version made it).\n"
+                 f"       Nothing was changed. Pick a new --run-id (e.g. {run_id}-b), or move that file away.")
+
+    if old_base and old_base != base:
+        print(f"WARNING: {run_id} was started against {old_base} but you are now "
+              f"targeting {base}. Mixing targets makes the combined numbers hard to trust.")
+    prior = [r for r in old_results if not r.get("error")]
+    dropped = len(old_results) - len(prior)
+    print(f"Resuming {run_id}: {len(prior)} questions already answered"
+          + (f", {dropped} errored ones will be asked again" if dropped else ""))
+    return prior
 
 
 # ── Runner ───────────────────────────────────────────────────────────────────
@@ -228,15 +280,21 @@ def run_set(client, base, items, kind, run_id, delay, use_judge, checkpoint):
         print(f"[{kind} {n}/{len(items)}] {item['id']}: {item['question'][:70]}")
         out = ask_guarded(client, base, item["question"], req_id)
 
-        if out["error"]:
-            correctness, tool_score = 0.0, None
-        elif kind == "pdf":
-            correctness = llm_judge(item["golden"], out["answer"], item["question"], use_judge)
-            tool_score = None
-        else:
-            correctness = score_correctness(item["golden"], out["answer"], item["tolerance"],
-                                            item["question"], use_judge, item["must_include"])
-            tool_score = check_tool_app(item["needs_computation"], out["tool_used"])
+        score_error = None
+        try:
+            if out["error"]:
+                correctness, tool_score = 0.0, None
+            elif kind == "pdf":
+                correctness = llm_judge(item["golden"], out["answer"], item["question"], use_judge)
+                tool_score = None
+            else:
+                correctness = score_correctness(item["golden"], out["answer"], item["tolerance"],
+                                                item["question"], use_judge, item["must_include"])
+                tool_score = check_tool_app(item["needs_computation"], out["tool_used"])
+        except Exception as e:  # keep the answer; only the score is missing (shows as UNSCORED)
+            correctness, tool_score = None, None
+            score_error = f"{type(e).__name__}: {e}"
+            print(f"    SCORING FAILED ({score_error}) - answer kept, left unscored")
 
         flag = "ERROR " + out["error"] if out["error"] else f"correct={correctness}"
         print(f"    {flag} | {out['total_ms']} ms | tool={out['tool_used']}")
@@ -244,7 +302,7 @@ def run_set(client, base, items, kind, run_id, delay, use_judge, checkpoint):
             "id": item["id"], "kind": kind, "category": item["category"], "req_id": req_id,
             "question": item["question"], "golden": item["golden"], "answer": out["answer"],
             "tool_used": out["tool_used"], "error": out["error"],
-            "status": out["status"], "attempts": out["attempts"],
+            "status": out["status"], "attempts": out["attempts"], "score_error": score_error,
             "total_ms": out["total_ms"], "ttft_ms": out["ttft_ms"],
             "scores": {"answer_correctness": correctness, "tool_appropriateness": tool_score},
         })
@@ -255,8 +313,22 @@ def run_set(client, base, items, kind, run_id, delay, use_judge, checkpoint):
     return results
 
 
+def _mark_crashed(run_id, reason):
+    """Best effort: record why the run stopped. Never touches the results themselves."""
+    path = os.path.join(RUNS_DIR, f"{run_id}.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            saved = json.load(f)
+        if isinstance(saved, dict):
+            save_run(run_id, saved.get("base_url"), saved.get("results", []), False, abort_reason=reason)
+    except Exception:
+        pass
+
+
 def run_once(client, base, args, run_id, use_judge):
-    finished = []  # results of sets that are already complete (csv, then pdf)
+    # results of sets that are already complete (csv, then pdf); in --batch mode this also
+    # starts with everything answered by earlier batches of the same run-id
+    finished = load_prior(run_id, base) if args.batch else []
 
     def checkpoint(current_set_results):
         save_run(run_id, base, finished + current_set_results, False)
@@ -269,27 +341,45 @@ def run_once(client, base, args, run_id, use_judge):
         raise
 
 
-def _run_sets(client, base, args, run_id, use_judge, finished, checkpoint):
+def _select_sets(args):
+    """[(kind, items, upload_path)] after --only / --limit. csv questions come first, then pdf."""
+    sets = []
     if args.mode in ("csv", "all"):
         items = load_csv_questions(args.csv_sets)
         if args.only:
             items = [i for i in items if i["id"] in args.only]
-        items = items[: args.limit] if args.limit else items
-        if items:
-            upload_and_wait(client, base, args.csv_path, run_id)
-            finished += run_set(client, base, items, "csv", run_id, args.delay, use_judge, checkpoint)
-
+        sets.append(("csv", items[: args.limit] if args.limit else items, args.csv_path))
     if args.mode in ("pdf", "all"):
         items = load_pdf_questions(args.pdf_set)
         if args.only:
             items = [i for i in items if i["id"] in args.only]
-        items = items[: args.limit] if args.limit else items
-        if items:
-            upload_and_wait(client, base, args.pdf_path, run_id)
-            finished += run_set(client, base, items, "pdf", run_id, args.delay, use_judge, checkpoint)
+        sets.append(("pdf", items[: args.limit] if args.limit else items, args.pdf_path))
+    return sets
 
-    path = save_run(run_id, base, finished, True)
-    return finished, path
+
+def _run_sets(client, base, args, run_id, use_judge, finished, checkpoint):
+    sets = _select_sets(args)
+    answered = {(r["kind"], r["id"]) for r in finished if not r["error"]}
+    budget = args.batch  # None = no cap (whole selection in one go)
+
+    for kind, items, upload_path in sets:
+        todo = [i for i in items if (kind, i["id"]) not in answered]
+        if budget is not None:
+            todo = todo[:budget]
+            budget -= len(todo)
+        if todo:
+            upload_and_wait(client, base, upload_path, run_id)
+            finished += run_set(client, base, todo, kind, run_id, args.delay, use_judge, checkpoint)
+
+    total = sum(len(items) for _, items, _ in sets)
+    if total == 0:
+        sys.exit("ERROR: no questions were loaded, so there is nothing to run.\n"
+                 f"       csv question files: {args.csv_sets}\n       pdf question file : {args.pdf_set}\n"
+                 "       Check these files exist and are not empty (and that --only matches real ids).")
+    answered = {(r["kind"], r["id"]) for r in finished if not r["error"]}
+    done = sum(1 for kind, items, _ in sets for i in items if (kind, i["id"]) in answered)
+    path = save_run(run_id, base, finished, complete=(done == total))
+    return finished, path, (done, total)
 
 
 # ── Metrics & reporting ──────────────────────────────────────────────────────
@@ -372,14 +462,25 @@ def main():
     ap.add_argument("--pdf-set", default=DEFAULT_PDF_SET)
     ap.add_argument("--limit", type=int, default=None, help="max questions per set")
     ap.add_argument("--only", nargs="+", default=None, help="run only these question ids")
+    ap.add_argument("--batch", type=int, default=None,
+                    help="run only the next N questions that have NOT been answered yet and add them to "
+                         "--run-id's results file. Run the same command again for the next N "
+                         "(needs a fixed --run-id; free-tier friendly)")
     ap.add_argument("--repeat", type=int, default=1, help="run the whole selection N times and report ranges")
     ap.add_argument("--delay", type=float, default=3.0, help="seconds between questions (rate limits)")
     ap.add_argument("--retry-delay", type=float, default=RETRY_429_DELAY_S,
                     help="seconds to wait before retrying a 429 (doubles each retry, max 3 tries total)")
     ap.add_argument("--read-timeout", type=float, default=300.0)
     ap.add_argument("--no-judge", action="store_true", help="skip LLM-judge scoring (offline / cheaper)")
-    ap.add_argument("--run-id", default=datetime.now(timezone.utc).strftime("%Y%m%d-%H%M"))
+    ap.add_argument("--run-id", default=None, help="name of this run (default: timestamp)")
     args = ap.parse_args()
+    if args.batch is not None and args.batch < 1:
+        ap.error("--batch must be at least 1")
+    if args.batch and not args.run_id:
+        ap.error("--batch needs a fixed --run-id, e.g. --run-id full-117 (use the same one every time)")
+    if args.batch and args.repeat != 1:
+        ap.error("--batch and --repeat cannot be combined")
+    args.run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
 
     RETRY_429_DELAY_S = args.retry_delay
 
@@ -388,22 +489,37 @@ def main():
     timeout = httpx.Timeout(connect=60.0, read=args.read_timeout, write=60.0, pool=60.0)
     all_metrics, paths, run_ids = [], [], []
     aborted = None
+    progress = None
 
     print(f"Run ID: {args.run_id}   repeats: {args.repeat}\nTarget: {base}\n")
     with httpx.Client(timeout=timeout) as client:
-        client.get(f"{base}/")  # wake a sleeping free-tier instance
+        try:
+            client.get(f"{base}/")  # wake a sleeping free-tier instance
+        except httpx.HTTPError as e:
+            sys.exit(f"ERROR: cannot reach {base} ({type(e).__name__}). Nothing was run or changed; "
+                     f"start the server / check --base-url and run the same command again.")
         for i in range(1, args.repeat + 1):
             run_id = args.run_id if args.repeat == 1 else f"{args.run_id}-r{i}"
             run_ids.append(run_id)
             print(f"\n######## run {i}/{args.repeat}: {run_id} ########")
             try:
-                results, path = run_once(client, base, args, run_id, use_judge)
+                results, path, progress = run_once(client, base, args, run_id, use_judge)
             except GatewayAbort as e:
                 aborted = e
                 if e.partial:
                     all_metrics.append(metrics(e.partial))
                 paths.append(os.path.join(RUNS_DIR, f"{run_id}.json"))
                 break
+            except (KeyboardInterrupt, Exception) as e:  # anything else: progress is already on disk
+                interrupted = isinstance(e, KeyboardInterrupt)
+                reason = "interrupted by user (Ctrl+C)" if interrupted else f"crashed: {type(e).__name__}: {e}"
+                if not interrupted:
+                    traceback.print_exc()
+                _mark_crashed(run_id, reason)
+                print(f"\n!!! RUN STOPPED ({reason})")
+                print(f"    Every question finished before this point is saved in {os.path.join(RUNS_DIR, run_id + '.json')}.")
+                print("    Run the SAME command again: it continues with the questions that are not answered yet.")
+                sys.exit(130 if interrupted else 1)
             all_metrics.append(metrics(results))
             paths.append(path)
 
@@ -411,7 +527,17 @@ def main():
         print(f"\n!!! STOPPED EARLY: {aborted}")
         print("    Results so far were saved (run marked incomplete). Numbers below cover only what finished.")
     if all_metrics:
+        if args.batch:
+            print("\nNOTE: the summary covers ALL questions answered so far under this run-id, not just this batch.")
         summarize(all_metrics)
+    if progress and args.batch:
+        done, total = progress
+        if done >= total:
+            print(f"\nPROGRESS: {done}/{total} answered - run complete.")
+        else:
+            nxt = min(args.batch, total - done)
+            print(f"\nPROGRESS: {done}/{total} answered, {total - done} left. "
+                  f"Run the same command again for the next {nxt}.")
     print("\nSaved:\n  " + "\n  ".join(paths))
     print("\nIn Grafana (Explore -> Code):")
     for rid in run_ids:
