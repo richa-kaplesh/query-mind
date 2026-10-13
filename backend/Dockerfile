@@ -68,6 +68,8 @@ ENV PORT=8000
 ENV GROQ_API_KEY=""
 ENV JINA_API_KEY=""
 ENV OMP_THREAD_LIMIT=1
+# fewer glibc malloc arenas -> noticeably less RSS fragmentation in a threaded server
+ENV MALLOC_ARENA_MAX=2
 
 EXPOSE ${PORT}
 

@@ -1,12 +1,14 @@
 import gc
 import math
 import multiprocessing
+import os
 import queue as queue_module
 import logging
 import platform
 import threading
 import time
 import pandas as pd
+from core.utils.memory_usage import rss_mb, fmt
 from core.utils.data_cleaning import strip_stray_quotes
 from core.tools.safe_namespace import build_safe_pd, build_safe_df
 
@@ -33,7 +35,11 @@ def _current_vmsize_bytes() -> int:
 
 
 # How much the worker may allocate ON TOP of what it inherited from the main app.
-WORKER_MEMORY_HEADROOM_MB = 600
+# How much MORE memory the worker may grab beyond what it uses right after startup. If a query
+# wants more it gets a MemoryError (reported to the agent, worker keeps running) instead of the
+# whole Render instance being OOM-killed. Raise it via the WORKER_MEMORY_HEADROOM_MB env var on a
+# bigger instance / bigger datasets.
+WORKER_MEMORY_HEADROOM_MB = int(os.environ.get("WORKER_MEMORY_HEADROOM_MB", "300"))
 
 
 def _apply_resource_limits():
@@ -81,6 +87,13 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
 
     df = None
 
+    # Copy-on-write: df.copy(deep=False) below is then a free, mutation-safe view instead of a
+    # full second copy of the dataset per query (pandas 2.x option; always on in pandas 3+).
+    try:
+        pd.set_option("mode.copy_on_write", True)
+    except Exception:
+        pass
+
     while True:
         msg_type, payload = task_queue.get()
 
@@ -99,9 +112,13 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
                 gc.collect()
                 log.info(f"Loaded {payload}, shape={df.shape}")
                 result_queue.put(("ok", None))
+            except MemoryError:
+                df = None
+                gc.collect()
+                result_queue.put(("error", "MemoryError: this file needs more memory than the server allows"))
             except Exception as e:
                 df = None
-                result_queue.put(("error", str(e)))
+                result_queue.put(("error", str(e) or type(e).__name__))
 
         elif msg_type == "unload":
             df = None
@@ -120,7 +137,7 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
             try:
                 local_vars = {
                     "pd": build_safe_pd(),
-                    "df": build_safe_df(df.copy()),  # copy — one query's mutation can't corrupt the next
+                    "df": build_safe_df(df.copy(deep=False)),  # copy-on-write view: a query's mutation can't reach the next
                     "result": None,
                 }
                 restricted_globals = {"__builtins__": SAFE_BUILTINS}
@@ -129,11 +146,15 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
                 if len(result_str) > 5000:
                     result_str = result_str[:5000] + "... (truncated)"
                 result_queue.put(("ok", result_str))
+            except MemoryError:
+                result_queue.put(("error", "MemoryError: this query needs more memory than the server "
+                                           "allows. Select fewer columns, filter rows or aggregate first, "
+                                           "then try again."))
             except Exception as e:
-                result_queue.put(("error", str(e)))
+                result_queue.put(("error", str(e) or type(e).__name__))
             finally:
-                # Without this the per-query df.copy() (a full second copy of the dataset) stayed
-                # alive after the answer was sent, until the NEXT query overwrote it.
+                # Release the per-query objects (and any big intermediates) right away instead of
+                # keeping them alive until the NEXT query overwrites these variables.
                 local_vars = restricted_globals = None
                 gc.collect()
 
@@ -178,6 +199,9 @@ class PandasWorkerManager:
         except queue_module.Empty:
             return ("error", f"No response within {timeout}s")
 
+    def _worker_rss(self):
+        return rss_mb(self.process.pid) if self.process is not None else None
+
     def load_file(self, file_path: str):
         self._ensure_alive()
         if self.current_file_path == file_path:
@@ -185,6 +209,7 @@ class PandasWorkerManager:
         status, err = self._send("load", file_path, timeout=60)
         if status == "ok":
             self.current_file_path = file_path
+        log.info(f"[MEM] dataset load {status}: main={fmt(rss_mb())} worker={fmt(self._worker_rss())}")
         return status, err
 
     def unload(self):
@@ -195,6 +220,7 @@ class PandasWorkerManager:
     def run_query(self, code: str, timeout_seconds: int = 15) -> str:
         self._ensure_alive()
         status, payload = self._send("exec", code, timeout=timeout_seconds)
+        log.info(f"[MEM] after query: main={fmt(rss_mb())} worker={fmt(self._worker_rss())}")
         if status == "error" and str(payload).startswith("No response"):
             self.process.kill()
             self.process.join()

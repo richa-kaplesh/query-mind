@@ -1,9 +1,13 @@
+import logging
 import pandas as pd
 from pathlib import Path
 
 from core.models import CSVSchema, ColumnSchema, CSVExtractionResult
 from core.extractors.base_extractor import BaseExtractor
 from core.utils.data_cleaning import strip_stray_quotes
+from core.utils.memory_usage import rss_mb, fmt
+
+log = logging.getLogger("csv_extractor")
 
 
 class CSVExtractor(BaseExtractor):
@@ -37,6 +41,7 @@ class CSVExtractor(BaseExtractor):
         """
         self.validate_file(file_path)
         df       = self._load(file_path)
+        log.info(f"[MEM] CSV parsed for schema in main process: main={fmt(rss_mb())}")
         filename = Path(file_path).name
         warnings: list[str] = []
 

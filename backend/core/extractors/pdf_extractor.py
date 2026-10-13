@@ -1,4 +1,5 @@
-import fitz  # PyMuPDF
+from __future__ import annotations  # keeps `fitz.Rect` annotations lazy
+
 import pytesseract
 from collections import Counter
 from pathlib import Path
@@ -6,10 +7,17 @@ from PIL import Image
 from core.models import ExtractedPage, PageMetadata, PDFExtractionResult
 from core.extractors.base_extractor import BaseExtractor
 from core.exceptions import PDFPasswordProtectedError, PDFCorruptError
+
 from core.ocr.base_ocr import BaseOCREngine
 from core.ocr.factory import get_ocr_engine
 from config import settings
 import os 
+
+def _fitz():
+    """Import PyMuPDF on first use: it costs ~30 MB of RAM and CSV-only sessions never need it."""
+    import fitz  # PyMuPDF
+    return fitz
+
 
 if settings.tesseract_path and os.path.exists(settings.tesseract_path):
     pytesseract.pytesseract.tesseract_cmd = settings.tesseract_path
@@ -49,8 +57,8 @@ class PDFExtractor(BaseExtractor):
         filename = Path(file_path).name
 
         try:
-            doc = fitz.open(file_path)
-        except fitz.FileDataError as exc:
+            doc = _fitz().open(file_path)
+        except _fitz().FileDataError as exc:
             raise PDFCorruptError(f"'{filename}' could not be opened — file appears corrupt.") from exc
 
         if doc.needs_pass:
@@ -94,7 +102,7 @@ class PDFExtractor(BaseExtractor):
 
         table_finder = page.find_tables(strategy="lines_strict")
         tables = table_finder.tables if table_finder.tables else []
-        table_rects = [fitz.Rect(t.bbox) for t in tables]
+        table_rects = [_fitz().Rect(t.bbox) for t in tables]
 
         raw_blocks = [b for b in page.get_text("dict")["blocks"] if b["type"] == 0]
         filtered_blocks = self._exclude_table_overlaps(raw_blocks, table_rects)
@@ -137,7 +145,7 @@ class PDFExtractor(BaseExtractor):
         Never raises — a failure here becomes a warning, not a crash,
         so one bad page can't take down the whole document."""
         try:
-            pix = page.get_pixmap(dpi=settings.ocr_dpi, colorspace=fitz.csRGB, alpha=False)
+            pix = page.get_pixmap(dpi=settings.ocr_dpi, colorspace=_fitz().csRGB, alpha=False)
             image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         except Exception as exc:
             return "", f"Page {page_index}: could not rasterize for OCR ({exc})"
@@ -148,7 +156,7 @@ class PDFExtractor(BaseExtractor):
     def _exclude_table_overlaps(self, text_blocks: list, table_rects: list[fitz.Rect]) -> list:
         filtered = []
         for block in text_blocks:
-            block_rect = fitz.Rect(block["bbox"])
+            block_rect = _fitz().Rect(block["bbox"])
             if not any(block_rect.intersects(t_rect) for t_rect in table_rects):
                 filtered.append(block)
         return filtered

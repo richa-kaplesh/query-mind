@@ -1,0 +1,684 @@
+{
+  "run_id": "baseline-csv",
+  "base_url": "https://query-mind.onrender.com",
+  "complete": false,
+  "abort_reason": null,
+  "saved_at": "2026-10-12T06:02:14.909710+00:00",
+  "results": [
+    {
+      "id": "schema_01",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_01",
+      "question": "How many columns does this dataset have in total (including the label column)?",
+      "golden": 618,
+      "answer": "The dataset contains **618 columns** in total, including the label column.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 17774,
+      "ttft_ms": 17539,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "schema_02",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_02",
+      "question": "How many feature columns are there, excluding the class/label column?",
+      "golden": 617,
+      "answer": "There are **617** feature columns in the dataset (i.e., all columns except the `class` label).",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 12927,
+      "ttft_ms": 12634,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "schema_03",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_03",
+      "question": "What is the name of the label/target column?",
+      "golden": "class",
+      "answer": "The target (label) column is named **`class`**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": null,
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 24272,
+      "ttft_ms": 23919,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_04",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_04",
+      "question": "What is the name of the first feature column?",
+      "golden": "f1",
+      "answer": "The first feature column is named **`f1`**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 25207,
+      "ttft_ms": 24846,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "schema_05",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_05",
+      "question": "What is the name of the last feature column before the class column?",
+      "golden": "f617",
+      "answer": "The last feature column before the class column is **`f617`**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 35693,
+      "ttft_ms": 35382,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "schema_06",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_06",
+      "question": "Are the feature columns (f1...f617) numeric or categorical?",
+      "golden": "numeric (mostly float64; a few columns are int64; none are categorical)",
+      "answer": "All of the feature columns\u202f`f1` through\u202f`f617` are numeric (floats or ints). None of them are categorical.",
+      "tool_used": null,
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 6167,
+      "ttft_ms": 5848,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "schema_07",
+      "kind": "csv",
+      "category": "schema",
+      "req_id": "eval-baseline-csv-schema_07",
+      "question": "Is the class column numeric or categorical/string type?",
+      "golden": "categorical/string",
+      "answer": "",
+      "tool_used": null,
+      "error": "RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 166358,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "count_01",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_01",
+      "question": "How many rows (samples) are in the dataset?",
+      "golden": 7797,
+      "answer": "There are **7,797 rows (samples)** in the dataset.",
+      "tool_used": null,
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 3869,
+      "ttft_ms": 3720,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "count_02",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_02",
+      "question": "How many unique classes are there in the label column?",
+      "golden": 26,
+      "answer": "There are **26** unique values in the `class` (label) column.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 26908,
+      "ttft_ms": 26845,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_03",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_03",
+      "question": "How many samples belong to class 6?",
+      "golden": 298,
+      "answer": "There are **298** samples that belong to class\u202f6.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 25513,
+      "ttft_ms": 25096,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_04",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_04",
+      "question": "How many samples belong to class 13?",
+      "golden": 299,
+      "answer": "There are **299** samples that belong to class\u202f13.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 24480,
+      "ttft_ms": 24093,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_05",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_05",
+      "question": "Which class has the fewest samples, and how many?",
+      "golden": "class 6 with 298 samples",
+      "answer": "The class with the fewest samples is **class\u202f6**, which appears **298 times** in the dataset.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 31000,
+      "ttft_ms": 30695,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_06",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_06",
+      "question": "Which class(es) have the most samples, and how many?",
+      "golden": "most classes tie at 300 samples (classes: ['1', '10', '11', '12', '14']...)",
+      "answer": "The most frequent class counts are all tied at **300 samples each**.  \nThe classes that achieve this maximum are:\n\n```\n1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20,\n21, 22, 23, 24, 25, 26\n```\n\nSo each of these 24 classes has 300 observations in the dataset.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 32340,
+      "ttft_ms": 31257,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_07",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_07",
+      "question": "Is the dataset perfectly class-balanced (same number of rows per class)?",
+      "golden": "No",
+      "answer": "No. While most classes contain exactly 300 rows, two classes are slightly under\u2011represented:\n\n- Class\u202f13: 299 rows  \n- Class\u202f6: 298 rows  \n\nAll other classes have 300 rows each, so the dataset is not perfectly balanced.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 37933,
+      "ttft_ms": 37206,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "count_08",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-count_08",
+      "question": "Are there any missing (null) values anywhere in the dataset?",
+      "golden": "No, 0 missing values",
+      "answer": "No, the dataset contains no missing (null) values.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 57871,
+      "ttft_ms": 57592,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_mean_f1",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f1",
+      "question": "What is the mean value of column f1?",
+      "golden": -0.385396,
+      "answer": "The mean value of column **f1** is approximately **-0.385396** (or `-0.3853956393484673`).",
+      "tool_used": null,
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 12869,
+      "ttft_ms": 12625,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "stat_std_f1",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f1",
+      "question": "What is the standard deviation of column f1?",
+      "golden": 0.236721,
+      "answer": "The standard deviation of column **f1** is approximately **0.2367**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 18732,
+      "ttft_ms": 18640,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f1",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f1",
+      "question": "What are the min and max values of column f1?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "The minimum value of **f1** is **-1.0** and the maximum value is **1.0**.",
+      "tool_used": null,
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 29812,
+      "ttft_ms": 29809,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "stat_mean_f10",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f10",
+      "question": "What is the mean value of column f10?",
+      "golden": -0.191763,
+      "answer": "The mean value of column **f10** is **-0.19176296011286392**.",
+      "tool_used": null,
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 24795,
+      "ttft_ms": 24792,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_std_f10",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f10",
+      "question": "What is the standard deviation of column f10?",
+      "golden": 0.515343,
+      "answer": "The standard deviation of column **f10** is **0.5153** (rounded to four decimal places).",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 35386,
+      "ttft_ms": 35383,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f10",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f10",
+      "question": "What are the min and max values of column f10?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "The minimum value of **f10** is **-1.0** and the maximum value is **1.0**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 34676,
+      "ttft_ms": 34382,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "stat_mean_f100",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f100",
+      "question": "What is the mean value of column f100?",
+      "golden": 0.439993,
+      "answer": "The mean of column **f100** is **0.43999340772091833**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 41303,
+      "ttft_ms": 40484,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_std_f100",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f100",
+      "question": "What is the standard deviation of column f100?",
+      "golden": 0.31005,
+      "answer": "The standard deviation of column **f100** is **0.3100503286**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 34665,
+      "ttft_ms": 34528,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f100",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f100",
+      "question": "What are the min and max values of column f100?",
+      "golden": [
+        -0.9208,
+        1.0
+      ],
+      "answer": "The column **f100** has a minimum value of **\u20130.9208** and a maximum value of **1.0**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 35441,
+      "ttft_ms": 35139,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_mean_f300",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f300",
+      "question": "What is the mean value of column f300?",
+      "golden": -0.046931,
+      "answer": "The mean value of column **f300** is **-0.04693**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 40536,
+      "ttft_ms": 40318,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_std_f300",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f300",
+      "question": "What is the standard deviation of column f300?",
+      "golden": 0.514015,
+      "answer": "The standard deviation of column **f300** is approximately **0.5140**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 44453,
+      "ttft_ms": 44145,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f300",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f300",
+      "question": "What are the min and max values of column f300?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "The minimum value in **f300** is **\u20111.0** and the maximum value is **1.0**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 26846,
+      "ttft_ms": 26551,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_mean_f617",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_mean_f617",
+      "question": "What is the mean value of column f617?",
+      "golden": -0.281416,
+      "answer": "The mean value of column **f617** is approximately **\u20130.2814**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 39924,
+      "ttft_ms": 39666,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_std_f617",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_std_f617",
+      "question": "What is the standard deviation of column f617?",
+      "golden": 0.354418,
+      "answer": "The standard deviation of column **f617** is approximately **0.3544**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 35259,
+      "ttft_ms": 35024,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f617",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_range_f617",
+      "question": "What are the min and max values of column f617?",
+      "golden": [
+        -0.9626,
+        0.8898
+      ],
+      "answer": "The column **f617** ranges from a minimum of **-0.9626** to a maximum of **0.8898**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 35920,
+      "ttft_ms": 35471,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_01",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_01",
+      "question": "Which feature column (among f1..f617) has the highest overall mean value?",
+      "golden": "f430",
+      "answer": "The feature column with the highest overall mean value is **f430**.",
+      "tool_used": "pandas_sandbox",
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 60832,
+      "ttft_ms": 60550,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_02",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_02",
+      "question": "Which feature column has the highest standard deviation (most variance)?",
+      "golden": "f580",
+      "answer": "",
+      "tool_used": null,
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 28223,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": 0.0
+      }
+    },
+    {
+      "id": "stat_03",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_03",
+      "question": "What is the overall minimum value found anywhere across all f1..f617 columns?",
+      "golden": -1.0,
+      "answer": "",
+      "tool_used": null,
+      "error": "http_503",
+      "status": 503,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 366,
+      "ttft_ms": null,
+      "scores": {
+        "answer_correctness": 0.0,
+        "tool_appropriateness": null
+      }
+    }
+  ]
+}
