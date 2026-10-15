@@ -43,7 +43,7 @@ def test_valid_code_loads_the_file_then_runs_the_cleaned_code():
     manager = FakeManager(answer="60")
     tool = PandasSandboxTool("data.csv", manager=manager)
 
-    assert tool.run("```python\nresult = df['age'].sum()\n```") == {"result": "60"}
+    assert tool.run("```python\nresult = df['age'].sum()\n```") == "60"
     assert manager.loaded == ["data.csv"]
     assert manager.queries == ["result = df['age'].sum()"]
 
