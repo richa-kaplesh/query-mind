@@ -2,8 +2,8 @@
   "run_id": "baseline-csv",
   "base_url": "https://query-mind.onrender.com",
   "complete": false,
-  "abort_reason": "stat_03: gateway returned 503 (no retry)",
-  "saved_at": "2026-10-13T11:46:35.608544+00:00",
+  "abort_reason": null,
+  "saved_at": "2026-10-15T10:51:55.927182+00:00",
   "results": [
     {
       "id": "schema_01",
@@ -647,17 +647,20 @@
       "req_id": "eval-baseline-csv-stat_02",
       "question": "Which feature column has the highest standard deviation (most variance)?",
       "golden": "f580",
-      "answer": "",
-      "tool_used": null,
+      "answer": "The feature column with the highest standard deviation (most variance) is **`f580`**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
       "error": null,
       "status": null,
-      "attempts": 2,
+      "attempts": 1,
       "score_error": null,
-      "total_ms": 14972,
-      "ttft_ms": null,
+      "total_ms": 15599,
+      "ttft_ms": 15320,
       "scores": {
-        "answer_correctness": null,
-        "tool_appropriateness": 0.0
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
       }
     },
     {
@@ -667,17 +670,204 @@
       "req_id": "eval-baseline-csv-stat_03",
       "question": "What is the overall minimum value found anywhere across all f1..f617 columns?",
       "golden": -1.0,
-      "answer": "",
-      "tool_used": null,
-      "error": "http_503",
-      "status": 503,
+      "answer": "The lowest value across all the `f1` through `f617` columns is **\u20131.0**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
+      "error": null,
+      "status": null,
+      "attempts": 2,
+      "score_error": null,
+      "total_ms": 70415,
+      "ttft_ms": 70135,
+      "scores": {
+        "answer_correctness": null,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "stat_04",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-stat_04",
+      "question": "What is the overall maximum value found anywhere across all f1..f617 columns?",
+      "golden": 1.0,
+      "answer": "The overall maximum value across all the `f1` through `f617` columns is **1.0**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
+      "error": null,
+      "status": null,
       "attempts": 1,
       "score_error": null,
-      "total_ms": 293,
-      "ttft_ms": null,
+      "total_ms": 56577,
+      "ttft_ms": 56288,
       "scores": {
-        "answer_correctness": 0.0,
-        "tool_appropriateness": null
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "row_01",
+      "kind": "csv",
+      "category": "row_lookup",
+      "req_id": "eval-baseline-csv-row_01",
+      "question": "What class label does the first row (row index 0) belong to?",
+      "golden": "1",
+      "answer": "The class label for the first row (row index\u202f0) is **1**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 36791,
+      "ttft_ms": 36550,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "row_02",
+      "kind": "csv",
+      "category": "row_lookup",
+      "req_id": "eval-baseline-csv-row_02",
+      "question": "What is the value of f1 in row index 0?",
+      "golden": -0.4394,
+      "answer": "The value of **f1** in row index\u202f0 is **-0.4394**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 32937,
+      "ttft_ms": 32743,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "row_03",
+      "kind": "csv",
+      "category": "row_lookup",
+      "req_id": "eval-baseline-csv-row_03",
+      "question": "What is the value of f5 in row index 4999?",
+      "golden": 0.1126,
+      "answer": "The value of **f5** in row index **4999** is **0.1126**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 62191,
+      "ttft_ms": 61766,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "row_04",
+      "kind": "csv",
+      "category": "row_lookup",
+      "req_id": "eval-baseline-csv-row_04",
+      "question": "What class does the last row in the dataset belong to?",
+      "golden": "26",
+      "answer": "The last row in the dataset belongs to class **26**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 29682,
+      "ttft_ms": 29254,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "filter_01",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-filter_01",
+      "question": "How many rows have a value of f1 greater than 0?",
+      "golden": 467,
+      "answer": "There are **467** rows where the value of `f1` is greater than 0.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 33776,
+      "ttft_ms": 33291,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "filter_02",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-filter_02",
+      "question": "Among rows belonging to class 1, how many have a negative value for f10?",
+      "golden": 214,
+      "answer": "There are **214** rows where `class` equals\u202f1 and `f10` has a negative value.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 24082,
+      "ttft_ms": 23605,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "filter_03",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-filter_03",
+      "question": "How many rows have f617 exactly equal to 1.0?",
+      "golden": 0,
+      "answer": "0 rows have `f617` exactly equal to 1.0.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "error": "HTTPStatusError: Client error '404 Not Found' for url 'https://query-mind.onrender.com/traces'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 27575,
+      "ttft_ms": 27404,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
       }
     }
   ]

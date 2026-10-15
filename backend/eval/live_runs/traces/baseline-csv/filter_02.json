@@ -1,0 +1,5 @@
+{
+  "id": "filter_02",
+  "question": "Among rows belonging to class 1, how many have a negative value for f10?",
+  "traces": []
+}

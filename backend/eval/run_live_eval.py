@@ -29,7 +29,7 @@ import statistics
 import sys
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import httpx
 
@@ -285,12 +285,83 @@ def load_prior(run_id, base):
 
 # ── Runner ───────────────────────────────────────────────────────────────────
 
+KEEP_STEPS = re.compile(
+    r"(llm_response_\d+|tool_input|tool_output|review_verdict|review_result|"
+    r"review_skipped|review_error|review_tool_call|agent_error|agent_stop|final_answer)$"
+)
+
+
+def _clip(obj, n=2000):
+    """Shorten long strings inside a step's data so the saved files stay small."""
+    if isinstance(obj, str):
+        return obj if len(obj) <= n else obj[:n] + f"...[+{len(obj) - n} chars]"
+    if isinstance(obj, dict):
+        return {k: _clip(v, n) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_clip(v, n) for v in obj]
+    return obj
+
+
+def collect_trace_info(client, base, question, since):
+    """Fetch the backend's traces for this question. Returns (calls, trace_log).
+    `since` is a UTC time taken just before asking. Every trace for this question created
+    after it counts, because a retry creates a new trace and spends gateway calls too."""
+    try:
+        r = client.get(f"{base}/traces", timeout=60)
+        r.raise_for_status()
+        traces = r.json()
+    except Exception as e:
+        return {"error": f"{type(e).__name__}: {e}"}, []
+
+    mine = [t for t in traces
+            if t.get("query") == question
+            and datetime.fromisoformat(t["created_at"]) >= since]
+    mine.sort(key=lambda t: t["created_at"])  # oldest attempt first
+
+    calls = {"agent": 0, "revision": 0, "review": 0, "tools": 0}
+    trace_log = []
+    for t in mine:
+        kept = []
+        for s in t.get("steps", []):
+            typ = s["type"]
+            if re.search(r"review_call_\d+$", typ):
+                calls["review"] += 1
+            elif re.search(r"llm_call_\d+$", typ):
+                calls["revision" if typ.startswith("revision") else "agent"] += 1
+            elif typ.endswith("tool_input"):
+                calls["tools"] += 1
+            if KEEP_STEPS.search(typ):
+                kept.append({"type": typ, "elapsed_ms": round(s["elapsed_ms"]),
+                             "data": _clip(s.get("data") or {})})
+        trace_log.append({"trace_id": t["id"], "created_at": t["created_at"],
+                          "status": t.get("status"), "total_ms": t.get("total_ms"),
+                          "steps": kept})
+    calls["total"] = calls["agent"] + calls["revision"] + calls["review"]
+    calls["traces"] = len(mine)  # more than 1 means the question was retried
+    return calls, trace_log
+
+
+def save_trace_log(run_id, qid, question, trace_log):
+    d = os.path.join(RUNS_DIR, "traces", run_id)
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, f"{qid}.json"), "w", encoding="utf-8") as f:
+        json.dump({"id": qid, "question": question, "traces": trace_log},
+                  f, indent=2, ensure_ascii=False)
+
+
 def run_set(client, base, items, kind, run_id, delay, use_judge, checkpoint):
     results = []
     for n, item in enumerate(items, 1):
         req_id = f"eval-{run_id}-{item['id']}"
         print(f"[{kind} {n}/{len(items)}] {item['id']}: {item['question'][:70]}")
+        since = datetime.now(timezone.utc) - timedelta(seconds=10)
         out = ask_guarded(client, base, item["question"], req_id)
+        calls, trace_log = collect_trace_info(client, base, item["question"], since)
+        save_trace_log(run_id, item["id"], item["question"], trace_log)
+
+        # A 200 response with an empty body is a failed request, not an unscored one
+        if not out["error"] and not (out["answer"] or "").strip():
+            out["error"] = "empty_answer"
 
         score_error = None
         try:
@@ -313,7 +384,7 @@ def run_set(client, base, items, kind, run_id, delay, use_judge, checkpoint):
         results.append({
             "id": item["id"], "kind": kind, "category": item["category"], "req_id": req_id,
             "question": item["question"], "golden": item["golden"], "answer": out["answer"],
-            "tool_used": out["tool_used"], "error": out["error"],
+            "tool_used": out["tool_used"], "calls": calls, "error": out["error"],
             "status": out["status"], "attempts": out["attempts"], "score_error": score_error,
             "total_ms": out["total_ms"], "ttft_ms": out["ttft_ms"],
             "scores": {"answer_correctness": correctness, "tool_appropriateness": tool_score},
