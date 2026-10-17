@@ -18,7 +18,7 @@ import os
 import re
 import time
 
-_DASH_MAP = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-"})
+_DASH_MAP = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2212": "-"})
 
 _SIGNAL_PATTERN = re.compile(
     r"(?:\bis\b|\bare\b|\bwas\b|\bwere\b|\bequals?\b|\bapproximately\b|\babout\b)"
@@ -40,7 +40,8 @@ def _clean(text: str) -> str:
 
 
 def _normalize(text: str) -> str:
-    """Lowercase and drop thousands separators so '7,797' matches 7797."""
+    """Lowercase, unify dashes/minus signs, and drop thousands separators so '7,797' matches 7797."""
+    text = text.translate(_DASH_MAP)
     text = re.sub(r"(?<=\d),(?=\d{3}(?!\d))", "", text)
     return text.strip().lower()
 

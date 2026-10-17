@@ -307,7 +307,7 @@ def collect_trace_info(client, base, question, since):
     `since` is a UTC time taken just before asking. Every trace for this question created
     after it counts, because a retry creates a new trace and spends gateway calls too."""
     try:
-        r = client.get(f"{base}/traces", timeout=60)
+        r = client.get(f"{base}/dashboard/traces", timeout=60)
         r.raise_for_status()
         traces = r.json()
     except Exception as e:
