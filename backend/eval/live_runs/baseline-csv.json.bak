@@ -3,7 +3,7 @@
   "base_url": "https://query-mind.onrender.com",
   "complete": false,
   "abort_reason": null,
-  "saved_at": "2026-10-15T10:51:52.921027+00:00",
+  "saved_at": "2026-10-17T10:08:34.765895+00:00",
   "results": [
     {
       "id": "schema_01",
@@ -868,6 +868,292 @@
       "scores": {
         "answer_correctness": 1.0,
         "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "corr_01",
+      "kind": "csv",
+      "category": "correlation",
+      "req_id": "eval-baseline-csv-corr_01",
+      "question": "What is the Pearson correlation coefficient between f1 and f2?",
+      "golden": 0.736602,
+      "answer": "The Pearson correlation coefficient between **f1** and **f2** is approximately **0.7366**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 13518,
+      "ttft_ms": 13253,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "groupby_01",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-groupby_01",
+      "question": "Which class has the highest average value of f1?",
+      "golden": "21",
+      "answer": "The class that has the highest average value of **f1** is **21**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 3,
+        "revision": 0,
+        "review": 3,
+        "tools": 2,
+        "total": 6,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 29976,
+      "ttft_ms": 29709,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "groupby_02",
+      "kind": "csv",
+      "category": "groupby",
+      "req_id": "eval-baseline-csv-groupby_02",
+      "question": "What is the average value of f300 for rows in class 20?",
+      "golden": -0.485631,
+      "answer": "The average value of **f300** for rows where **class = 20** is **-0.48563066666666677**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 3,
+        "tools": 1,
+        "total": 5,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 15772,
+      "ttft_ms": 15506,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "extreme_01",
+      "kind": "csv",
+      "category": "extremes",
+      "req_id": "eval-baseline-csv-extreme_01",
+      "question": "What is the row index of the maximum value of f1, and what class does that row belong to?",
+      "golden": {
+        "row_index": 3764,
+        "class": "21"
+      },
+      "answer": "The maximum value of **f1** occurs at row index **3764**, and that row belongs to class **21**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 3,
+        "revision": 0,
+        "review": 3,
+        "tools": 2,
+        "total": 6,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 13951,
+      "ttft_ms": 13594,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "gen_mean_f115",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f115",
+      "question": "What is the mean value of column f115?",
+      "golden": 0.40708,
+      "answer": "The mean value of column **f115** is approximately **0.4071** (or 0.4070795).",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 14131,
+      "ttft_ms": 13867,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f282",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f282",
+      "question": "What is the standard deviation of column f282?",
+      "golden": 0.361378,
+      "answer": "The standard deviation of column **f282** is approximately **0.3614** (or `0.361378`).",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 18428,
+      "ttft_ms": 18161,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f229",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f229",
+      "question": "What is the standard deviation of column f229?",
+      "golden": 0.400214,
+      "answer": "The standard deviation of column **f229** is approximately **0.4002** (or `0.4002137720659359`).",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 13942,
+      "ttft_ms": 13763,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_gt0_f105",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f105",
+      "question": "How many rows have a value of f105 greater than 0?",
+      "golden": 3242,
+      "answer": "There are **3,242** rows where the value of `f105` is greater than 0.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 16411,
+      "ttft_ms": 16151,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "gen_mean_f559",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f559",
+      "question": "What is the mean value of column f559?",
+      "golden": 0.566645,
+      "answer": "The mean value of column **f559** is approximately **0.5666**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 12538,
+      "ttft_ms": 12348,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f609",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f609",
+      "question": "What are the min and max values of column f609?",
+      "golden": [
+        -0.8034,
+        1.0
+      ],
+      "answer": "The minimum and maximum values of column **f609** are:\n\n- **Minimum:** -0.8034\n- **Maximum:** 1.0",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 16580,
+      "ttft_ms": 16310,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
       }
     }
   ]
