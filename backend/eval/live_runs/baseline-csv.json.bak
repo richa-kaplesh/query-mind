@@ -3,7 +3,7 @@
   "base_url": "https://query-mind.onrender.com",
   "complete": false,
   "abort_reason": null,
-  "saved_at": "2026-10-17T10:08:34.765895+00:00",
+  "saved_at": "2026-10-17T12:14:50.022965+00:00",
   "results": [
     {
       "id": "schema_01",
@@ -1154,6 +1154,575 @@
       "scores": {
         "answer_correctness": 1.0,
         "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f33",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f33",
+      "question": "What is the mean value of column f33?",
+      "golden": -0.41449,
+      "answer": "The mean value of column **f33** is approximately **-0.41449**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 13093,
+      "ttft_ms": 12832,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f96",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f96",
+      "question": "What is the standard deviation of column f96?",
+      "golden": 0.470272,
+      "answer": "The standard deviation of column **f96** is approximately **0.4703**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 9994,
+      "ttft_ms": 9770,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f239",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f239",
+      "question": "How many unique values does column f239 have?",
+      "golden": 930,
+      "answer": "Column **f239** has **930** unique values.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 3,
+        "revision": 0,
+        "review": 2,
+        "tools": 2,
+        "total": 5,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 23735,
+      "ttft_ms": 23615,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "gen_nunique_f28",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f28",
+      "question": "How many unique values does column f28 have?",
+      "golden": 4435,
+      "answer": "Column **f28** contains **4,435 unique values**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 3,
+        "revision": 0,
+        "review": 2,
+        "tools": 2,
+        "total": 5,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 10975,
+      "ttft_ms": 10849,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "gen_gt0_f204",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f204",
+      "question": "How many rows have a value of f204 greater than 0?",
+      "golden": 1977,
+      "answer": "There are **1,977** rows where the value of `f204` is greater than 0.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 5695,
+      "ttft_ms": 5206,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "gen_range_f559",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f559",
+      "question": "What are the min and max values of column f559?",
+      "golden": [
+        -0.5588,
+        1.0
+      ],
+      "answer": "The column **f559** has a minimum value of **-0.5588** and a maximum value of **1.0**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 24113,
+      "ttft_ms": 23579,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_range_f226",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f226",
+      "question": "What are the min and max values of column f226?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "**Column f226**\n\n- Minimum value: **-1.0**  \n- Maximum value: **1.0**\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 3,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 5,
+        "traces": 2
+      },
+      "error": null,
+      "status": null,
+      "attempts": 2,
+      "score_error": null,
+      "total_ms": 7844,
+      "ttft_ms": 7417,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f608",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f608",
+      "question": "What is the median value of column f608?",
+      "golden": 0.3662,
+      "answer": "The median value of column **f608** is **0.3662**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 28170,
+      "ttft_ms": 27778,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f7",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f7",
+      "question": "What is the standard deviation of column f7?",
+      "golden": 0.559704,
+      "answer": "The standard deviation of column **f7** is approximately **0.5597**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 28469,
+      "ttft_ms": 28049,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f433",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f433",
+      "question": "What is the median value of column f433?",
+      "golden": -0.7714,
+      "answer": "The median value of column **f433** is **-0.7714**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 28249,
+      "ttft_ms": 27859,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_std_f285",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_std_f285",
+      "question": "What is the standard deviation of column f285?",
+      "golden": 0.36262,
+      "answer": "The standard deviation of column **f285** is approximately **0.363**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 11296,
+      "ttft_ms": 11113,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f221",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f221",
+      "question": "What is the median value of column f221?",
+      "golden": 0.0802,
+      "answer": "The median value of column **f221** is **0.0802**.",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 14640,
+      "ttft_ms": 14474,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f105",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f105",
+      "question": "What is the mean value of column f105?",
+      "golden": -0.084861,
+      "answer": "The mean value of column **f105** is approximately **\u20130.08486**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 6748,
+      "ttft_ms": 6442,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f390",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f390",
+      "question": "What is the mean value of column f390?",
+      "golden": -0.849357,
+      "answer": "The mean value of column **f390** is **-0.8493570091060665**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 3,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 5,
+        "traces": 2
+      },
+      "error": null,
+      "status": null,
+      "attempts": 2,
+      "score_error": null,
+      "total_ms": 7535,
+      "ttft_ms": 7140,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_median_f368",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_median_f368",
+      "question": "What is the median value of column f368?",
+      "golden": 0.6284,
+      "answer": "The median value of column **f368** is **0.6284**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 3,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 5,
+        "traces": 2
+      },
+      "error": null,
+      "status": null,
+      "attempts": 2,
+      "score_error": null,
+      "total_ms": 7604,
+      "ttft_ms": 7216,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_mean_f271",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_mean_f271",
+      "question": "What is the mean value of column f271?",
+      "golden": 0.270496,
+      "answer": "The mean value of column **f271** is **0.2705**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 3,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 5,
+        "traces": 2
+      },
+      "error": null,
+      "status": null,
+      "attempts": 2,
+      "score_error": null,
+      "total_ms": 7545,
+      "ttft_ms": 7158,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f471",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f471",
+      "question": "How many unique values does column f471 have?",
+      "golden": 4946,
+      "answer": "Column **f471** contains **4,946** unique values.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 28058,
+      "ttft_ms": 27897,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "gen_range_f128",
+      "kind": "csv",
+      "category": "statistics",
+      "req_id": "eval-baseline-csv-gen_range_f128",
+      "question": "What are the min and max values of column f128?",
+      "golden": [
+        -1.0,
+        1.0
+      ],
+      "answer": "The minimum value of **f128** is **-1.0**, and the maximum value is **1.0**.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 28519,
+      "ttft_ms": 28032,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": null
+      }
+    },
+    {
+      "id": "gen_nunique_f81",
+      "kind": "csv",
+      "category": "aggregation",
+      "req_id": "eval-baseline-csv-gen_nunique_f81",
+      "question": "How many unique values does column f81 have?",
+      "golden": 4809,
+      "answer": "The column **f81** contains **4,809** unique values.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 28073,
+      "ttft_ms": 27702,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
+      }
+    },
+    {
+      "id": "gen_gt0_f301",
+      "kind": "csv",
+      "category": "filtering",
+      "req_id": "eval-baseline-csv-gen_gt0_f301",
+      "question": "How many rows have a value of f301 greater than 0?",
+      "golden": 3312,
+      "answer": "There are **3,312** rows where the value of `f301` is greater than 0.\n\n_(This answer could not be fully verified \u2014 treat it with care.)_",
+      "tool_used": "pandas_sandbox",
+      "calls": {
+        "agent": 2,
+        "revision": 0,
+        "review": 2,
+        "tools": 1,
+        "total": 4,
+        "traces": 1
+      },
+      "error": null,
+      "status": null,
+      "attempts": 1,
+      "score_error": null,
+      "total_ms": 29328,
+      "ttft_ms": 28843,
+      "scores": {
+        "answer_correctness": 1.0,
+        "tool_appropriateness": 1.0
       }
     }
   ]
