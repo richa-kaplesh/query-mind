@@ -20,7 +20,10 @@ ALLOWED_ATTRIBUTES = {
     "startswith", "endswith", "extract", "len",
     "year", "month", "day", "hour", "minute", "second", "weekday", "date",
     "DataFrame", "Series", "concat", "to_datetime", "to_numeric",
-    "cut", "qcut", "get_dummies", "date_range", "crosstab",      "agg", "aggregate", "nsmallest", "nlargest", "kind",
+    "cut", "qcut", "get_dummies", "date_range", "crosstab",
+    "agg", "aggregate", "nsmallest", "nlargest", "kind",
+    # read-only "which label has the max/min" reductions, same risk class as max/min/nlargest
+    "idxmax", "idxmin",
 }
 
 # query() excluded deliberately — supports @variable injection into arbitrary namespaces

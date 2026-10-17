@@ -12,6 +12,8 @@ validator = CodeValidator()
     "result = df[df['age'] > 5].shape[0]",
     "result = df.sort_values('age').head(3)",
     "result = pd.to_numeric(df['age']).max()",
+    "result = df.groupby('class')['f1'].mean().idxmax()",
+    "result = df['f1'].idxmin()",
 ])
 def test_normal_analysis_code_is_allowed(code):
     validator.validate(code)          # must not raise
