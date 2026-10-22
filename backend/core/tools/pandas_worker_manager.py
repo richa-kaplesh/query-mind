@@ -11,7 +11,7 @@ import pandas as pd
 from core.utils.memory_usage import rss_mb, fmt
 from core.utils.data_cleaning import strip_stray_quotes
 from core.tools.safe_namespace import build_safe_pd, build_safe_df
-
+from core.utils.csv_loader import load_csv
 log = logging.getLogger("pandas_worker")
 
 SAFE_BUILTINS = {
@@ -106,9 +106,8 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
                 df = None          # drop the previous dataset BEFORE parsing the new one (never hold two)
                 gc.collect()
                 _set_cpu_budget(CPU_SECONDS_PER_LOAD)
-                loaded = pd.read_csv(payload, low_memory=False)
-                df = strip_stray_quotes(loaded)
-                del loaded
+                df = load_csv(payload)
+              
                 gc.collect()
                 log.info(f"Loaded {payload}, shape={df.shape}")
                 result_queue.put(("ok", None))

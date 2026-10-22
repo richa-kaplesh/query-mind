@@ -6,7 +6,7 @@ from core.models import CSVSchema, ColumnSchema, CSVExtractionResult
 from core.extractors.base_extractor import BaseExtractor
 from core.utils.data_cleaning import strip_stray_quotes
 from core.utils.memory_usage import rss_mb, fmt
-
+from core.utils.csv_loader import load_csv
 log = logging.getLogger("csv_extractor")
 
 
@@ -59,68 +59,11 @@ class CSVExtractor(BaseExtractor):
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    # Encodings tried in order; first UnicodeDecodeError moves to the next.
-    _ENCODINGS = ["utf-8", "utf-8-sig", "latin-1", "cp1252"]
-
-    def _load(self, file_path: str) -> pd.DataFrame:
-        """
-        Robustly load a CSV regardless of encoding or delimiter.
-
-        Phase 1 — delimiter detection:
-          Read the first 8 KB of the file (trying each encoding) and pass it
-          to csv.Sniffer to detect the real separator (comma, semicolon, tab,
-          pipe, etc.).  Falls back to ',' if sniffing raises an error.
-
-        Phase 2 — full load:
-          Try pd.read_csv with the detected separator, iterating encodings.
-          on_bad_lines='warn' skips isolated malformed rows instead of aborting.
-        """
-       
-
-        sep = self._sniff_separator(file_path)
-
-        last_error: Exception = RuntimeError("No encodings tried")
-        for enc in self._ENCODINGS:
-            try:
-                df = pd.read_csv(
-                    file_path,
-                    sep=sep,
-                    encoding=enc,
-                    low_memory=True,
-                    on_bad_lines="warn",   # skip malformed rows, don't crash
-                )
-                return strip_stray_quotes(df)
-            except UnicodeDecodeError as e:
-                last_error = e
-                continue
-            except Exception as e:
-                raise ValueError(f"Failed to load CSV ({enc}): {e}") from e
-
-        raise ValueError(
-            f"Failed to load CSV — tried encodings {self._ENCODINGS}: {last_error}"
-        )
+    
+   
     
         
-    def _sniff_separator(self, file_path: str) -> str:
-        """
-        Use csv.Sniffer on the first 8 KB to detect the actual delimiter.
-        Returns ',' as a safe fallback if sniffing fails for any reason.
-        """
-        import csv as _csv
-
-        for enc in self._ENCODINGS:
-            try:
-                with open(file_path, "r", encoding=enc, errors="replace") as fh:
-                    sample = fh.read(8192)
-                dialect = _csv.Sniffer().sniff(sample, delimiters=",;\t|")
-                return dialect.delimiter
-            except UnicodeDecodeError:
-                continue
-            except _csv.Error:
-                break   # sniffer failed on content — fall through to default
-
-        return ","  # safe default
-
+    
     def _build_columns(
         self, df: pd.DataFrame, warnings: list[str]
     ) -> list[ColumnSchema]:
