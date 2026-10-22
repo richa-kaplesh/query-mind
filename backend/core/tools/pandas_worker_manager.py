@@ -8,10 +8,12 @@ import platform
 import threading
 import time
 import pandas as pd
+from pathlib import Path
 from core.utils.memory_usage import rss_mb, fmt
 from core.utils.data_cleaning import strip_stray_quotes
 from core.tools.safe_namespace import build_safe_pd, build_safe_df
 from core.utils.csv_loader import load_csv
+from core.utils.csv_schema import build_schema
 log = logging.getLogger("pandas_worker")
 
 SAFE_BUILTINS = {
@@ -107,10 +109,12 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
                 gc.collect()
                 _set_cpu_budget(CPU_SECONDS_PER_LOAD)
                 df = load_csv(payload)
-              
+                schema = build_schema(df, Path(payload).name)
                 gc.collect()
                 log.info(f"Loaded {payload}, shape={df.shape}")
-                result_queue.put(("ok", None))
+                result_queue.put(("ok", schema.model_dump()))   # plain dict is safe to send between processes
+              
+                
             except MemoryError:
                 df = None
                 gc.collect()
@@ -168,6 +172,7 @@ class PandasWorkerManager:
         self.result_queue: multiprocessing.Queue | None = None
         self.current_file_path: str | None = None
         self._boot_lock = threading.Lock()   # prevents concurrent respawns
+        self.current_schema = None
 
     def boot(self):
         ctx = multiprocessing.get_context("spawn")   # avoid fork-after-threads deadlock (faiss/OpenMP
@@ -202,14 +207,16 @@ class PandasWorkerManager:
         return rss_mb(self.process.pid) if self.process is not None else None
 
     def load_file(self, file_path: str):
+        """Returns ("ok", schema_dict) or ("error", message)."""
         self._ensure_alive()
         if self.current_file_path == file_path:
-            return "ok", None  # already loaded — no-op, preserves the whole point of the persistent worker
-        status, err = self._send("load", file_path, timeout=60)
+            return "ok", self.current_schema  # already loaded — no-op
+        status, payload = self._send("load", file_path, timeout=60)
         if status == "ok":
             self.current_file_path = file_path
+            self.current_schema = payload
         log.info(f"[MEM] dataset load {status}: main={fmt(rss_mb())} worker={fmt(self._worker_rss())}")
-        return status, err
+        return status, payload
 
     def unload(self):
         self.current_file_path = None

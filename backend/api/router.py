@@ -75,18 +75,21 @@ async def upload_document(
 
 async def ingest_document(file_path: str, filename: str, app_state) -> None:
     try:
-        pipeline = IngestionPipeline(embedder=app_state.embedder, indexer=app_state.indexer)
-        result = await asyncio.to_thread(pipeline.ingest, file_path)
-        documents[filename]["status"] = "ready"
-
-        if result.get("type") == "csv":
-            documents[filename]["schema"] = result["schema"]
-            status, err = worker_manager.load_file(file_path)
+        if Path(file_path).suffix.lower() == ".csv":
+            # CSVs are parsed ONCE, inside the pandas worker, which also builds the schema.
+            # The main process never loads the DataFrame.
+            status, payload = await asyncio.to_thread(worker_manager.load_file, file_path)
             if status == "error":
                 documents[filename]["status"] = "failed"
-                documents[filename]["error"] = err
-                log.error(f"[INGEST] Worker failed to load {filename}: {err}")
-
+                documents[filename]["error"] = payload
+                log.error(f"[INGEST] Worker failed to load {filename}: {payload}")
+                return
+            documents[filename]["schema"] = CSVSchema(**payload)
+            documents[filename]["status"] = "ready"
+        else:
+            pipeline = IngestionPipeline(embedder=app_state.embedder, indexer=app_state.indexer)
+            await asyncio.to_thread(pipeline.ingest, file_path)
+            documents[filename]["status"] = "ready"
     except PDFPasswordProtectedError as e:
         documents[filename]["status"] = "failed"
         documents[filename]["error"] = "password_protected"
@@ -103,6 +106,7 @@ async def ingest_document(file_path: str, filename: str, app_state) -> None:
         documents[filename]["status"] = "failed"
         documents[filename]["error"] = "unknown"
         log.error(f"[INGEST] Failed for {filename}: {e}", exc_info=True)
+        
 def _get_active_file() -> dict | None:
     return next((v for v in documents.values() if v.get("status") == "ready"), None)
 
