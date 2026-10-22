@@ -40,7 +40,7 @@ class CSVExtractor(BaseExtractor):
           - columns that are entirely null
         """
         self.validate_file(file_path)
-        df       = self._load(file_path)
+        df       = load_csv(file_path)
         log.info(f"[MEM] CSV parsed for schema in main process: main={fmt(rss_mb())}")
         filename = Path(file_path).name
         warnings: list[str] = []
