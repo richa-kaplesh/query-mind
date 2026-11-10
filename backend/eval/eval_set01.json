@@ -1,0 +1,62 @@
+[
+  {
+    "id": "normal_01",
+    "question": "How many samples are in the dataset?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = len(df)",
+    "golden_answer": 7797,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Row count. Baseline sanity question."
+  },
+  {
+    "id": "normal_02",
+    "question": "What is the average value of f1 across all samples?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = df['f1'].mean()",
+    "golden_answer": -0.3853956393484673,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Simple mean of one column. No nulls in f1, so skipna choice does not matter."
+  },
+  {
+    "id": "normal_03",
+    "question": "How many samples belong to the smallest class?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = int(df['class'].value_counts().min())",
+    "golden_answer": 298,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Numeric on purpose: the minimum is unique (one class), but the class label is stored with literal apostrophes, so asking for the label would be ambiguous."
+  },
+  {
+    "id": "normal_04",
+    "question": "What is the average value of f10 for samples in class 3?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = df.loc[df['class'] == \"'3'\", 'f10'].mean()",
+    "golden_answer": -0.398354,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Data quirk: class values are strings that include the apostrophes ('3', not 3). A naive df['class'] == 3 or == '3' matches zero rows. Tests whether the agent inspects the label format. Only one label corresponds to 'class 3'."
+  },
+  {
+    "id": "normal_05",
+    "question": "Which feature has the highest standard deviation?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = df.drop(columns='class').std().idxmax()",
+    "golden_answer": "f580",
+    "tolerance": null,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Top feature leads the runner-up by a wide margin, so ddof (sample vs population) cannot change the answer. 'class' is excluded because it is a label, not a feature."
+  }
+]
