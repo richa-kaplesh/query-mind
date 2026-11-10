@@ -1,0 +1,122 @@
+[
+  {
+    "id": "d1_normal_01",
+    "question": "How many samples are in the dataset?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = len(df)",
+    "golden_answer": 7797,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Row count. Baseline sanity question."
+  },
+  {
+    "id": "d1_normal_02",
+    "question": "What is the average value of f1 across all samples?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = df['f1'].mean()",
+    "golden_answer": -0.3853956393484673,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Simple mean of one column. No nulls in f1, so skipna choice does not matter."
+  },
+  {
+    "id": "d1_normal_03",
+    "question": "How many samples belong to the smallest class?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = int(df['class'].value_counts().min())",
+    "golden_answer": 298,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Numeric on purpose: the minimum is unique (one class), but the class label is stored with literal apostrophes, so asking for the label would be ambiguous."
+  },
+  {
+    "id": "d1_normal_04",
+    "question": "What is the average value of f10 for samples in class 3?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = df.loc[df['class'] == \"'3'\", 'f10'].mean()",
+    "golden_answer": -0.398354,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Data quirk: class values are strings that include the apostrophes ('3', not 3). A naive df['class'] == 3 or == '3' matches zero rows. Tests whether the agent inspects the label format. Only one label corresponds to 'class 3'."
+  },
+  {
+    "id": "d1_normal_05",
+    "question": "Which feature has the highest standard deviation?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = df.drop(columns='class').std().idxmax()",
+    "golden_answer": "f580",
+    "tolerance": null,
+    "reason": null,
+    "dataset_file": "phpB0xrNj.csv",
+    "notes": "Top feature leads the runner-up by a wide margin, so ddof (sample vs population) cannot change the answer. 'class' is excluded because it is a label, not a feature."
+  },
+  {
+    "id": "d2_normal_01",
+    "question": "How many tweets are about United?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = int((df['airline'] == 'United').sum())",
+    "golden_answer": 3822,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "Tweets.csv",
+    "notes": "Filter count. United has no repeated tweet_ids, so the answer does not depend on how duplicates are handled."
+  },
+  {
+    "id": "d2_normal_02",
+    "question": "What is the average airline sentiment confidence score for Delta tweets?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = df.loc[df['airline'] == 'Delta', 'airline_sentiment_confidence'].mean()",
+    "golden_answer": 0.8698782628262827,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "Tweets.csv",
+    "notes": "Conditional mean on airline_sentiment_confidence (the file also has negativereason_confidence, a different column). Delta has no nulls or repeated ids."
+  },
+  {
+    "id": "d2_normal_03",
+    "question": "What is the most common reason for negative sentiment across all tweets?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = df['negativereason'].value_counts().idxmax()",
+    "golden_answer": "Customer Service Issue",
+    "tolerance": null,
+    "reason": null,
+    "dataset_file": "Tweets.csv",
+    "notes": "Answer is the category name only (the count shifts slightly with dedupe, the winner does not). 5,462 nulls are non-negative tweets; \"Can't Tell\" is a real category but is not the top one."
+  },
+  {
+    "id": "d2_normal_04",
+    "question": "Which airline has the highest percentage of negative tweets?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = (df['airline_sentiment'] == 'negative').groupby(df['airline']).mean().idxmax()",
+    "golden_answer": "US Airways",
+    "tolerance": null,
+    "reason": null,
+    "dataset_file": "Tweets.csv",
+    "notes": "Rate, not count: by raw count of negative tweets United leads instead, so the wording says 'percentage'. Winner leads the runner-up by 6+ points and is unchanged by dedupe."
+  },
+  {
+    "id": "d2_normal_05",
+    "question": "How many Delta tweets cite late flights as the negative reason?",
+    "category": "normal",
+    "expected_behavior": "answer",
+    "golden_pandas_code": "result = int(((df['airline'] == 'Delta') & (df['negativereason'] == 'Late Flight')).sum())",
+    "golden_answer": 269,
+    "tolerance": 0.001,
+    "reason": null,
+    "dataset_file": "Tweets.csv",
+    "notes": "Two-condition filter. negativereason is only filled for negative tweets (verified in the check), so no sentiment filter is needed."
+  }
+]
