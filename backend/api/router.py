@@ -120,7 +120,7 @@ def _make_tracer(trace_store, trace_id: str):
     return tracer
 
 @router.post("/query/stream")
-async def query_document_stream(body: QueryRequest, request: Request):
+async def query_document_stream(body: QueryRequest, request: Request,session_id:str = Depends(get_session_id)):
     current_file = _get_active_file()
     if not current_file:
         raise HTTPException(status_code=400, detail="No active dataset found. Upload a file first.")
@@ -219,18 +219,18 @@ async def get_documents(session_id:str = Depends(get_session_id)):
 
 
 @router.get("/documents/status")
-def status():
+def status(session_id:str = Depends(get_session_id)):
     return {"documents": {k: v["status"] for k, v in documents.items()}}
 
 
 @router.delete("/documents/{filename}")
-def delete(filename: str):
+def delete(filename: str,session_id:str = Depends(get_session_id)):
     documents.pop(filename, None)
     return {"message": f"{filename} removed", "remaining": list(documents.keys())}
 
 
 @router.post("/reset")
-async def reset_session():
+async def reset_session(session_id:str = Depends(get_session_id)):
     count = len(documents)
     documents.clear()
     worker_manager.unload()
