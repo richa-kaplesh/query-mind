@@ -42,6 +42,7 @@ async def upload_document(
     request: Request,
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
+    session_id:str = Depends(get_session_id)
 ): 
     documents.clear()
     request.app.state.indexer.reset()
