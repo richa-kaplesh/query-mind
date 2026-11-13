@@ -17,3 +17,7 @@ _pycache_/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Uploaded datasets (keep folder but ignore contents)
+backend/uploads/*
+!backend/uploads/.gitkeep

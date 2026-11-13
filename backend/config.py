@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     model_name: str = "openai/gpt-oss-20b"
     temperature: float = 0.1
-    max_upload_mb: int = 25
+    max_upload_mb: int = 30
     session_ttl_seconds: int = 1800
     max_sessions: int = 20            # free: ~10-20, paid: raise
     max_concurrent_ingests: int = 1   # free: 1, paid: 3-5

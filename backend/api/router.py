@@ -24,7 +24,8 @@ from core.tools.pandas_worker_manager import worker_manager
 from core.reviewer import Reviewer,RAGReviewer
 
 from core.tools.data_inspect_tool import DataInspectTool
-
+from fastapi import Depends
+from api.session import get_session_id
 
 log = logging.getLogger("router")
 
@@ -212,7 +213,8 @@ async def query_document_stream(body: QueryRequest, request: Request):
 
 
 @router.get("/documents")
-async def get_documents():
+async def get_documents(session_id:str = Depends(get_session_id)):
+    print("Session:",session_id)
     return {k: v["status"] for k, v in documents.items()}
 
 
