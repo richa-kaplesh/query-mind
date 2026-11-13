@@ -89,11 +89,11 @@ def ask(client, question):
                         parts.append(event["content"])
     except httpx.HTTPError as e:
         error = f"{type(e).__name__}: {e}"
-    return {
-        "answer": "".join(parts).strip(),
-        "error": error,
-        "total_ms": round((time.perf_counter() - start) * 1000),
-    }
+    answer = "".join(parts).strip()
+    if error is None and answer.startswith("[Error"):
+       error = answer      # the server sent an error as if it were an answer
+    return {"answer": answer, "error": error,
+           "total_ms": round((time.perf_counter() - start) * 1000)}
 
 
 # ---------- 3. read what the agent did ----------
@@ -125,6 +125,7 @@ def summarize(trace):
 
 # ---------- 4. score ----------
 def extract_numbers(text):
+    text = re.sub(r"[\u2010-\u2015\u2212]", "-", text)
     found = re.findall(r"-?\d[\d,]*\.?\d*", text)
     numbers = []
     for item in found:
