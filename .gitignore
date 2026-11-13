@@ -7,7 +7,9 @@ backend/venv/
 # Python cache
 _pycache_/
 *.pyc
-
+__pycache__/
+*.py[cod]
+.pytest_cache/
 # Environment variables
 .env
 
