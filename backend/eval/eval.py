@@ -12,6 +12,7 @@ GATEWAY_URL = "https://llm-gateway-qewa.onrender.com/"   # put your gateway addr
 UPLOADS = "../uploads/"
 PAUSE_S = 5          # seconds to wait between questions (helps avoid 429s)
 CATEGORY = None      # e.g. "normal" to run one category only; None = all
+MAX_429_IN_A_ROW = 3 # stop the whole run after this many rate-limit errors in a row
 
 # (csv file, eval file holding its questions)
 RUNS = [
@@ -143,6 +144,10 @@ def check_answer(answer, golden, tolerance):
     return str(golden).lower() in answer.lower()
 
 
+def is_rate_limited(error):
+    return error is not None and "429" in error
+
+
 # ---------- 5. one question, start to finish ----------
 def run_question(client, item):
     question = item["question"]
@@ -159,6 +164,8 @@ def run_question(client, item):
         "total_ms": result["total_ms"],
         "summary": summarize(trace) if trace else None,
         "passed": None,
+        # "not_run" = rate-limited, so it is left out of accuracy (not counted as wrong)
+        "status": "not_run" if is_rate_limited(result["error"]) else "ran",
     }
     if result["error"] is None and item["expected_behavior"] == "answer":
         record["passed"] = check_answer(result["answer"], item["golden_answer"], item["tolerance"])
@@ -174,6 +181,7 @@ def save_record(path, rec):
 # ---------- run everything ----------
 def main():
     results_path = f"results_{datetime.now():%Y%m%d_%H%M%S}.jsonl"
+    in_a_row = 0         # rate-limit errors in a row
     with httpx.Client(timeout=120) as client:
         print("backend awake:", wake_up(client, BASE))
         print("gateway awake:", wake_up(client, GATEWAY_URL))
@@ -188,6 +196,11 @@ def main():
                 save_record(results_path, rec)
                 print(rec["id"], "|", rec["category"], "| passed:", rec["passed"],
                       "| ms:", rec["total_ms"], "| error:", rec["error"])
+                in_a_row = in_a_row + 1 if rec["status"] == "not_run" else 0
+                if in_a_row >= MAX_429_IN_A_ROW:
+                    print(f"stopping: {in_a_row} rate-limit errors in a row")
+                    print("saved to", results_path)
+                    return
                 time.sleep(PAUSE_S)
     print("saved to", results_path)
 
