@@ -15,10 +15,10 @@ from core.token_tracker import TokenTracker
 from core.tools.pandas_worker_manager import worker_manager
 import uuid
 from core.logging_setup import setup_logging, request_id_var
+from core.sessions import SessionStore
 
 setup_logging()
 log = logging.getLogger("main")
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -68,7 +68,7 @@ async def log_requests(request, call_next):
 log.info("Loading components...")
 
 # ── Shared stateless components ───────────────────────────────────────────────
-
+app.state.sessions = SessionStore()
 # CSV path: tool-calling generator
 generator = Generator(tools=[])
 app.state.generator = generator

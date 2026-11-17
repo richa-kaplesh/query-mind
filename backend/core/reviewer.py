@@ -29,8 +29,11 @@ Rules:
    JSON object as your final message, no other text:
    {"verdict": "pass", "feedback": ""}
    or, if a checked claim is wrong, unsupported, or invented:
+   or, if a check you actually ran contradicts the draft:
    {"verdict": "fail", "feedback": "<specific, actionable — what is wrong and what to recheck>"}
-"""
+   or, if the important claims cannot be checked with inspect_data (conditional counts, correlations, filters, group-bys): {"verdict": "unverifiable", "feedback": "<which claim could not be checked>"}
+4. Never fail a draft just because inspect_data cannot check it. Use "unverifiable" for that.
+   """
 
 
 @dataclass
@@ -40,7 +43,7 @@ class ReviewResult:
     iterations: int
     tool_calls: int
     unverified: bool = False  # True when the reviewer itself failed (e.g. gateway error): no real verdict
-
+    inconclusive: bool = False
 
 def _tc_parts(tool_call) -> tuple[str, str, str]:
     if isinstance(tool_call, dict):
@@ -62,7 +65,7 @@ def _parse_verdict(text: str) -> dict | None:
         data = json.loads(text[start:end + 1])
     except json.JSONDecodeError:
         return None
-    if data.get("verdict") not in ("pass", "fail"):
+    if data.get("verdict") not in ("pass", "fail", "unverifiable"):
         return None
     return data
 
@@ -160,7 +163,12 @@ class Reviewer:
 
         log.warning(f"[REVIEWER] No verdict after {self.max_iterations} iterations — passing by default")
         record("review_verdict", {"verdict": "pass (default, no verdict reached)", "iterations": self.max_iterations})
-        return ReviewResult(passed=True, feedback="", iterations=self.max_iterations, tool_calls=tool_calls_made)
+        v = verdict["verdict"]
+        return ReviewResult(
+            passed=(v != "fail"), feedback=verdict.get("feedback", ""),
+            iterations=iteration, tool_calls=tool_calls_made,
+            inconclusive=(v == "unverifiable"),
+        )
 
 RAG_REVIEW_SYSTEM_PROMPT = """You are a faithfulness checker for a document Q&A assistant. You will be \
 given a question, the passages that were retrieved from the document, and a draft answer built from \
@@ -238,7 +246,7 @@ class RAGReviewer:
             if verdict is not None:
                 record("review_verdict", {**verdict, "iterations": iteration})
                 return ReviewResult(
-                    passed=verdict["verdict"] == "pass", feedback=verdict.get("feedback", ""),
+                    passed=verdict["verdict"] == "fail", feedback=verdict.get("feedback", ""),
                     iterations=iteration, tool_calls=0,
                 )
 

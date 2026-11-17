@@ -24,6 +24,9 @@ _budget_var: contextvars.ContextVar["_CallBudget | None"] = contextvars.ContextV
 def start_call_budget(limit: int | None = None) -> None:
     _budget_var.set(_CallBudget(limit if limit is not None else settings.gateway_max_calls_per_request))
 
+def calls_used() -> int:
+    budget = _budget_var.get()
+    return budget.used if budget else 0
 
 async def complete(conversation_id: str, user_id: str, messages: list[dict],
                    tools: list[dict] | None = None, tool_choice: str | None = None,

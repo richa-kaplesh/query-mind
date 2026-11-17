@@ -22,7 +22,7 @@ from core.tools.pandas_sandbox_tool import PandasSandboxTool
 from core.tracer import TraceStore
 from core.tools.pandas_worker_manager import worker_manager
 from core.reviewer import Reviewer,RAGReviewer
-
+from core.sessions import SessionCapacityError
 from core.tools.data_inspect_tool import DataInspectTool
 from fastapi import Depends
 from api.session import get_session_id
@@ -37,15 +37,29 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # In-memory document store: { filename → {status, file_path, schema, conversation_id, ...} }
 documents: dict = {}
 
+
+
+from core.sessions import SessionCapacityError
+
+@router.post("/session")
+def create_session(request: Request):
+    try:
+        s = request.app.state.sessions.create()
+    except SessionCapacityError:
+        raise HTTPException(status_code=503, detail="Server is full, try again later")
+    return {"session_id": s.id}
+
+
+
+
 @router.post("/upload")
 async def upload_document(
     request: Request,
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     session_id:str = Depends(get_session_id)
-): 
-    documents.clear()
-    request.app.state.indexer.reset()
+):
+   
     uploaded=[]
     for file in files:
         file_path = os.path.join(UPLOAD_DIR, file.filename)

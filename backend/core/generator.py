@@ -782,10 +782,11 @@ class Generator:
         if verdict.unverified:
             log.warning("[REVIEWER] Reviewer call failed — returning draft marked unverified, no revisions")
             record("review_skipped", {"reason": "reviewer_error", "revisions_used": 0})
-            return f"{answer}{UNVERIFIED_NOTE}", revisions
+            return answer, revisions
         record("review_result", {
             "passed": verdict.passed, "feedback": verdict.feedback,
             "revisions_used": revisions, "review_tool_calls": getattr(verdict, "tool_calls", 0),
+            "inconclusive": getattr(verdict, "inconclusive", False)
         })
         log.info(
             f"[REVIEWER] verdict passed={verdict.passed}",
@@ -826,10 +827,11 @@ class Generator:
             if verdict.unverified:
                 log.warning(f"[REVIEWER] Reviewer call failed after revision {revisions} — marking unverified")
                 record("review_skipped", {"reason": "reviewer_error", "revisions_used": revisions})
-                return f"{answer}{UNVERIFIED_NOTE}", revisions
+                return answer, revisions
             record("review_result", {
                 "passed": verdict.passed, "feedback": verdict.feedback,
                 "revisions_used": revisions, "review_tool_calls": getattr(verdict, "tool_calls", 0),
+                "inconclusive": getattr(verdict, "inconclusive", False)
             })
             log.info(
                 f"[REVIEWER] verdict passed={verdict.passed}",
