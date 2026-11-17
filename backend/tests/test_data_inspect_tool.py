@@ -48,3 +48,14 @@ def test_json_args_must_be_an_object(tmp_path):
     tool = make_tool(tmp_path)
     assert tool.run_json_args({"action": "shape"}) == "rows=3, columns=2"
     assert tool.run_json_args("shape").startswith("Error")
+
+def test_cache_keeps_only_the_most_recent_files_and_evict_removes_one(tmp_path, monkeypatch):
+    from core.tools import data_inspect_tool
+    monkeypatch.setattr(data_inspect_tool, "MAX_CACHED_INSPECT", 2)
+    monkeypatch.setattr(data_inspect_tool, "_CACHE", data_inspect_tool.OrderedDict())
+    tools = [make_tool(tmp_path, name=f"f{i}.csv") for i in range(3)]
+    for tool in tools:
+        assert tool.run("shape") == "rows=3, columns=2"
+    assert list(data_inspect_tool._CACHE) == [tools[1].file_path, tools[2].file_path]
+    data_inspect_tool.evict(tools[2].file_path)
+    assert list(data_inspect_tool._CACHE) == [tools[1].file_path]

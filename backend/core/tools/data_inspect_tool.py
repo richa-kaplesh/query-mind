@@ -1,22 +1,38 @@
 import os
+import threading
+from collections import OrderedDict
 import pandas as pd
 
 from core.utils.data_cleaning import strip_stray_quotes
 
+MAX_CACHED_INSPECT = int(os.environ.get("MAX_CACHED_INSPECT", "2"))
+
 # One parsed DataFrame per file, reloaded only if the file changes on disk.
-_CACHE: dict[str, tuple[float, pd.DataFrame]] = {}
+_CACHE: OrderedDict[str, tuple[float, pd.DataFrame]] = OrderedDict()
+_CACHE_LOCK = threading.Lock()
 
 ACTIONS = ["shape", "columns", "dtypes", "describe", "value_counts", "null_count", "unique_count", "head"]
 
 
 def _load(file_path: str) -> pd.DataFrame:
     mtime = os.path.getmtime(file_path)
-    cached = _CACHE.get(file_path)
-    if cached and cached[0] == mtime:
-        return cached[1]
+    with _CACHE_LOCK:
+        cached = _CACHE.get(file_path)
+        if cached and cached[0] == mtime:
+            _CACHE.move_to_end(file_path)
+            return cached[1]
     df = strip_stray_quotes(pd.read_csv(file_path, low_memory=False))
-    _CACHE[file_path] = (mtime, df)
+    with _CACHE_LOCK:
+        _CACHE[file_path] = (mtime, df)
+        _CACHE.move_to_end(file_path)
+        while len(_CACHE) > MAX_CACHED_INSPECT:
+            _CACHE.popitem(last=False)
     return df
+
+
+def evict(file_path: str) -> None:
+    with _CACHE_LOCK:
+        _CACHE.pop(file_path, None)
 
 
 class DataInspectTool:

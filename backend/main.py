@@ -14,7 +14,7 @@ from api.dashboard_routes import router as dashboard_router
 from core.token_tracker import TokenTracker
 from core.tools.pandas_worker_manager import worker_manager
 import uuid
-from core.logging_setup import setup_logging, request_id_var
+from core.logging_setup import setup_logging, request_id_var, session_id_var, SID_PREFIX_LEN
 from core.sessions import SessionStore
 
 setup_logging()
@@ -54,6 +54,7 @@ async def root():
 async def log_requests(request, call_next):
     req_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
     token = request_id_var.set(req_id)
+    sid_token = session_id_var.set((request.headers.get("X-Session-Id") or "-").strip()[:SID_PREFIX_LEN] or "-")
     start = time.time()
     try:
         log.info(f"→ {request.method} {request.url.path}")
@@ -64,6 +65,7 @@ async def log_requests(request, call_next):
         return response
     finally:
         request_id_var.reset(token)
+        session_id_var.reset(sid_token)
 
 log.info("Loading components...")
 

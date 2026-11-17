@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 import httpx
 
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
+session_id_var: ContextVar[str] = ContextVar("session_id", default="-")
+SID_PREFIX_LEN = 8
 
 SHIPPER_THREAD_NAME = "loki-shipper"
 
@@ -23,6 +25,7 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
             "req_id": request_id_var.get(),
+            "sid": session_id_var.get(),
         }
         payload.update(getattr(record, "fields", {}))
         if record.exc_info:

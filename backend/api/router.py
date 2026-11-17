@@ -32,6 +32,8 @@ from core.indexer import Indexer
 import secrets
 from core.generator import Generator
 from core.retriever import HybridRetriever
+from core.logging_setup import session_id_var, SID_PREFIX_LEN
+from core.tools import data_inspect_tool
 
 log = logging.getLogger("router")
 
@@ -40,8 +42,6 @@ router = APIRouter()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# In-memory document store: { filename → {status, file_path, schema, conversation_id, ...} }
-documents: dict = {}
 
 
 
@@ -51,7 +51,9 @@ def create_session(request: Request):
     try:
         s = request.app.state.sessions.create()
     except SessionCapacityError:
+        log.warning("session rejected, server full", extra={"fields": {"max_sessions": settings.max_sessions}})
         raise HTTPException(status_code=503, detail="Server is full, try again later")
+    log.info("session created", extra={"fields": {"sid": s.id[:SID_PREFIX_LEN], "active_sessions": request.app.state.sessions.count()}})
     return {"session_id": s.id}
 
 
@@ -70,6 +72,8 @@ async def upload_document(
     ext = Path(file.filename or "").suffix.lower()
     if ext not in ALLOWED_TYPES:
         raise HTTPException(status_code = 400,detail ="Only .csv and .pdf files are supported")
+    if session.file_path:
+        await asyncio.to_thread(_forget_file, session.file_path, session.file_type)
     folder = Path(settings.upload_dir)/session.id
     shutil.rmtree(folder, ignore_errors=True)
     folder.mkdir(parents=True, exist_ok=True)
@@ -83,22 +87,39 @@ async def upload_document(
     session.error = None
     session.schema = None
 
+    log.info("upload received", extra={"fields": {"file_type": ext, "size_bytes": file_path.stat().st_size, "stored_as": file_path.name}})
     background_tasks.add_task(ingest_document, session=session, app_state=request.app.state)
     return {"message":"File received, processing started","file":session.filename,"status":"processing"}
 
 
 async def ingest_document(session: Session, app_state) -> None:
+    session_id_var.set(session.id[:SID_PREFIX_LEN])
     my_path = session.file_path
+    my_type = session.file_type
+    started = time.perf_counter()
+
+    def elapsed_ms() -> int:
+        return int((time.perf_counter() - started) * 1000)
 
     def still_current() -> bool:
         return session.file_path == my_path
 
+    def log_stale() -> None:
+        log.info("ingest stale, skipped write", extra={"fields": {"stored_as": Path(my_path).name, "duration_ms": elapsed_ms()}})
+
+    def done() -> None:
+        log.info("ingest done", extra={"fields": {"file_type": my_type, "stored_as": Path(my_path).name, "duration_ms": elapsed_ms()}})
+
     def fail(code: str) -> None:
         if still_current():
             session.status, session.error = "failed", code
+            log.warning("ingest failed", extra={"fields": {"error": code, "stored_as": Path(my_path).name, "duration_ms": elapsed_ms()}})
+        else:
+            log_stale()
 
+    log.info("ingest start", extra={"fields": {"file_type": my_type, "stored_as": Path(my_path).name}})
     try:
-        if session.file_type == ".csv":
+        if my_type == ".csv":
             status, payload = await asyncio.to_thread(worker_manager.load_file, my_path)
             if status == "error":
                 log.error(f"[INGEST] Worker failed to load {session.filename}: {payload}")
@@ -106,6 +127,9 @@ async def ingest_document(session: Session, app_state) -> None:
             if still_current():
                 session.schema = CSVSchema(**payload)
                 session.status = "ready"
+                done()
+            else:
+                log_stale()
         else:
             new_indexer = Indexer()
             pipeline = IngestionPipeline(embedder=app_state.embedder, indexer=new_indexer)
@@ -113,6 +137,9 @@ async def ingest_document(session: Session, app_state) -> None:
             if still_current():
                 session.indexer = new_indexer
                 session.status = "ready"
+                done()
+            else:
+                log_stale()
     except PDFPasswordProtectedError:
         fail("password_protected")
     except PDFCorruptError:
@@ -122,17 +149,20 @@ async def ingest_document(session: Session, app_state) -> None:
     except Exception as e:
         log.error(f"[INGEST] Failed for {session.filename}: {e}", exc_info=True)
         fail("unknown")
-        
-def _get_active_file() -> dict | None:
-    return next((v for v in documents.values() if v.get("status") == "ready"), None)
 
-def _filename_for_path(file_path: str) -> str:
-    return next((k for k, v in documents.items() if v.get("file_path") == file_path), file_path)
 
 def _make_tracer(trace_store, trace_id: str):
     def tracer(step_type: str, data: dict):
         trace_store.add_step(trace_id, step_type, data)
     return tracer
+
+def _log_query_done(file_type: str, started: float, status: str, tool_used: str | None) -> None:
+    log.info("query done", extra={"fields": {
+        "file_type": file_type,
+        "status": status,
+        "tool_used": tool_used,
+        "duration_ms": int((time.perf_counter() - started) * 1000),
+    }})
 
 @router.post("/query/stream")
 async def query_document_stream(body: QueryRequest, request: Request,session:Session= Depends(get_session)):
@@ -147,6 +177,8 @@ async def query_document_stream(body: QueryRequest, request: Request,session:Ses
 
     trace_id = trace_store.start_trace(session.filename, body.question)
     tracer   = _make_tracer(trace_store, trace_id)
+    started = time.perf_counter()
+    log.info("query start", extra={"fields": {"file_type": file_type, "stored_as": Path(file_path).name}})
 
     # ── PDF path ────────────────────────────────────────────────────────
         # ── PDF path (agentic — model decides when/what to search) ────────────
@@ -178,9 +210,11 @@ async def query_document_stream(body: QueryRequest, request: Request,session:Ses
                         final_answer_parts.append(token)
                         yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
                 trace_store.finish_trace(trace_id, "".join(final_answer_parts), tool_used)
+                _log_query_done(file_type, started, "ok", tool_used)
             except Exception as e:
                 log.error(f"[STREAM/PDF] Error: {e}", exc_info=True)
                 trace_store.finish_trace(trace_id, str(e), tool_used, status="error")
+                _log_query_done(file_type, started, "error", tool_used)
                 yield f"data: {json.dumps({'type': 'error', 'status': getattr(e, 'status', None), 'reason': getattr(e, 'reason', None), 'content': str(e)})}\n\n"
                 yield f"data: {json.dumps({'type': 'token', 'content': f'[Error: {e}]'})}\n\n"
             finally:
@@ -216,9 +250,11 @@ async def query_document_stream(body: QueryRequest, request: Request,session:Ses
                     final_answer_parts.append(token)
                     yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
             trace_store.finish_trace(trace_id, "".join(final_answer_parts), tool_used)
+            _log_query_done(file_type, started, "ok", tool_used)
         except Exception as e:
             log.error(f"[STREAM] Error: {e}", exc_info=True)
             trace_store.finish_trace(trace_id, str(e), tool_used, status="error")
+            _log_query_done(file_type, started, "error", tool_used)
             yield f"data: {json.dumps({'type': 'error', 'status': getattr(e, 'status', None), 'reason': getattr(e, 'reason', None), 'content': str(e)})}\n\n"
             yield f"data: {json.dumps({'type': 'token', 'content': f'[Error: {e}]'})}\n\n"
         finally:
@@ -227,29 +263,55 @@ async def query_document_stream(body: QueryRequest, request: Request,session:Ses
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
+def _session_documents(session: Session) -> dict:
+    return {session.filename: session.status} if session.filename else {}
+
+
+def _forget_file(file_path: str, file_type: str | None) -> None:
+    if file_type == ".csv":
+        worker_manager.unload(file_path)
+        data_inspect_tool.evict(file_path)
+
+
+def _clear_file(session: Session) -> int:
+    if not session.file_path:
+        return 0
+    _forget_file(session.file_path, session.file_type)
+    shutil.rmtree(Path(settings.upload_dir) / session.id, ignore_errors=True)
+    session.filename = None
+    session.file_path = None
+    session.file_type = None
+    session.status = "empty"
+    session.error = None
+    session.schema = None
+    session.indexer = Indexer()
+    return 1
+
+
 @router.get("/documents")
-async def get_documents(session_id:str = Depends(get_session_id)):
-    print("Session:",session_id)
-    return {k: v["status"] for k, v in documents.items()}
+async def get_documents(session: Session = Depends(get_session)):
+    return _session_documents(session)
 
 
 @router.get("/documents/status")
-def status(session_id:str = Depends(get_session_id)):
-    return {"documents": {k: v["status"] for k, v in documents.items()}}
+def status(session: Session = Depends(get_session)):
+    return {"documents": _session_documents(session)}
 
 
 @router.delete("/documents/{filename}")
-def delete(filename: str,session_id:str = Depends(get_session_id)):
-    documents.pop(filename, None)
-    return {"message": f"{filename} removed", "remaining": list(documents.keys())}
+def delete(filename: str, session: Session = Depends(get_session)):
+    if filename != session.filename:
+        raise HTTPException(status_code=404, detail=f"{filename} not found")
+    _clear_file(session)
+    log.info("file cleared", extra={"fields": {"cleared": 1}})
+    return {"message": f"{filename} removed", "remaining": []}
 
 
 @router.post("/reset")
-async def reset_session(session_id:str = Depends(get_session_id)):
-    count = len(documents)
-    documents.clear()
-    worker_manager.unload()
-    log.info(f"[RESET] Session cleared — removed {count} document(s)")
+async def reset_session(session: Session = Depends(get_session)):
+    count = await asyncio.to_thread(_clear_file, session)
+    session.conversation_id = secrets.token_hex(16)
+    log.info(f"[RESET] Session cleared — removed {count} document(s)", extra={"fields": {"cleared": count}})
     return {"message": "Session reset", "cleared": count}
 
 def _test_worker(queue):

@@ -50,8 +50,7 @@ class PandasSandboxTool(BaseTool):
             self._validator.validate(executable_code)
         except CodeValidationError as e:
             return f"Rejected: {e}"
-        self._manager.load_file(self.file_path)  # self-healing — correct no matter how this tool got constructed
-        return self._manager.run_query(executable_code, timeout_seconds=self.timeout_seconds)
+        return self._manager.run_on_file(self.file_path, executable_code, timeout_seconds=self.timeout_seconds)
 
     def run(self, code: str) -> str:
         return self.execute_query(code)

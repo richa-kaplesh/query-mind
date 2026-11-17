@@ -7,6 +7,7 @@ import logging
 import platform
 import threading
 import time
+from collections import OrderedDict
 import pandas as pd
 from pathlib import Path
 from core.utils.memory_usage import rss_mb, fmt
@@ -61,6 +62,7 @@ def _apply_resource_limits():
         log.warning(f"Could not apply resource limits: {e}")
 
 
+MAX_CACHED_DATASETS = int(os.environ.get("MAX_CACHED_DATASETS", "3"))
 CPU_SECONDS_PER_LOAD = 30
 CPU_SECONDS_PER_QUERY = 10
 
@@ -87,7 +89,30 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
     _apply_resource_limits()
     log.info("Persistent pandas worker booting — importing pandas once")
 
-    df = None
+    dfs: OrderedDict = OrderedDict()
+
+    def get_dataset(path: str):
+        if path in dfs:
+            dfs.move_to_end(path)
+            log.info(f"[CACHE] hit {Path(path).name} cached={len(dfs)}")
+            return dfs[path]
+        while len(dfs) >= MAX_CACHED_DATASETS:
+            old_path, _ = dfs.popitem(last=False)
+            log.info(f"[CACHE] evicted {Path(old_path).name}")
+        gc.collect()
+        _set_cpu_budget(CPU_SECONDS_PER_LOAD)
+        try:
+            df = load_csv(path)
+        except MemoryError:
+            log.warning(f"[CACHE] MemoryError loading {Path(path).name}, clearing {len(dfs)} cached dataset(s) and retrying")
+            dfs.clear()
+            gc.collect()
+            df = load_csv(path)
+        schema = build_schema(df, Path(path).name)
+        dfs[path] = (df, schema)
+        gc.collect()
+        log.info(f"[CACHE] miss, loaded {Path(path).name} shape={df.shape} cached={len(dfs)}")
+        return dfs[path]
 
     # Copy-on-write: df.copy(deep=False) below is then a free, mutation-safe view instead of a
     # full second copy of the dataset per query (pandas 2.x option; always on in pandas 3+).
@@ -105,33 +130,32 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
 
         elif msg_type == "load":
             try:
-                df = None          # drop the previous dataset BEFORE parsing the new one (never hold two)
-                gc.collect()
-                _set_cpu_budget(CPU_SECONDS_PER_LOAD)
-                df = load_csv(payload)
-                schema = build_schema(df, Path(payload).name)
-                gc.collect()
-                log.info(f"Loaded {payload}, shape={df.shape}")
+                _, schema = get_dataset(payload)
                 result_queue.put(("ok", schema.model_dump()))   # plain dict is safe to send between processes
-              
-                
             except MemoryError:
-                df = None
+                dfs.pop(payload, None)
                 gc.collect()
                 result_queue.put(("error", "MemoryError: this file needs more memory than the server allows"))
             except Exception as e:
-                df = None
+                dfs.pop(payload, None)
                 result_queue.put(("error", str(e) or type(e).__name__))
 
         elif msg_type == "unload":
-            df = None
-            log.info("Dataset unloaded, worker idle")
+            if payload is None:
+                dfs.clear()
+            else:
+                dfs.pop(payload, None)
+            gc.collect()
+            log.info(f"[CACHE] unloaded {'all' if payload is None else Path(payload).name}, cached={len(dfs)}")
             result_queue.put(("ok", None))
 
         elif msg_type == "exec":
-            if df is None:
+            path, code = payload
+            if path not in dfs:
                 result_queue.put(("error", "No dataset currently loaded"))
                 continue
+            df, _ = dfs[path]
+            dfs.move_to_end(path)
             # Code arriving here was already validated by CodeValidator in
             # the calling process (PandasSandboxTool) — the safe proxies
             # below are the SECOND, independent gate, not the first.
@@ -144,7 +168,7 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
                     "result": None,
                 }
                 restricted_globals = {"__builtins__": SAFE_BUILTINS}
-                exec(payload, restricted_globals, local_vars)
+                exec(code, restricted_globals, local_vars)
                 result_str = str(local_vars["result"])
                 if len(result_str) > 5000:
                     result_str = result_str[:5000] + "... (truncated)"
@@ -158,7 +182,7 @@ def _persistent_worker(task_queue: multiprocessing.Queue, result_queue: multipro
             finally:
                 # Release the per-query objects (and any big intermediates) right away instead of
                 # keeping them alive until the NEXT query overwrites these variables.
-                local_vars = restricted_globals = None
+                local_vars = restricted_globals = df = None
                 gc.collect()
 
 
@@ -170,9 +194,8 @@ class PandasWorkerManager:
         self.process: multiprocessing.Process | None = None
         self.task_queue: multiprocessing.Queue | None = None
         self.result_queue: multiprocessing.Queue | None = None
-        self.current_file_path: str | None = None
         self._boot_lock = threading.Lock()   # prevents concurrent respawns
-        self.current_schema = None
+        self._lock = threading.RLock()
 
     def boot(self):
         ctx = multiprocessing.get_context("spawn")   # avoid fork-after-threads deadlock (faiss/OpenMP
@@ -191,10 +214,8 @@ class PandasWorkerManager:
         with self._boot_lock:
             if self.is_alive():
                 return
-            log.warning("Worker found dead — respawning")
+            log.warning("Worker found dead — respawning, dataset cache is empty")
             self.boot()
-            if self.current_file_path:
-                self._send("load", self.current_file_path, timeout=60)
 
     def _send(self, msg_type: str, payload, timeout: int):
         self.task_queue.put((msg_type, payload))
@@ -208,32 +229,48 @@ class PandasWorkerManager:
 
     def load_file(self, file_path: str):
         """Returns ("ok", schema_dict) or ("error", message)."""
-        self._ensure_alive()
-        if self.current_file_path == file_path:
-            return "ok", self.current_schema  # already loaded — no-op
-        status, payload = self._send("load", file_path, timeout=60)
-        if status == "ok":
-            self.current_file_path = file_path
-            self.current_schema = payload
-        log.info(f"[MEM] dataset load {status}: main={fmt(rss_mb())} worker={fmt(self._worker_rss())}")
-        return status, payload
+        with self._lock:
+            self._ensure_alive()
+            status, payload = self._send("load", file_path, timeout=60)
+            if status == "error" and str(payload).startswith("No response"):
+                self.process.kill()
+                self.process.join()
+            log.info(f"[MEM] dataset load {status}: main={fmt(rss_mb())} worker={fmt(self._worker_rss())}")
+            return status, payload
 
-    def unload(self):
-        self.current_file_path = None
-        if self.is_alive():
-            self._send("unload", None, timeout=5)
+    def unload(self, file_path: str | None = None):
+        with self._lock:
+            if self.is_alive():
+                self._send("unload", file_path, timeout=5)
 
-    def run_query(self, code: str, timeout_seconds: int = 15) -> str:
-        self._ensure_alive()
-        status, payload = self._send("exec", code, timeout=timeout_seconds)
-        log.info(f"[MEM] after query: main={fmt(rss_mb())} worker={fmt(self._worker_rss())}")
-        if status == "error" and str(payload).startswith("No response"):
-            self.process.kill()
-            self.process.join()
-            return f"Error: Code execution exceeded {timeout_seconds} seconds. Worker will recover on next query."
-        if status == "error":
-            return f"Error executing Pandas code: {payload}"
-        return payload
+    def run_query(self, file_path: str, code: str, timeout_seconds: int = 15) -> str:
+        with self._lock:
+            self._ensure_alive()
+            status, payload = self._send("exec", (file_path, code), timeout=timeout_seconds)
+            log.info(f"[MEM] after query: main={fmt(rss_mb())} worker={fmt(self._worker_rss())}")
+            if status == "error" and str(payload).startswith("No response"):
+                self.process.kill()
+                self.process.join()
+                return f"Error: Code execution exceeded {timeout_seconds} seconds. Worker will recover on next query."
+            if status == "error":
+                return f"Error executing Pandas code: {payload}"
+            return payload
+
+    def run_on_file(self, file_path: str, code: str, timeout_seconds: int = 15) -> str:
+        requested = time.perf_counter()
+        with self._lock:
+            acquired = time.perf_counter()
+            try:
+                status, payload = self.load_file(file_path)
+                if status == "error":
+                    return f"Error loading dataset: {payload}"
+                return self.run_query(file_path, code, timeout_seconds=timeout_seconds)
+            finally:
+                log.info("worker lock", extra={"fields": {
+                    "stored_as": Path(file_path).name,
+                    "wait_ms": int((acquired - requested) * 1000),
+                    "hold_ms": int((time.perf_counter() - acquired) * 1000),
+                }})
 
 
 worker_manager = PandasWorkerManager()

@@ -12,10 +12,15 @@ class FakeManager:
 
     def load_file(self, path):
         self.loaded.append(path)
+        return "ok", None
 
     def run_query(self, code, timeout_seconds=15):
         self.queries.append(code)
         return self.answer
+
+    def run_on_file(self, path, code, timeout_seconds=15):
+        self.load_file(path)
+        return self.run_query(code, timeout_seconds=timeout_seconds)
 
 
 def test_tool_name():
@@ -69,3 +74,23 @@ def test_real_worker_computes_the_right_answer(real_tool):
 def test_real_worker_reports_runtime_errors_as_text(real_tool):
     out = real_tool.execute_query("result = df['no_such_column'].sum()")
     assert out.startswith("Error executing Pandas code")
+
+
+@pytest.mark.parametrize("cache_size", ["1", "3"])
+def test_real_worker_two_files_each_query_sees_its_own_data(tmp_path, monkeypatch, cache_size):
+    monkeypatch.setenv("MAX_CACHED_DATASETS", cache_size)
+    a = tmp_path / "a.csv"
+    b = tmp_path / "b.csv"
+    a.write_text("age\n10\n20\n")
+    b.write_text("age\n100\n200\n")
+    manager = PandasWorkerManager()
+    tool_a = PandasSandboxTool(str(a), timeout_seconds=20, manager=manager)
+    tool_b = PandasSandboxTool(str(b), timeout_seconds=20, manager=manager)
+    try:
+        for _ in range(2):
+            assert tool_a.execute_query("result = df['age'].sum()") == "30"
+            assert tool_b.execute_query("result = df['age'].sum()") == "300"
+    finally:
+        if manager.process is not None:
+            manager.process.kill()
+            manager.process.join()

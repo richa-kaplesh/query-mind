@@ -41,6 +41,10 @@ class SessionStore:
             if s: s.last_used = time.time()
             return s
 
+    def count(self) -> int:
+        with self._lock:
+            return len(self._s)
+
     def delete(self, sid: str) -> None:
         with self._lock:
             s = self._s.pop(sid, None)

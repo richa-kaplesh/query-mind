@@ -1,0 +1,3 @@
+{"run_id": "20261117_203323", "user": 1, "q": 1, "kind": "sum", "req_id": "load-20261117_203323-u01-q1", "sid": "_UzFEjsy", "correct": true, "leaks": [], "is_429": false, "answer": "1006", "error": null, "status": null, "ttft_ms": 8475, "total_ms": 8504}
+{"run_id": "20261117_203323", "user": 1, "q": 2, "kind": "tag", "req_id": "load-20261117_203323-u01-q2", "sid": "_UzFEjsy", "correct": true, "leaks": [], "is_429": false, "answer": "QM01TAG", "error": null, "status": null, "ttft_ms": 7792, "total_ms": 7816}
+{"run_id": "20261117_203323", "user": 1, "q": 3, "kind": "rows", "req_id": "load-20261117_203323-u01-q3", "sid": "_UzFEjsy", "correct": true, "leaks": [], "is_429": false, "answer": "4", "error": null, "status": null, "ttft_ms": 6157, "total_ms": 6195}

@@ -747,20 +747,116 @@ function renderConfigSections(sections: ConfigSection[], diffKeys: Set<string>, 
   );
 }
 
-// ─── Investigation Notes ──────────────────────────────────────────────────────
+// ─── Investigation Notes parser ───────────────────────────────────────────────
+
+/** Cleans up typography: -- → —, multiple spaces, trailing periods. */
+function cleanBullet(s: string): string {
+  return s
+    .replace(/\s*--\s*/g, " — ")     // em dash
+    .replace(/\s{2,}/g, " ")          // collapse spaces
+    .replace(/\.\s*$/, "")            // drop trailing period (we add it back consistently)
+    .trim();
+}
+
+/** Cap first letter. */
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Parses a free-prose description into a context header + bullet array.
+ *
+ * Strategy (in order):
+ *  1. Split on "(N)" numbered markers — most common format in eval notes.
+ *     Everything before (1) becomes the context line.
+ *     Trailing sentences after the last numbered bullet are split further.
+ *  2. If no (N) markers, split on double-newlines.
+ *  3. Otherwise fall back to sentence splitting.
+ */
+function parseNotes(text: string): { context: string; bullets: string[] } {
+  const raw = text.trim();
+
+  // ── Strategy 1: numbered markers ──────────────────────────────────────────
+  const markerRe = /\s*\(\d+\)\s*/g;
+  const markers  = [...raw.matchAll(markerRe)];
+
+  if (markers.length >= 1) {
+    const firstIdx = markers[0].index!;
+    const context  = raw.slice(0, firstIdx).replace(/:\s*$/, "").trim(); // strip trailing colon
+    const bullets: string[] = [];
+
+    for (let i = 0; i < markers.length; i++) {
+      const start = markers[i].index! + markers[i][0].length;
+      const end   = i + 1 < markers.length ? markers[i + 1].index! : raw.length;
+      let chunk   = raw.slice(start, end).trim();
+
+      // Last numbered bullet may have appended sentences — split them off
+      if (i === markers.length - 1) {
+        const tailSplit = chunk.split(/\.\s+(?=Also |Confirmed |Additionally |Furthermore |Note )/);
+        if (tailSplit.length > 1) {
+          bullets.push(cap(cleanBullet(tailSplit[0])));
+          for (let j = 1; j < tailSplit.length; j++) {
+            const extra = tailSplit[j].trim();
+            if (extra) bullets.push(cap(cleanBullet(extra)));
+          }
+          continue;
+        }
+      }
+      bullets.push(cap(cleanBullet(chunk)));
+    }
+
+    return { context, bullets };
+  }
+
+  // ── Strategy 2: paragraph blocks ──────────────────────────────────────────
+  const paras = raw.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+  if (paras.length > 1) {
+    return { context: "", bullets: paras.map(p => cap(cleanBullet(p))) };
+  }
+
+  // ── Strategy 3: sentence split ────────────────────────────────────────────
+  const sentences = raw.match(/[^.!?]+[.!?]+(?:\s|$)/g);
+  if (sentences && sentences.length > 1) {
+    return { context: "", bullets: sentences.map(s => cap(cleanBullet(s))) };
+  }
+
+  return { context: "", bullets: [cap(cleanBullet(raw))] };
+}
+
+// ─── Investigation Notes component ────────────────────────────────────────────
 
 function InvestigationNotes({ description }: { description: string }) {
-  const [open, setOpen] = useState(false);
-  const paragraphs = description.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+  const [open, setOpen] = useState(true);
+  const { context, bullets } = parseNotes(description);
+  const preview = description.replace(/\n/g, " ").slice(0, 100).trim() + (description.length > 100 ? "…" : "");
+
   return (
-    <div className="ev-notes-panel">
-      <button className="ev-notes-toggle" onClick={() => setOpen(o => !o)} aria-expanded={open}>
-        <span className="ev-notes-toggle-left"><NotesIcon /><span>Investigation Notes</span></span>
-        <span className={`ev-run-chevron ${open ? "open" : ""}`}><ChevronIcon /></span>
+    <div className="ev-notes-card">
+      <button
+        className="ev-notes-header"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-label="Toggle investigation notes"
+      >
+        <span className="ev-notes-icon-wrap" aria-hidden><NotesIcon /></span>
+        <span className="ev-notes-title-col">
+          <span className="ev-notes-title">Investigation Notes</span>
+          {!open && <span className="ev-notes-subtitle">{preview}</span>}
+        </span>
+        <span className={`ev-notes-chevron ${open ? "open" : ""}`} aria-hidden><ChevronIcon /></span>
       </button>
+
       {open && (
         <div className="ev-notes-body">
-          {paragraphs.map((p, i) => <p key={i} className="ev-notes-paragraph">{p}</p>)}
+          {/* Context / intro line */}
+          {context && <p className="ev-notes-context">{context}:</p>}
+
+          {/* Bullet list */}
+          <ul className="ev-notes-bullets">
+            {bullets.map((b, i) => (
+              <li key={i} className="ev-notes-bullet">{b}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
@@ -856,6 +952,7 @@ function EvalRunView({ run, prevRun, allRunsOfType }: {
 
   return (
     <div className="ev-run-view">
+    <div className="ev-panel-body">
       {/* Run identity */}
       <div className="ev-run-identity">
         <div className="ev-run-identity-left">
@@ -984,6 +1081,7 @@ function EvalRunView({ run, prevRun, allRunsOfType }: {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }
@@ -1153,6 +1251,7 @@ function TokenPanel() {
           <span className="ev-header-count">{entries.length} call{entries.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
+      <div className="ev-panel-body">
       <div className="tok-body">
         {/* Summary cards */}
         <div className="tok-summary-cards">
@@ -1234,6 +1333,7 @@ function TokenPanel() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

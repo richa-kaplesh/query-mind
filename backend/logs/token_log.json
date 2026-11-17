@@ -1,1 +1,92 @@
-[]
+[
+  {
+    "timestamp": 1794927810.6167521,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call1",
+    "prompt_tokens": 451,
+    "completion_tokens": 0,
+    "total_tokens": 451,
+    "estimated": false
+  },
+  {
+    "timestamp": 1794927812.4343843,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call2",
+    "prompt_tokens": 578,
+    "completion_tokens": 2,
+    "total_tokens": 580,
+    "estimated": false
+  },
+  {
+    "timestamp": 1794927814.5824234,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call1",
+    "prompt_tokens": 631,
+    "completion_tokens": 0,
+    "total_tokens": 631,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794927816.4256022,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call2",
+    "prompt_tokens": 809,
+    "completion_tokens": 12,
+    "total_tokens": 821,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794927835.6801095,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call1",
+    "prompt_tokens": 452,
+    "completion_tokens": 3,
+    "total_tokens": 455,
+    "estimated": false
+  },
+  {
+    "timestamp": 1794927837.513893,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call1",
+    "prompt_tokens": 619,
+    "completion_tokens": 0,
+    "total_tokens": 619,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794927839.2314813,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call2",
+    "prompt_tokens": 753,
+    "completion_tokens": 9,
+    "total_tokens": 762,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794927861.688753,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call1",
+    "prompt_tokens": 450,
+    "completion_tokens": 1,
+    "total_tokens": 451,
+    "estimated": false
+  },
+  {
+    "timestamp": 1794927863.4293392,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call1",
+    "prompt_tokens": 615,
+    "completion_tokens": 0,
+    "total_tokens": 615,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794927865.0467043,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call2",
+    "prompt_tokens": 741,
+    "completion_tokens": 9,
+    "total_tokens": 750,
+    "estimated": true
+  }
+]
