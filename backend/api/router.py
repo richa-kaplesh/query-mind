@@ -26,6 +26,12 @@ from core.sessions import SessionCapacityError
 from core.tools.data_inspect_tool import DataInspectTool
 from fastapi import Depends
 from api.session import get_session_id
+from api.session import get_session
+from core.sessions import Session
+from core.indexer import Indexer
+import secrets
+from core.generator import Generator
+from core.retriever import HybridRetriever
 
 log = logging.getLogger("router")
 
@@ -39,7 +45,6 @@ documents: dict = {}
 
 
 
-from core.sessions import SessionCapacityError
 
 @router.post("/session")
 def create_session(request: Request):
@@ -51,77 +56,72 @@ def create_session(request: Request):
 
 
 
-
+ALLOWED_TYPES = {".csv", ".pdf"}
 @router.post("/upload")
 async def upload_document(
     request: Request,
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
-    session_id:str = Depends(get_session_id)
+    session:Session = Depends(get_session),
 ):
-   
-    uploaded=[]
-    for file in files:
-        file_path = os.path.join(UPLOAD_DIR, file.filename)
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-        documents[file.filename]={
-            "status":"processing",
-            "file_path": file_path,
-            "file_type": Path(file.filename).suffix.lower(),
-            "schema": None,
-            "conversation_id": str(uuid.uuid4()),   # unique ID per document, not a shared global
-        }
-        # background_tasks.add_task(fn, **kwargs)
-        background_tasks.add_task(
-            ingest_document,
-            file_path=file_path,
-            filename= file.filename,
-            app_state= request.app.state
-        )
-        uploaded.append(file.filename)
+    if len(files)!=1:
+        raise HTTPException(status_code=400,detail="Please Upload one file")
+    file = files[0]
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_TYPES:
+        raise HTTPException(status_code = 400,detail ="Only .csv and .pdf files are supported")
+    folder = Path(settings.upload_dir)/session.id
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True, exist_ok=True)
+    file_path = folder/ f"{secrets.token_hex(8)}{ext}"
+    with open(file_path,"wb") as f:
+        shutil.copyfileobj(file.file, f)
+    session.filename = Path(file.filename).name
+    session.file_path = str(file_path)
+    session.file_type = ext
+    session.status = "processing"
+    session.error = None
+    session.schema = None
 
-    return {
-    "message": "Documents received, ingestion started in background",
-    "files": uploaded,
-    "status": "processing"
-    }
+    background_tasks.add_task(ingest_document, session=session, app_state=request.app.state)
+    return {"message":"File received, processing started","file":session.filename,"status":"processing"}
 
 
+async def ingest_document(session: Session, app_state) -> None:
+    my_path = session.file_path
 
-async def ingest_document(file_path: str, filename: str, app_state) -> None:
+    def still_current() -> bool:
+        return session.file_path == my_path
+
+    def fail(code: str) -> None:
+        if still_current():
+            session.status, session.error = "failed", code
+
     try:
-        if Path(file_path).suffix.lower() == ".csv":
-            # CSVs are parsed ONCE, inside the pandas worker, which also builds the schema.
-            # The main process never loads the DataFrame.
-            status, payload = await asyncio.to_thread(worker_manager.load_file, file_path)
+        if session.file_type == ".csv":
+            status, payload = await asyncio.to_thread(worker_manager.load_file, my_path)
             if status == "error":
-                documents[filename]["status"] = "failed"
-                documents[filename]["error"] = payload
-                log.error(f"[INGEST] Worker failed to load {filename}: {payload}")
-                return
-            documents[filename]["schema"] = CSVSchema(**payload)
-            documents[filename]["status"] = "ready"
+                log.error(f"[INGEST] Worker failed to load {session.filename}: {payload}")
+                return fail("load_error")
+            if still_current():
+                session.schema = CSVSchema(**payload)
+                session.status = "ready"
         else:
-            pipeline = IngestionPipeline(embedder=app_state.embedder, indexer=app_state.indexer)
-            await asyncio.to_thread(pipeline.ingest, file_path)
-            documents[filename]["status"] = "ready"
-    except PDFPasswordProtectedError as e:
-        documents[filename]["status"] = "failed"
-        documents[filename]["error"] = "password_protected"
-        log.warning(f"[INGEST] {filename}: {e}")
-    except PDFCorruptError as e:
-        documents[filename]["status"] = "failed"
-        documents[filename]["error"] = "corrupt_file"
-        log.warning(f"[INGEST] {filename}: {e}")
-    except DocumentExtractionError as e:
-        documents[filename]["status"] = "failed"
-        documents[filename]["error"] = "no_extractable_text"
-        log.warning(f"[INGEST] {filename}: {e}")
+            new_indexer = Indexer()
+            pipeline = IngestionPipeline(embedder=app_state.embedder, indexer=new_indexer)
+            await asyncio.to_thread(pipeline.ingest, my_path)
+            if still_current():
+                session.indexer = new_indexer
+                session.status = "ready"
+    except PDFPasswordProtectedError:
+        fail("password_protected")
+    except PDFCorruptError:
+        fail("corrupt_file")
+    except DocumentExtractionError:
+        fail("no_extractable_text")
     except Exception as e:
-        documents[filename]["status"] = "failed"
-        documents[filename]["error"] = "unknown"
-        log.error(f"[INGEST] Failed for {filename}: {e}", exc_info=True)
+        log.error(f"[INGEST] Failed for {session.filename}: {e}", exc_info=True)
+        fail("unknown")
         
 def _get_active_file() -> dict | None:
     return next((v for v in documents.values() if v.get("status") == "ready"), None)
@@ -135,28 +135,28 @@ def _make_tracer(trace_store, trace_id: str):
     return tracer
 
 @router.post("/query/stream")
-async def query_document_stream(body: QueryRequest, request: Request,session_id:str = Depends(get_session_id)):
-    current_file = _get_active_file()
-    if not current_file:
-        raise HTTPException(status_code=400, detail="No active dataset found. Upload a file first.")
-
-    generator   = request.app.state.generator
+async def query_document_stream(body: QueryRequest, request: Request,session:Session= Depends(get_session)):
+    if session.status != "ready":
+        raise HTTPException(status_code = 400, detail=session.error or f"File not ready (status: {session.status})")
+   
+    file_path = session.file_path
+    file_type = session.file_type
+    conversation_id = session.conversation_id
+    
     trace_store = request.app.state.trace_store
-    file_path   = current_file["file_path"]
-    file_type   = current_file.get("file_type", ".csv")
-    conversation_id = current_file.get("conversation_id") or str(uuid.uuid4())
 
-    trace_id = trace_store.start_trace(_filename_for_path(file_path), body.question)
+    trace_id = trace_store.start_trace(session.filename, body.question)
     tracer   = _make_tracer(trace_store, trace_id)
 
     # ── PDF path ────────────────────────────────────────────────────────
         # ── PDF path (agentic — model decides when/what to search) ────────────
     if file_type == ".pdf":
-        generator.tools = [RAGTool(
-            retriever=request.app.state.retriever,
+        retriever = HybridRetriever(indexer=session.indexer)
+        generator = Generator(tools=[RAGTool(
+            retriever=retriever,
             embedder=request.app.state.embedder,
             reranker=request.app.state.reranker,
-        )]
+        )])
         rag_reviewer = RAGReviewer(max_iterations=settings.reviewer_max_iterations)
 
         async def event_stream_pdf():
@@ -189,8 +189,8 @@ async def query_document_stream(body: QueryRequest, request: Request,session_id:
         return StreamingResponse(event_stream_pdf(), media_type="text/event-stream")
 
     # ── CSV path ────────────────────────────────────────────────────────
-    schema = current_file.get("schema", "")
-    generator.tools = [PandasSandboxTool(file_path=file_path)]
+    schema = session.schema
+    generator = Generator(tools=[PandasSandboxTool(file_path=file_path)])
     reviewer = Reviewer(
         inspect_tool=DataInspectTool(file_path=file_path),
         max_iterations=settings.reviewer_max_iterations,

@@ -194,6 +194,26 @@ def save_record(path, rec):
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec) + "\n")
 
+def summarize_run(records):
+    counts = {}
+    for rec in records:
+        cat = rec["category"]
+        if cat not in counts:
+            counts[cat] = {"passed": 0, "failed": 0, "not_run": 0, "unscored": 0}
+
+        if rec["status"] == "not_run":
+            counts[cat]["not_run"] += 1
+        elif rec["passed"] is None:
+            counts[cat]["unscored"] += 1
+        elif rec["passed"]:
+            counts[cat]["passed"] += 1
+        else:
+            counts[cat]["failed"] += 1
+
+    for cat, c in counts.items():
+        scored = c["passed"] + c["failed"]
+        print(f"{cat}: {c['passed']}/{scored} passed "
+              f"({c['not_run']} not run, {c['unscored']} unscored)")
 
 # ---------- run everything ----------
 def main():
