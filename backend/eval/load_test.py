@@ -40,6 +40,7 @@ QUESTIONS = [
 NUMERIC_KINDS = ("weighted", "even")
 UNVERIFIED_MARKER = "could not be fully verified"
 MAX_USERS = 20
+CONNECTION_ERRORS = {"ReadError", "RemoteProtocolError", "ConnectError", "ConnectTimeout", "ReadTimeout", "WriteError"}
 
 
 def user_data(user: int) -> dict:
@@ -94,6 +95,8 @@ class Run:
         os.makedirs(RUNS_DIR, exist_ok=True)
         self.out_path = os.path.join(RUNS_DIR, f"load_{self.run_id}.jsonl")
         self.records: list[dict] = []
+        self.connection_errors = 0
+        self.setup_failures = 0
         self.users = {u: user_data(u) for u in range(1, args.users + 1)}
         assert_answers_are_unique(self.users)
         self.barrier = asyncio.Barrier(args.users) if args.burst else None
@@ -161,15 +164,38 @@ async def ask(client, base, headers, question) -> dict:
     }
 
 
+async def get_with_retry(client, url, headers, run, user, tries: int = 3) -> httpx.Response:
+    for attempt in range(1, tries + 1):
+        try:
+            return await client.get(url, headers=headers)
+        except httpx.TransportError as e:
+            run.connection_errors += 1
+            print(f"{run.t()} u{user:02d} connection error on GET ({type(e).__name__}), attempt {attempt}/{tries}")
+            if attempt == tries:
+                raise
+            await asyncio.sleep(1)
+
+
 async def upload_and_wait(client, base, headers, data, run, user) -> bool:
-    r = await client.post(f"{base}/upload", headers=headers,
-                          files={"files": (data["filename"], data["csv"], "text/csv")})
+    try:
+        r = await client.post(f"{base}/upload", headers=headers,
+                              files={"files": (data["filename"], data["csv"], "text/csv")})
+    except httpx.TransportError as e:
+        run.connection_errors += 1
+        print(f"{run.t()} u{user:02d} upload connection error: {type(e).__name__}")
+        return False
     if r.status_code != 200:
         print(f"{run.t()} u{user:02d} upload failed: {r.status_code} {r.text[:200]}")
         return False
     for _ in range(240):
-        st = (await client.get(f"{base}/documents/status", headers=headers)).json()
-        status = st.get("documents", {}).get(data["filename"])
+        try:
+            resp = await get_with_retry(client, f"{base}/documents/status", headers, run, user)
+        except httpx.TransportError:
+            return False
+        if resp.status_code != 200:
+            print(f"{run.t()} u{user:02d} status check failed: {resp.status_code} {resp.text[:200]}")
+            return False
+        status = resp.json().get("documents", {}).get(data["filename"])
         if status == "ready":
             return True
         if status == "failed":
@@ -187,8 +213,17 @@ async def virtual_user(client, run: Run, user: int) -> None:
     others = [d for u, d in run.users.items() if u != user]
 
     await asyncio.sleep(random.uniform(0, args.stagger))
-    r = await client.post(f"{base}/session")
+    try:
+        r = await client.post(f"{base}/session")
+    except httpx.TransportError as e:
+        run.connection_errors += 1
+        run.setup_failures += 1
+        print(f"{run.t()} u{user:02d} session connection error: {type(e).__name__}")
+        if run.barrier:
+            await run.barrier.abort()
+        return
     if r.status_code != 200:
+        run.setup_failures += 1
         print(f"{run.t()} u{user:02d} could not create session: {r.status_code} {r.text[:200]}")
         if run.barrier:
             await run.barrier.abort()
@@ -198,6 +233,7 @@ async def virtual_user(client, run: Run, user: int) -> None:
     print(f"{run.t()} u{user:02d} session sid={sid[:SID_PREFIX_LEN]}")
 
     if not await upload_and_wait(client, base, headers, mine, run, user):
+        run.setup_failures += 1
         if run.barrier:
             await run.barrier.abort()
         return
@@ -260,6 +296,8 @@ def summarize(run: Run) -> dict:
         "used_tool": sum(1 for r in ok if r["tools"]),
         "rate_limited_429": sum(r["is_429"] for r in recs),
         "other_errors": sum(1 for r in recs if r["error"] and not r["is_429"]),
+        "users_failed_setup": run.setup_failures,
+        "connection_errors": run.connection_errors + sum(1 for r in recs if r["error"] and str(r["error"]).split(":")[0] in CONNECTION_ERRORS),
         "total_ms_p50": percentile(totals, 50),
         "total_ms_p95": percentile(totals, 95),
         "with_tool_ms_p50": percentile(with_tool, 50),
@@ -294,7 +332,11 @@ async def main() -> None:
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(180, connect=30)) as client:
         await wake_up(client, args.base_url)
-        await asyncio.gather(*(virtual_user(client, run, u) for u in run.users))
+        results = await asyncio.gather(*(virtual_user(client, run, u) for u in run.users), return_exceptions=True)
+        for u, res in zip(run.users, results):
+            if isinstance(res, Exception):
+                run.setup_failures += 1
+                print(f"u{u:02d} stopped with {type(res).__name__}: {res}")
 
     summary = summarize(run)
     with open(os.path.join(RUNS_DIR, f"load_{run.run_id}_summary.json"), "w", encoding="utf-8") as f:
