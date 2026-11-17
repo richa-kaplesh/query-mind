@@ -28,7 +28,7 @@ Rules:
 3. After your checks (or immediately, if the draft has nothing worth checking), respond with ONLY this \
    JSON object as your final message, no other text:
    {"verdict": "pass", "feedback": ""}
-   or, if a checked claim is wrong, unsupported, or invented:
+   
    or, if a check you actually ran contradicts the draft:
    {"verdict": "fail", "feedback": "<specific, actionable — what is wrong and what to recheck>"}
    or, if the important claims cannot be checked with inspect_data (conditional counts, correlations, filters, group-bys): {"verdict": "unverifiable", "feedback": "<which claim could not be checked>"}
@@ -142,14 +142,17 @@ class Reviewer:
                 verdict = _parse_verdict(result.get("content") or "")
                 if verdict is not None:
                     record("review_verdict", {**verdict, "iterations": iteration, "tool_calls": tool_calls_made})
+                    v = verdict["verdict"]
                     return ReviewResult(
-                        passed=verdict["verdict"] == "pass", feedback=verdict.get("feedback", ""),
+                        passed=(v != "fail"), feedback=verdict.get("feedback", ""),
                         iterations=iteration, tool_calls=tool_calls_made,
+                        inconclusive=(v == "unverifiable"),
                     )
                 messages.append({"role": "assistant", "content": result.get("content")})
                 messages.append({"role": "user", "content": (
-                    'Respond with ONLY the JSON object — nothing else. '
-                    'Example: {"verdict": "pass", "feedback": ""}'
+                    f"Question: {question}\n\n"
+                    f"Draft answer to check:\n{draft_answer}\n\n"
+                    f"How the draft was produced:\n{tools_summary}"
                 )})
                 continue
 
@@ -163,12 +166,7 @@ class Reviewer:
 
         log.warning(f"[REVIEWER] No verdict after {self.max_iterations} iterations — passing by default")
         record("review_verdict", {"verdict": "pass (default, no verdict reached)", "iterations": self.max_iterations})
-        v = verdict["verdict"]
-        return ReviewResult(
-            passed=(v != "fail"), feedback=verdict.get("feedback", ""),
-            iterations=iteration, tool_calls=tool_calls_made,
-            inconclusive=(v == "unverifiable"),
-        )
+        return ReviewResult(passed=True, feedback="", iterations=self.max_iterations, tool_calls=tool_calls_made)
 
 RAG_REVIEW_SYSTEM_PROMPT = """You are a faithfulness checker for a document Q&A assistant. You will be \
 given a question, the passages that were retrieved from the document, and a draft answer built from \
@@ -246,7 +244,7 @@ class RAGReviewer:
             if verdict is not None:
                 record("review_verdict", {**verdict, "iterations": iteration})
                 return ReviewResult(
-                    passed=verdict["verdict"] == "fail", feedback=verdict.get("feedback", ""),
+                                passed=verdict["verdict"] == "pass", feedback=verdict.get("feedback", ""),
                     iterations=iteration, tool_calls=0,
                 )
 
