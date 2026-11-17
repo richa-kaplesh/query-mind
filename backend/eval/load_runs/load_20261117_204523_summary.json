@@ -1,0 +1,18 @@
+{
+  "run_id": "20261117_204523",
+  "users": 5,
+  "burst": false,
+  "reupload": false,
+  "questions_asked": 15,
+  "answered": 14,
+  "correct": 14,
+  "wrong": 0,
+  "leaks": 0,
+  "rate_limited_429": 1,
+  "other_errors": 0,
+  "total_ms_p50": 13817,
+  "total_ms_p95": 27672,
+  "ttft_ms_p50": 13816,
+  "ttft_ms_p95": 27671,
+  "wall_clock_s": 90.1
+}

@@ -1,0 +1,22 @@
+{
+  "run_id": "20261117_205802",
+  "users": 1,
+  "burst": false,
+  "reupload": false,
+  "questions_asked": 3,
+  "answered": 3,
+  "correct": 3,
+  "wrong": 0,
+  "leaks": 0,
+  "unverified": 0,
+  "used_tool": 2,
+  "rate_limited_429": 0,
+  "other_errors": 0,
+  "total_ms_p50": 14071,
+  "total_ms_p95": 17318,
+  "with_tool_ms_p50": 14071,
+  "without_tool_ms_p50": 8298,
+  "ttft_ms_p50": 14038,
+  "ttft_ms_p95": 17287,
+  "wall_clock_s": 64.8
+}

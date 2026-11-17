@@ -33,24 +33,38 @@ RUNS_DIR = os.path.join(HERE, "load_runs")
 SID_PREFIX_LEN = 8
 
 QUESTIONS = [
-    ("sum", "What is the sum of the value column? Reply with just the number."),
+    ("weighted", "What is the sum of value multiplied by weight, over all rows? Reply with just the number."),
+    ("even", "What is the sum of value for the rows where weight is an even number? Reply with just the number."),
     ("tag", "What is the value in the user_tag column? Reply with just the value."),
-    ("rows", "How many rows does the dataset have? Reply with just the number."),
 ]
+NUMERIC_KINDS = ("weighted", "even")
+UNVERIFIED_MARKER = "could not be fully verified"
+MAX_USERS = 20
 
 
 def user_data(user: int) -> dict:
     rows = 3 + user
-    values = [user * 1000] + list(range(1, rows))
+    values = [user * 1000 + k for k in range(rows)]
+    weights = [k + 1 for k in range(rows)]
     tag = f"QM{user:02d}TAG"
-    lines = ["value,user_tag"] + [f"{v},{tag}" for v in values]
+    lines = ["value,weight,user_tag"] + [f"{v},{w},{tag}" for v, w in zip(values, weights)]
     return {
         "csv": ("\n".join(lines) + "\n").encode(),
         "filename": f"load_user{user:02d}.csv",
-        "sum": sum(values),
+        "weighted": sum(v * w for v, w in zip(values, weights)),
+        "even": sum(v for v, w in zip(values, weights) if w % 2 == 0),
         "tag": tag,
-        "rows": rows,
     }
+
+
+def assert_answers_are_unique(users: dict[int, dict]) -> None:
+    seen: dict[int, int] = {}
+    for u, d in users.items():
+        for kind in NUMERIC_KINDS:
+            n = d[kind]
+            if n in seen and seen[n] != u:
+                raise SystemExit(f"expected answer {n} is shared by users {seen[n]} and {u}: leak check would be unreliable")
+            seen[n] = u
 
 
 def numbers_in(text: str) -> set[int]:
@@ -59,12 +73,8 @@ def numbers_in(text: str) -> set[int]:
 
 def check(answer: str, kind: str, mine: dict, others: list[dict]) -> tuple[bool, list[str]]:
     nums = numbers_in(answer)
-    correct = {
-        "sum": mine["sum"] in nums,
-        "tag": mine["tag"] in answer,
-        "rows": mine["rows"] in nums,
-    }[kind]
-    leaks = [o["tag"] for o in others if o["tag"] in answer or o["sum"] in nums]
+    correct = mine["tag"] in answer if kind == "tag" else mine[kind] in nums
+    leaks = [o["tag"] for o in others if o["tag"] in answer or any(o[k] in nums for k in NUMERIC_KINDS)]
     return correct, leaks
 
 
@@ -85,6 +95,7 @@ class Run:
         self.out_path = os.path.join(RUNS_DIR, f"load_{self.run_id}.jsonl")
         self.records: list[dict] = []
         self.users = {u: user_data(u) for u in range(1, args.users + 1)}
+        assert_answers_are_unique(self.users)
         self.barrier = asyncio.Barrier(args.users) if args.burst else None
 
     def t(self) -> str:
@@ -112,12 +123,12 @@ async def wake_up(client: httpx.AsyncClient, base: str) -> None:
 async def ask(client, base, headers, question) -> dict:
     start = time.perf_counter()
     first_token = None
-    parts, error, status = [], None, None
+    parts, tools, error, status = [], [], None, None
     try:
         async with client.stream("POST", f"{base}/query/stream", json={"question": question}, headers=headers) as r:
             if r.status_code >= 400:
                 body = (await r.aread()).decode(errors="replace")[:200]
-                return {"error": f"http_{r.status_code}: {body}", "status": r.status_code,
+                return {"error": f"http_{r.status_code}: {body}", "status": r.status_code, "tools": [],
                         "answer": "", "ttft_ms": None, "total_ms": int((time.perf_counter() - start) * 1000)}
             async for line in r.aiter_lines():
                 if not line.startswith("data:"):
@@ -126,7 +137,9 @@ async def ask(client, base, headers, question) -> dict:
                 if payload == "[DONE]":
                     break
                 event = json.loads(payload)
-                if event.get("type") == "error":
+                if event.get("type") == "tool":
+                    tools.append(event.get("content"))
+                elif event.get("type") == "error":
                     error = event.get("content") or "error"
                     status = event.get("status")
                 elif event.get("type") == "token":
@@ -142,6 +155,7 @@ async def ask(client, base, headers, question) -> dict:
         "answer": answer,
         "error": error,
         "status": status,
+        "tools": tools,
         "ttft_ms": int((first_token - start) * 1000) if first_token else None,
         "total_ms": int((time.perf_counter() - start) * 1000),
     }
@@ -207,9 +221,10 @@ async def virtual_user(client, run: Run, user: int) -> None:
         result = await ask(client, base, {**headers, "X-Request-ID": req_id}, question)
         correct, leaks = check(result["answer"], kind, mine, others) if not result["error"] else (False, [])
         is_429 = result["status"] == 429 or "429" in str(result["error"] or "")
+        unverified = UNVERIFIED_MARKER in result["answer"]
         rec = {"run_id": run.run_id, "user": user, "q": q, "kind": kind, "req_id": req_id,
                "sid": sid[:SID_PREFIX_LEN], "correct": correct, "leaks": leaks, "is_429": is_429,
-               **result, "answer": result["answer"][:300]}
+               "unverified": unverified, **result, "answer": result["answer"][:300]}
         run.save(rec)
 
         if leaks:
@@ -218,7 +233,10 @@ async def virtual_user(client, run: Run, user: int) -> None:
             label = "429" if is_429 else f"ERROR {str(result['error'])[:80]}"
         else:
             label = "correct" if correct else f"WRONG: {result['answer'][:60]!r}"
-        print(f"{run.t()} u{user:02d} q{q} {kind:<4} {result['total_ms']:>6}ms  {label}")
+        if unverified:
+            label += " (unverified)"
+        tool_mark = "tool" if result["tools"] else "-   "
+        print(f"{run.t()} u{user:02d} q{q} {kind:<8} {tool_mark} {result['total_ms']:>6}ms  {label}")
 
 
 def summarize(run: Run) -> dict:
@@ -226,6 +244,8 @@ def summarize(run: Run) -> dict:
     ok = [r for r in recs if not r["error"]]
     totals = [r["total_ms"] for r in ok]
     ttfts = [r["ttft_ms"] for r in ok if r["ttft_ms"] is not None]
+    with_tool = [r["total_ms"] for r in ok if r["tools"]]
+    without_tool = [r["total_ms"] for r in ok if not r["tools"]]
     summary = {
         "run_id": run.run_id,
         "users": run.args.users,
@@ -236,10 +256,14 @@ def summarize(run: Run) -> dict:
         "correct": sum(r["correct"] for r in recs),
         "wrong": sum(1 for r in ok if not r["correct"]),
         "leaks": sum(1 for r in recs if r["leaks"]),
+        "unverified": sum(r["unverified"] for r in recs),
+        "used_tool": sum(1 for r in ok if r["tools"]),
         "rate_limited_429": sum(r["is_429"] for r in recs),
         "other_errors": sum(1 for r in recs if r["error"] and not r["is_429"]),
         "total_ms_p50": percentile(totals, 50),
         "total_ms_p95": percentile(totals, 95),
+        "with_tool_ms_p50": percentile(with_tool, 50),
+        "without_tool_ms_p50": percentile(without_tool, 50),
         "ttft_ms_p50": percentile(ttfts, 50),
         "ttft_ms_p95": percentile(ttfts, 95),
         "wall_clock_s": round(time.perf_counter() - run.started, 1),
@@ -259,6 +283,8 @@ async def main() -> None:
     p.add_argument("--reupload", action="store_true", help="each user re-uploads once in the middle of the run")
     args = p.parse_args()
     args.base_url = args.base_url.rstrip("/")
+    if not 1 <= args.users <= MAX_USERS:
+        p.error(f"--users must be between 1 and {MAX_USERS}")
 
     run = Run(args)
     calls_estimate = args.users * args.questions * 4

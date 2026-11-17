@@ -88,5 +88,113 @@
     "completion_tokens": 9,
     "total_tokens": 750,
     "estimated": true
+  },
+  {
+    "timestamp": 1794929291.3503466,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call1",
+    "prompt_tokens": 505,
+    "completion_tokens": 0,
+    "total_tokens": 505,
+    "estimated": false
+  },
+  {
+    "timestamp": 1794929294.232037,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call2",
+    "prompt_tokens": 658,
+    "completion_tokens": 2,
+    "total_tokens": 660,
+    "estimated": false
+  },
+  {
+    "timestamp": 1794929296.5320728,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call1",
+    "prompt_tokens": 691,
+    "completion_tokens": 0,
+    "total_tokens": 691,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794929300.2371626,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call2",
+    "prompt_tokens": 882,
+    "completion_tokens": 9,
+    "total_tokens": 891,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794929320.3329084,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call1",
+    "prompt_tokens": 507,
+    "completion_tokens": 0,
+    "total_tokens": 507,
+    "estimated": false
+  },
+  {
+    "timestamp": 1794929322.9201877,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call2",
+    "prompt_tokens": 653,
+    "completion_tokens": 2,
+    "total_tokens": 655,
+    "estimated": false
+  },
+  {
+    "timestamp": 1794929326.448424,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call1",
+    "prompt_tokens": 699,
+    "completion_tokens": 0,
+    "total_tokens": 699,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794929329.0894165,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call2",
+    "prompt_tokens": 896,
+    "completion_tokens": 0,
+    "total_tokens": 896,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794929333.7283394,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call3",
+    "prompt_tokens": 1089,
+    "completion_tokens": 0,
+    "total_tokens": 1089,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794929342.8373814,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call1",
+    "prompt_tokens": 501,
+    "completion_tokens": 3,
+    "total_tokens": 504,
+    "estimated": false
+  },
+  {
+    "timestamp": 1794929345.1336303,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call1",
+    "prompt_tokens": 668,
+    "completion_tokens": 0,
+    "total_tokens": 668,
+    "estimated": true
+  },
+  {
+    "timestamp": 1794929347.5741959,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call2",
+    "prompt_tokens": 800,
+    "completion_tokens": 9,
+    "total_tokens": 809,
+    "estimated": true
   }
 ]
