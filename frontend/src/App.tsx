@@ -139,6 +139,15 @@ const CheckCircleIcon = () => (
   </svg>
 );
 
+const MoreIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="5" cy="12" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="19" cy="12" r="2" />
+  </svg>
+);
+
+
 // ─── Tool Badge ────────────────────────────────────────────────────────────────
 
 function ToolBadge({ tool }: { tool: string }) {
@@ -234,19 +243,25 @@ export default function App() {
 
   // ── Confirmation popover state ────────────────────────────────────────
   const [confirmPopover, setConfirmPopover] = useState<"new" | "delete" | null>(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  // copy feedback: stores msg.id of the message whose copy button was recently clicked
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // ── Refs ─────────────────────────────────────────────────────────────────
   const dragCounter = useRef(0);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Smart scroll: track whether user has scrolled away from bottom
+  const userScrolledUp = useRef(false);
 
   // ── Stream hook ──────────────────────────────────────────────────────────
   const {
     streamedAnswer, streamedSources, streamedTool, isStreaming,
-    startStream, reset: resetStream,
+    startStream, reset: resetStream, stop: stopStream,
   } = useStream(API_BASE);
 
   // ── Auto-dismiss error / toast ────────────────────────────────────────
@@ -282,9 +297,50 @@ export default function App() {
   }, []);
 
   // ── Auto-scroll ────────────────────────────────────────────────────────
+  // keyboard shortcuts: '/' focuses composer; 'Escape' closes overlays
   useEffect(() => {
-    if (chatAreaRef.current) {
-      chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "/" && !e.ctrlKey && !e.metaKey) {
+        const tag = (document.activeElement as HTMLElement)?.tagName;
+        if (tag !== "TEXTAREA" && tag !== "INPUT") {
+          e.preventDefault();
+          textareaRef.current?.focus();
+        }
+      }
+      // Cmd/Ctrl+K — new conversation
+      if (e.key === "k" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        handleNewConversation();
+      }
+      if (e.key === "Escape") {
+        setConfirmPopover(null);
+        setMoreMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // close overflow menu on outside click
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [moreMenuOpen]);
+
+  // smart scroll: only jump to bottom when already near it
+  useEffect(() => {
+    const el = chatAreaRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    if (!userScrolledUp.current || nearBottom) {
+      el.scrollTop = el.scrollHeight;
+      userScrolledUp.current = false;
     }
   }, [messages, streamedAnswer, isStreaming]);
 
@@ -646,11 +702,12 @@ export default function App() {
 
         {/* Right actions */}
         <div className="topbar-right">
-          {/* Navigate to /logs page */}
+          {/* Logs — desktop only */}
           <button
-            className="topbar-action-btn"
+            className="topbar-action-btn topbar-btn--desktop"
             onClick={() => navigate("/logs")}
             title="Open debug logs"
+            aria-label="Open logs"
           >
             <LogsIcon />
             <span>Logs</span>
@@ -658,7 +715,12 @@ export default function App() {
 
           {/* Change file */}
           {(isDocReady || isDocProcessing) && (
-            <button className="topbar-action-btn change-csv-btn" onClick={handleChangeFile} title={`Upload a different ${docLabel}`}>
+            <button
+              className="topbar-action-btn change-csv-btn"
+              onClick={handleChangeFile}
+              title={`Upload a different ${docLabel}`}
+              aria-label={`Change ${docLabel}`}
+            >
               {docIcon}
               <span>Change {docLabel}</span>
             </button>
@@ -671,6 +733,7 @@ export default function App() {
               onClick={handleNewConversation}
               disabled={messages.length === 0 && docStatus === "idle"}
               title="New conversation"
+              aria-label="New conversation"
             >
               <PlusIcon />
               <span>New</span>
@@ -685,13 +748,14 @@ export default function App() {
             )}
           </div>
 
-          {/* Delete Conversation */}
+          {/* Delete Conversation — button hidden on mobile, wrapper stays for popover */}
           <div className="topbar-btn-wrap">
             <button
-              className="topbar-action-btn topbar-action-btn--danger"
+              className="topbar-action-btn topbar-action-btn--danger topbar-btn--desktop"
               onClick={handleDeleteConversation}
               disabled={messages.length === 0}
               title="Delete this conversation"
+              aria-label="Delete conversation"
             >
               <TrashIcon />
               <span>Delete</span>
@@ -706,10 +770,46 @@ export default function App() {
               />
             )}
           </div>
+
+          {/* Overflow ⋯ — mobile only */}
+          <div className="topbar-more-wrap" ref={moreMenuRef}>
+            <button
+              className="topbar-action-btn topbar-btn--mobile"
+              onClick={() => setMoreMenuOpen(o => !o)}
+              aria-label="More actions"
+              aria-expanded={moreMenuOpen}
+              aria-haspopup="menu"
+              title="More"
+            >
+              <MoreIcon />
+            </button>
+            {moreMenuOpen && (
+              <div className="topbar-more-menu" role="menu">
+                <button
+                  className="topbar-more-item"
+                  role="menuitem"
+                  onClick={() => { navigate("/logs"); setMoreMenuOpen(false); }}
+                >
+                  <LogsIcon /><span>Logs</span>
+                </button>
+                <button
+                  className="topbar-more-item topbar-more-item--danger"
+                  role="menuitem"
+                  onClick={() => { handleDeleteConversation(); setMoreMenuOpen(false); }}
+                  disabled={messages.length === 0}
+                >
+                  <TrashIcon /><span>Delete</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       {/* ── Backend offline banner ──────────────────────────────────────── */}
+      {/* confirm backdrop: mobile bottom-sheet overlay */}
+      {confirmPopover && <div className="confirm-backdrop" onClick={() => setConfirmPopover(null)} />}
+
       {backendDown && (
         <div className="error-banner backend-down-banner">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" /></svg>
@@ -736,12 +836,88 @@ export default function App() {
       )}
 
       {/* ── Chat area ─────────────────────────────────────────────────── */}
-      <div className="chat-area" ref={chatAreaRef}>
+      <div
+        className="chat-area"
+        ref={chatAreaRef}
+        onScroll={() => {
+          const el = chatAreaRef.current;
+          if (!el) return;
+          userScrolledUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > 120;
+        }}
+      >
 
-        {/* Clean, minimalist empty state — only QueryMind written in center */}
+        {/* Rich empty state */}
         {messages.length === 0 && !isStreaming && (
           <div className="empty-center-state">
             <h1 className="empty-center-brand">QueryMind</h1>
+            <p className="empty-center-sub">Upload a CSV or PDF and ask questions about it with AI.</p>
+
+            {/* Upload zone — acts as a large drag target / click-to-upload */}
+            <div
+              className="upload-zone-inline"
+              role="button"
+              tabIndex={0}
+              aria-label="Upload a file"
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+            >
+              <UploadCloudIcon />
+              <span className="upload-zone-inline-label">
+                {uploading ? "Uploading…" : "Drop a file here, or click to upload"}
+              </span>
+              <span className="upload-zone-inline-hint">CSV or PDF, up to 50 MB</span>
+            </div>
+
+            {/* Try a sample */}
+            <div className="sample-files-row">
+              <button
+                className="sample-file-card"
+                onClick={async () => {
+                  const res = await fetch("/samples/titanic.csv");
+                  const blob = await res.blob();
+                  const file = new File([blob], "titanic.csv", { type: "text/csv" });
+                  uploadFile(file);
+                }}
+                disabled={uploading}
+              >
+                <CsvIcon />
+                <div className="sample-file-info">
+                  <span className="sample-file-name">titanic.csv</span>
+                  <span className="sample-file-desc">Classic passenger dataset — survival analysis</span>
+                </div>
+              </button>
+              <button
+                className="sample-file-card"
+                onClick={async () => {
+                  const res = await fetch("/samples/sample_report.pdf");
+                  const blob = await res.blob();
+                  const file = new File([blob], "sample_report.pdf", { type: "application/pdf" });
+                  uploadFile(file);
+                }}
+                disabled={uploading}
+              >
+                <PdfIcon />
+                <div className="sample-file-info">
+                  <span className="sample-file-name">sample_report.pdf</span>
+                  <span className="sample-file-desc">Sample report — document Q&amp;A</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Suggested questions — appear once a document is ready */}
+            {docStatus === "ready" && docType && (
+              <div className="suggested-chips">
+                <span className="suggested-label">Try asking:</span>
+                <div className="chips">
+                  {(docType === "csv"
+                    ? ["Summarise this dataset", "Which columns have missing values?", "Show the top 5 rows", "What is the distribution of the data?"]
+                    : ["Summarise this document", "What are the key figures?", "List the main findings", "What conclusions are drawn?"]
+                  ).map((q) => (
+                    <button key={q} className="chip" onClick={() => fireQuery(q)}>{q}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -830,14 +1006,14 @@ export default function App() {
 
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
                       <div className="sources-panel">
-                        <button className="sources-toggle" onClick={() => toggleSource(msg.id)}>
+                        <button className="sources-toggle" onClick={() => toggleSource(msg.id)} aria-expanded={expandedSources.has(msg.id)}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                           {msg.sources.length} source{msg.sources.length > 1 ? "s" : ""}
                           <span className={`sources-chevron ${expandedSources.has(msg.id) ? "open" : ""}`}>
                             <ChevronIcon />
                           </span>
                         </button>
-                        {expandedSources.has(msg.id) && (
+                        <div className={`sources-list-wrap ${expandedSources.has(msg.id) ? "open" : ""}`}>
                           <div className="sources-list">
                             {msg.sources.map((src, i) => (
                               <div key={i} className="source-item">
@@ -847,13 +1023,60 @@ export default function App() {
                                   {src.page !== "N/A" && (
                                     <span className="source-page">p.{src.page}</span>
                                   )}
+                                  <div className="source-score-bar-track">
+                                    <div
+                                      className="source-score-bar-fill"
+                                      style={{ width: `${Math.round(src.rerank_score * 100)}%` }}
+                                    />
+                                  </div>
                                   <span className="source-score">{(src.rerank_score * 100).toFixed(0)}%</span>
                                 </div>
                                 <p className="source-text">{src.text.slice(0, 220)}{src.text.length > 220 ? "…" : ""}</p>
                               </div>
                             ))}
                           </div>
-                        )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Copy + Retry actions — appear on hover / always on touch */}
+                    {msg.role === "assistant" && (
+                      <div className="msg-actions">
+                        <button
+                          className={`msg-action-btn ${copiedId === msg.id ? "msg-action-btn--copied" : ""}`}
+                          onClick={() => {
+                            navigator.clipboard.writeText(msg.content);
+                            setCopiedId(msg.id);
+                            setTimeout(() => setCopiedId(null), 1800);
+                          }}
+                          aria-label="Copy answer"
+                        >
+                          {copiedId === msg.id ? (
+                            <>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+                              Copy
+                            </>
+                          )}
+                        </button>
+                        <button
+                          className="msg-action-btn"
+                          onClick={() => {
+                            // find the preceding user message and re-fire it
+                            const idx = messages.findIndex(m => m.id === msg.id);
+                            const prev = messages.slice(0, idx).reverse().find(m => m.role === "user" && !m.isUploadEvent);
+                            if (prev) fireQuery(prev.content);
+                          }}
+                          aria-label="Retry"
+                          disabled={isStreaming}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 102.14-9.37L1 10" /></svg>
+                          Retry
+                        </button>
                       </div>
                     )}
 
@@ -904,6 +1127,21 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* Smart scroll — ↓ jump-to-latest button */}
+      {userScrolledUp.current && (messages.length > 0 || isStreaming) && (
+        <button
+          className="scroll-bottom-btn"
+          onClick={() => {
+            userScrolledUp.current = false;
+            chatAreaRef.current?.scrollTo({ top: chatAreaRef.current.scrollHeight, behavior: "smooth" });
+          }}
+          aria-label="Scroll to latest"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
+          Jump to latest
+        </button>
+      )}
 
       {/* ── Input area ──────────────────────────────────────────────────── */}
       <div className="input-area">
@@ -958,17 +1196,19 @@ export default function App() {
             />
 
             <button
-              className={`send-btn ${(canSend || canQueue || (inputValue.trim().length > 0 && !isStreaming)) ? "active" : ""}`}
-              onClick={handleSubmit}
-              disabled={!inputValue.trim() || isStreaming}
-              aria-label={isDocProcessing ? "Queue query" : "Send"}
-              title={isDocProcessing ? "Queue query — will send when document is ready" : "Send"}
+              className={`send-btn${isStreaming ? " send-btn--stop" : (canSend || canQueue || (inputValue.trim().length > 0 && !isStreaming)) ? " active" : ""}`}
+              onClick={isStreaming ? stopStream : handleSubmit}
+              disabled={isStreaming ? false : !inputValue.trim()}
+              aria-label={isStreaming ? "Stop generation" : isDocProcessing ? "Queue query" : "Send"}
+              title={isStreaming ? "Stop generation" : isDocProcessing ? "Queue query — will send when document is ready" : "Send"}
             >
-              {isStreaming
-                ? <SpinnerIcon size={14} />
-                : isDocProcessing
-                ? <SpinnerIcon size={14} />
-                : <SendIcon />}
+              {isStreaming ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
+              ) : isDocProcessing ? (
+                <SpinnerIcon size={14} />
+              ) : (
+                <SendIcon />
+              )}
             </button>
           </div>
         </div>

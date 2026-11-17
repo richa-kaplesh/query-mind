@@ -27,6 +27,7 @@ interface UseStreamReturn {
   isStreaming: boolean;
   startStream: (question: string, conversationHistory?: ConversationTurn[]) => Promise<void>;
   reset: () => void;
+  stop: () => void;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -44,6 +45,12 @@ export function useStream(apiBase: string): UseStreamReturn {
     setStreamedAnswer("");
     setStreamedSources([]);
     setStreamedTool(null);
+    setIsStreaming(false);
+  }, []);
+
+  // stop() — abort but KEEP the partial answer visible in the bubble
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
     setIsStreaming(false);
   }, []);
 
@@ -122,5 +129,5 @@ export function useStream(apiBase: string): UseStreamReturn {
     [apiBase]
   );
 
-  return { streamedAnswer, streamedSources, streamedTool, isStreaming, startStream, reset };
+  return { streamedAnswer, streamedSources, streamedTool, isStreaming, startStream, reset, stop };
 }

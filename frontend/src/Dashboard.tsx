@@ -890,6 +890,8 @@ export default function Dashboard({ onClose }: DashboardProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [search, setSearch] = useState("");
+  // Mobile: show detail pane full-screen (list→detail pattern)
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -973,7 +975,7 @@ export default function Dashboard({ onClose }: DashboardProps) {
 
       {/* ── Traces tab ── */}
       {activeTab === "traces" && (
-        <div className="db-body">
+        <div className={`db-body ${mobileDetailOpen ? "db-body--detail-open" : ""}`}>
           <aside className="db-sidebar">
             <div className="db-search-wrap">
               <input
@@ -996,13 +998,22 @@ export default function Dashboard({ onClose }: DashboardProps) {
                     key={trace.id}
                     trace={trace}
                     selected={trace.id === selectedId}
-                    onClick={() => setSelectedId(trace.id)}
+                    onClick={() => { setSelectedId(trace.id); setMobileDetailOpen(true); }}
                   />
                 ))
               )}
             </div>
           </aside>
           <main className="db-main">
+            {/* Back button — mobile only */}
+            <button
+              className="db-back-btn"
+              onClick={() => setMobileDetailOpen(false)}
+              aria-label="Back to trace list"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+              Back
+            </button>
             {selectedTrace ? (
               <TraceDetail trace={selectedTrace} />
             ) : (

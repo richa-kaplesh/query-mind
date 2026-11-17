@@ -1628,3 +1628,73 @@
   .tok-purpose-bar-value { width: 90px; font-size: 10.5px; }
 }
 
+/* ── Token table: always scrollable horizontally ── */
+.tok-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Back button (shown on mobile only) ── */
+.db-back-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  margin: 0 0 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.db-back-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Mobile list → detail pattern (≤700px) ── */
+@media (max-width: 700px) {
+  /* Show back button */
+  .db-back-btn { display: inline-flex; }
+
+  /* Default: sidebar fills viewport, main hidden */
+  .db-body {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .db-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .db-main {
+    display: none;
+  }
+
+  /* When detail is open: flip sidebar↔main */
+  .db-body--detail-open .db-sidebar {
+    display: none;
+  }
+
+  .db-body--detail-open .db-main {
+    display: block;
+    width: 100%;
+    padding: 16px;
+  }
+
+  /* Ensure trace rows are touch-friendly */
+  .db-trace-row {
+    min-height: 60px;
+    padding: 12px 14px;
+  }
+}
