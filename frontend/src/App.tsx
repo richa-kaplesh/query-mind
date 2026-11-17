@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useStream } from "./hooks/useStream";
 import type { Source } from "./hooks/useStream";
+import { apiFetch } from "./session";
 import "./App.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -325,7 +326,7 @@ export default function App() {
     stopPolling();
     pollTimerRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`${API_BASE}/documents/status`);
+        const res = await apiFetch("/documents/status");
         if (!res.ok) return;
         const data = await res.json() as { documents: Record<string, string> };
         const status = data.documents[targetFilename];
@@ -381,10 +382,16 @@ export default function App() {
 
       let res: Response;
       try {
-        res = await fetch(`${API_BASE}/upload`, { method: "POST", body: formData });
+        res = await apiFetch("/upload", { method: "POST", body: formData });
       } catch {
         setBackendDown(true);
         throw new Error(`Cannot reach backend at ${API_BASE} — is the server running?`);
+      }
+
+      // apiFetch already retried once on 401; if the reply is still 401 the
+      // session could not be recovered (file is gone from the old session).
+      if (res.status === 401) {
+        throw new Error("Your session expired. Please upload your file again.");
       }
 
       setBackendDown(false);
@@ -419,7 +426,7 @@ export default function App() {
   const handleRemoveFile = useCallback(async () => {
     if (docName) {
       try {
-        await fetch(`${API_BASE}/documents/${encodeURIComponent(docName)}`, { method: "DELETE" });
+        await apiFetch(`/documents/${encodeURIComponent(docName)}`, { method: "DELETE" });
       } catch {
         // best-effort
       }
@@ -511,7 +518,7 @@ export default function App() {
 
   const callServerReset = useCallback(async () => {
     try {
-      await fetch(`${API_BASE}/reset`, { method: "POST" });
+      await apiFetch("/reset", { method: "POST" });
     } catch {
       // Best-effort; backend may be down
     }

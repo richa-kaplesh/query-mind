@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { apiFetch } from "../session";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ export function useStream(apiBase: string): UseStreamReturn {
       setIsStreaming(true);
 
       try {
-        const res = await fetch(`${apiBase}/query/stream`, {
+        const res = await apiFetch("/query/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
