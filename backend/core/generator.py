@@ -5,6 +5,7 @@ from core import gateway_client
 from core.exceptions import GatewayError
 from core.token_utils import estimate_tokens
 from core.models import CSVSchema
+from core.answer_check import is_trivially_verified
 from config import settings
 import json
 import asyncio
@@ -365,7 +366,8 @@ class Generator:
 
     async def _forced_final_answer(self, original_user_content: str, tool_log: list,
                                    conversation_id: str, user_id: str, token_tracker=None,
-                                   system_prompt: str = None, purpose_prefix: str = "csv") -> str:
+                                   system_prompt: str = None, purpose_prefix: str = "csv",
+                                   record=None) -> str:
         """Last resort when the loop cannot finish on its own (iteration cap hit, LLM error,
         or an empty reply). Fresh, tool-free messages built from everything the tools returned —
         the same pattern the old 2-call flow used, so Groq never sees a tool call with no tools."""
@@ -382,15 +384,27 @@ class Generator:
                 "results above. If they do not contain the answer, say so plainly."
             )},
         ]
+        call_start = time.perf_counter()
         result = await gateway_client.complete(
             conversation_id=conversation_id, user_id=user_id,
             messages=messages, is_tool_related=True,
         )
+        prompt_tokens = estimate_tokens(str(messages))
+        completion_tokens = estimate_tokens(result.get("content") or "")
+        if record:
+            record("forced_answer_response", {
+                "content": result.get("content"),
+                "model": result.get("model_used"),
+                "usage": result.get("usage"),
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "latency_ms": round((time.perf_counter() - call_start) * 1000),
+            })
         if token_tracker:
             token_tracker.log_call(
                 model=result.get("model_used", "gateway"),
-                prompt_tokens=estimate_tokens(str(messages)),
-                completion_tokens=estimate_tokens(result.get("content") or ""),
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
                 purpose=f"{purpose_prefix}_synthesis", estimated=True,
             )
         return (result.get("content") or "").strip()
@@ -448,6 +462,8 @@ class Generator:
 
             llm_ms = (time.perf_counter() - llm_start) * 1000
             tool_calls = result.get("tool_calls")
+            prompt_tokens = estimate_tokens(str(messages))
+            completion_tokens = estimate_tokens(result.get("content") or "")
             log.info(
                 f"[AGENT] {label}← LLM call {iteration} done",
                 extra={"fields": {
@@ -464,13 +480,18 @@ class Generator:
                     for tc in (tool_calls or [])
                 ],
                 "finish_reason": result.get("finish_reason"),
+                "model": result.get("model_used"),
+                "usage": result.get("usage"),
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "latency_ms": round(llm_ms),
             })
             if token_tracker:
                 token_tracker.log_call(
                     model=result.get("model_used", "gateway"),
-                    prompt_tokens=estimate_tokens(str(messages)),
-                    completion_tokens=estimate_tokens(result.get("content") or ""),
-                    purpose=f"{label}{purpose_prefix}_call{iteration}"                
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    purpose=f"{label}{purpose_prefix}_call{iteration}"
                 )
 
             if not tool_calls:
@@ -524,6 +545,7 @@ class Generator:
                     answer = await self._forced_final_answer(
                         original_user_content, tool_log, conversation_id, user_id, token_tracker,
                         system_prompt=system_prompt or SYSTEM_PROMPT, purpose_prefix=purpose_prefix,
+                        record=lambda step, data: record(f"{label}{step}", data),
                     )
                 except Exception as e:
                     if isinstance(e, GatewayError) and e.fatal:
@@ -592,6 +614,7 @@ class Generator:
         answer, revisions = await self._review_and_revise(
             reviewer, review_fn, messages, tool_schema, conversation_id, user_id, tracer, token_tracker,
             tool_log, answer, stop_reason, system_prompt=SYSTEM_PROMPT, purpose_prefix="csv", record=record,
+            question=query,
         )
 
         tools_used = [name for name, _, _ in tool_log]
@@ -756,7 +779,8 @@ class Generator:
     async def _review_and_revise(self, reviewer, review_fn, messages: list, tool_schema: list,
                                   conversation_id: str, user_id: str, tracer, token_tracker,
                                   tool_log: list, answer: str, stop_reason: str,
-                                  system_prompt: str, purpose_prefix: str, record) -> tuple[str, int]:
+                                  system_prompt: str, purpose_prefix: str, record,
+                                  question: str | None = None) -> tuple[str, int]:
         """Runs reviewer.review on a draft answer and, on failure, feeds the feedback back
         into the SAME conversation for another generator pass, up to
         settings.reviewer_max_revisions times. Returns (final_answer, revisions_used).
@@ -775,6 +799,15 @@ class Generator:
         if stop_reason == "llm_error":
             log.warning("[REVIEWER] Skipped — answer came from a forced fallback after an upstream LLM error")
             record("review_skipped", {"reason": "llm_error", "revisions_used": 0})
+            return answer, revisions
+
+        if (settings.reviewer_skip_rules_enabled and question is not None
+                and is_trivially_verified(answer, tool_log, question)):
+            log.info(
+                "[REVIEWER] Skipped — every number in the answer matches the tool output",
+                extra={"fields": {"event": "review_skipped", "reason": "numbers_match"}},
+            )
+            record("review_skipped", {"reason": "numbers_match", "revisions_used": 0})
             return answer, revisions
 
         max_revisions = settings.reviewer_max_revisions
@@ -803,6 +836,7 @@ class Generator:
                 "Please reconsider — search again if needed — and give a corrected, complete "
                 "final answer, using only information you can actually find."
             )})
+            previous_answer = answer
             try:
                 answer, stop_reason = await self._run_loop(
                     messages, tool_schema, conversation_id, user_id, tracer, token_tracker, tool_log,
@@ -815,6 +849,10 @@ class Generator:
                 log.warning(f"[REVIEWER] Gateway failed (status={e.status}) on revision {revisions} — keeping previous draft")
                 record("review_skipped", {"reason": "gateway_error", "status": e.status, "revisions_used": revisions})
                 return f"{answer}{UNVERIFIED_NOTE}", revisions
+            record("revision_result", {
+                "revision": revisions, "stop_reason": stop_reason,
+                "changed": answer.strip() != previous_answer.strip(),
+            })
             if stop_reason == "llm_error":
                 log.warning(
                     f"[REVIEWER] Stopping — upstream LLM error on revision {revisions}; "

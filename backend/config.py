@@ -39,15 +39,17 @@ class Settings(BaseSettings):
     ocr_dpi: int = 200                    # page rasterization resolution for OCR
     
     tesseract_path: str = ""    
-    agent_max_iterations: int = 6
+    agent_max_iterations: int = 4
     agent_tool_result_max_chars: int = 4000
 
-    reviewer_max_revisions: int = 2
-    reviewer_max_iterations: int = 3
+    reviewer_max_revisions: int = 1
+    reviewer_max_iterations: int = 2
+    reviewer_skip_rules_enabled: bool = True
     gateway_url: str = "https://llm-gateway-qewa.onrender.com"
     # Hard cap on gateway requests for ONE user question (agent loop + reviewer + revisions).
-    # Worst case without a cap is ~27; this stops a rate-limited run from piling on.
-    gateway_max_calls_per_request: int = 20
+    # Worst case without a cap is 14; this stops a rate-limited run from piling on.
+    gateway_max_calls_per_request: int = 14
+    gateway_max_concurrent_calls: int = 4
 
     
     class Config:

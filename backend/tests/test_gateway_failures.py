@@ -223,3 +223,49 @@ def test_call_budget_stops_the_request_without_hitting_the_gateway(monkeypatch):
     with pytest.raises(GatewayError) as exc:
         call()
     assert exc.value.reason == "budget" and exc.value.fatal
+
+
+def test_one_client_is_reused_for_every_call(monkeypatch):
+    created = []
+
+    class FakeClient:
+        def __init__(self, *a, **k):
+            created.append(self)
+        async def post(self, *a, **k):
+            return _Resp(200, {"content": "hi"})
+
+    monkeypatch.setattr(gateway_client.httpx, "AsyncClient", FakeClient)
+
+    async def three_calls():
+        for _ in range(3):
+            await gateway_client.complete(conversation_id="c", user_id="u", messages=[])
+
+    run(three_calls())
+    assert len(created) == 1
+
+
+def test_in_flight_calls_never_exceed_the_limit(monkeypatch):
+    monkeypatch.setattr(gateway_client.settings, "gateway_max_concurrent_calls", 2)
+    state = {"now": 0, "peak": 0}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        async def post(self, *a, **k):
+            state["now"] += 1
+            state["peak"] = max(state["peak"], state["now"])
+            await asyncio.sleep(0.01)
+            state["now"] -= 1
+            return _Resp(200, {"content": "hi"})
+
+    monkeypatch.setattr(gateway_client.httpx, "AsyncClient", FakeClient)
+
+    async def many_calls():
+        results = await asyncio.gather(*[
+            gateway_client.complete(conversation_id="c", user_id="u", messages=[])
+            for _ in range(8)
+        ])
+        return results
+
+    results = run(many_calls())
+    assert len(results) == 8
+    assert state["peak"] == 2

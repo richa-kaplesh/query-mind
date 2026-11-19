@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from dataclasses import dataclass
 
 from core import gateway_client
@@ -118,6 +119,7 @@ class Reviewer:
         tool_calls_made = 0
         for iteration in range(1, self.max_iterations + 1):
             record(f"review_call_{iteration}", {"iteration": iteration})
+            call_start = time.perf_counter()
             try:
                 result = await gateway_client.complete(
                     conversation_id=f"{conversation_id}:review", user_id=user_id, messages=messages,
@@ -129,15 +131,25 @@ class Reviewer:
                 return ReviewResult(passed=True, feedback="", iterations=iteration,
                                     tool_calls=tool_calls_made, unverified=True)
 
+            tool_calls = result.get("tool_calls")
+            prompt_tokens = estimate_tokens(str(messages))
+            completion_tokens = estimate_tokens(result.get("content") or "")
+            record(f"review_response_{iteration}", {
+                "model": result.get("model_used"),
+                "usage": result.get("usage"),
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "tool_calls_requested": len(tool_calls or []),
+                "latency_ms": round((time.perf_counter() - call_start) * 1000),
+            })
             if token_tracker:
                 token_tracker.log_call(
                     model=result.get("model_used", "gateway"),
-                    prompt_tokens=estimate_tokens(str(messages)),
-                    completion_tokens=estimate_tokens(result.get("content") or ""),
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
                     purpose=f"review_call{iteration}", estimated=True,
                 )
 
-            tool_calls = result.get("tool_calls")
             if not tool_calls:
                 verdict = _parse_verdict(result.get("content") or "")
                 if verdict is not None:
@@ -221,6 +233,7 @@ class RAGReviewer:
 
         for iteration in range(1, self.max_iterations + 1):
             record(f"review_call_{iteration}", {"iteration": iteration})
+            call_start = time.perf_counter()
             try:
                 result = await gateway_client.complete(
                     conversation_id=f"{conversation_id}:review", user_id=user_id, messages=messages,
@@ -232,11 +245,21 @@ class RAGReviewer:
                 return ReviewResult(passed=True, feedback="", iterations=iteration,
                                     tool_calls=0, unverified=True)
 
+            prompt_tokens = estimate_tokens(str(messages))
+            completion_tokens = estimate_tokens(result.get("content") or "")
+            record(f"review_response_{iteration}", {
+                "model": result.get("model_used"),
+                "usage": result.get("usage"),
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "tool_calls_requested": 0,
+                "latency_ms": round((time.perf_counter() - call_start) * 1000),
+            })
             if token_tracker:
                 token_tracker.log_call(
                     model=result.get("model_used", "gateway"),
-                    prompt_tokens=estimate_tokens(str(messages)),
-                    completion_tokens=estimate_tokens(result.get("content") or ""),
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
                     purpose=f"rag_review_call{iteration}", estimated=True,
                 )
 

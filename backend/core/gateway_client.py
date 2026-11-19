@@ -1,5 +1,7 @@
+import asyncio
 import contextvars
 import logging
+import time
 import httpx
 from config import settings
 from core.exceptions import GatewayError
@@ -19,6 +21,29 @@ class _CallBudget:
 _budget_var: contextvars.ContextVar["_CallBudget | None"] = contextvars.ContextVar(
     "gateway_call_budget", default=None
 )
+
+
+_shared: tuple[asyncio.AbstractEventLoop, httpx.AsyncClient, asyncio.Semaphore] | None = None
+
+
+def _resources() -> tuple[httpx.AsyncClient, asyncio.Semaphore]:
+    global _shared
+    loop = asyncio.get_running_loop()
+    if _shared is None or _shared[0] is not loop:
+        _shared = (
+            loop,
+            httpx.AsyncClient(timeout=60.0),
+            asyncio.Semaphore(settings.gateway_max_concurrent_calls),
+        )
+    return _shared[1], _shared[2]
+
+
+async def aclose() -> None:
+    global _shared
+    if _shared is not None:
+        client = _shared[1]
+        _shared = None
+        await client.aclose()
 
 
 def start_call_budget(limit: int | None = None) -> None:
@@ -41,8 +66,16 @@ async def complete(conversation_id: str, user_id: str, messages: list[dict],
             )
         budget.used += 1
 
+    client, limit = _resources()
+    wait_start = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with limit:
+            wait_ms = round((time.perf_counter() - wait_start) * 1000)
+            if wait_ms >= 50:
+                log.info("gateway slot wait", extra={"fields": {
+                    "event": "gateway_wait", "wait_ms": wait_ms,
+                    "max_concurrent": settings.gateway_max_concurrent_calls,
+                }})
             response = await client.post(
                 f"{settings.gateway_url}/query",
                 headers={"X-Request-ID": request_id_var.get()},

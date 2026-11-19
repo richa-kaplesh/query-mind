@@ -16,6 +16,7 @@ from core.tools.pandas_worker_manager import worker_manager
 import uuid
 from core.logging_setup import setup_logging, request_id_var, session_id_var, SID_PREFIX_LEN
 from core.sessions import SessionStore
+from core import gateway_client
 
 setup_logging()
 log = logging.getLogger("main")
@@ -27,6 +28,7 @@ async def lifespan(app: FastAPI):
     worker_manager.boot()
     yield
     # ── Shutdown ──
+    await gateway_client.aclose()
     log.info("Shutting down persistent pandas worker...")
     if worker_manager.is_alive():
         worker_manager.task_queue.put(("shutdown", None))
