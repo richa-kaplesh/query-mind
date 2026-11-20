@@ -320,3 +320,38 @@ def test_no_verdict_marks_draft_unverified_with_its_reason(gen):
     answer, revisions = run(gen._review_and_revise(**args))
     assert answer == "draft" + generator_mod.UNVERIFIED_NOTE
     assert ("review_skipped", {"reason": "no_verdict", "revisions_used": 0}) in records
+
+
+@pytest.mark.parametrize("url_var, key_var", [
+    ("LLM_GATEWAY_URL", "LLM_GATEWAY_KEY"),
+    ("GATEWAY_URL", "GATEWAY_API_KEY"),
+])
+def test_gateway_settings_accept_both_env_names(monkeypatch, url_var, key_var):
+    from config import Settings
+    monkeypatch.setenv(url_var, "https://gw.example/")
+    monkeypatch.setenv(key_var, "secret")
+    s = Settings(_env_file=None)
+    assert (s.gateway_url, s.gateway_api_key) == ("https://gw.example/", "secret")
+
+
+def test_api_key_header_and_single_slash(monkeypatch):
+    seen = {}
+
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def post(self, url, headers=None, json=None):
+            seen["url"], seen["headers"] = url, headers
+            return httpx.Response(200, json={"content": "ok"})
+
+        async def aclose(self):
+            pass
+
+    monkeypatch.setattr(gateway_client.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(gateway_client, "_shared", None)
+    monkeypatch.setattr(gateway_client.settings, "gateway_url", "https://gw.example/")
+    monkeypatch.setattr(gateway_client.settings, "gateway_api_key", "secret")
+    run(gateway_client.complete(conversation_id="c", user_id="u", messages=[]))
+    assert seen["url"] == "https://gw.example/query"
+    assert seen["headers"]["X-API-Key"] == "secret"

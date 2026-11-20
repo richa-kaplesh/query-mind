@@ -1,3 +1,4 @@
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -45,7 +46,10 @@ class Settings(BaseSettings):
     reviewer_max_revisions: int = 1
     reviewer_max_iterations: int = 2
     reviewer_skip_rules_enabled: bool = True
-    gateway_url: str = "https://llm-gateway-qewa.onrender.com"
+    gateway_url: str = Field(default="https://llm-gateway-qewa.onrender.com",
+                             validation_alias=AliasChoices("gateway_url", "llm_gateway_url"))
+    gateway_api_key: str = Field(default="",
+                                 validation_alias=AliasChoices("gateway_api_key", "llm_gateway_key"))
     # Hard cap on gateway requests for ONE user question (agent loop + reviewer + revisions).
     # Worst case without a cap is 14; this stops a rate-limited run from piling on.
     gateway_max_calls_per_request: int = 14

@@ -80,8 +80,9 @@ async def complete(conversation_id: str, user_id: str, messages: list[dict],
                     "max_concurrent": settings.gateway_max_concurrent_calls,
                 }})
             response = await client.post(
-                f"{settings.gateway_url}/query",
-                headers={"X-Request-ID": call_id},
+                f"{settings.gateway_url.rstrip('/')}/query",
+                headers={"X-Request-ID": call_id,
+                         **({"X-API-Key": settings.gateway_api_key} if settings.gateway_api_key else {})},
                 json={
                     "conversation_id": conversation_id,
                     "user_id": user_id,

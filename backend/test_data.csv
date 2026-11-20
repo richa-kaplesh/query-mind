@@ -1,0 +1,6 @@
+Employee_ID,Department,Salary,Status
+101,Sales,65000,Active
+102,Engineering,90000,Active
+103,Sales,72000,On Leave
+104,HR,55000,Active
+105,Engineering,95000,Terminated
