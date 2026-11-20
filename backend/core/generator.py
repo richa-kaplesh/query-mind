@@ -395,6 +395,8 @@ class Generator:
             record("forced_answer_response", {
                 "content": result.get("content"),
                 "model": result.get("model_used"),
+                "deployment_id": result.get("deployment_id"),
+                "call_id": result.get("call_id"),
                 "usage": result.get("usage"),
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
@@ -481,6 +483,8 @@ class Generator:
                 ],
                 "finish_reason": result.get("finish_reason"),
                 "model": result.get("model_used"),
+                "deployment_id": result.get("deployment_id"),
+                "call_id": result.get("call_id"),
                 "usage": result.get("usage"),
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,

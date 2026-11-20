@@ -2,6 +2,7 @@ import asyncio
 import contextvars
 import logging
 import time
+import uuid
 import httpx
 from config import settings
 from core.exceptions import GatewayError
@@ -65,6 +66,8 @@ async def complete(conversation_id: str, user_id: str, messages: list[dict],
                 reason="budget",
             )
         budget.used += 1
+    call_suffix = f"c{budget.used}" if budget is not None else uuid.uuid4().hex[:6]
+    call_id = f"{request_id_var.get()}-{call_suffix}"
 
     client, limit = _resources()
     wait_start = time.perf_counter()
@@ -78,7 +81,7 @@ async def complete(conversation_id: str, user_id: str, messages: list[dict],
                 }})
             response = await client.post(
                 f"{settings.gateway_url}/query",
-                headers={"X-Request-ID": request_id_var.get()},
+                headers={"X-Request-ID": call_id},
                 json={
                     "conversation_id": conversation_id,
                     "user_id": user_id,
@@ -89,10 +92,13 @@ async def complete(conversation_id: str, user_id: str, messages: list[dict],
                 },
             )
     except httpx.HTTPError as e:  # timeout, connection refused, DNS, ...
-        log.error(f"gateway unreachable: {type(e).__name__}: {e}")
-        raise GatewayError(None, f"gateway unreachable ({type(e).__name__})", reason="unreachable") from e
+        log.error(f"gateway unreachable call_id={call_id}: {type(e).__name__}: {e}")
+        raise GatewayError(None, f"gateway unreachable ({type(e).__name__}) call_id={call_id}",
+                           reason="unreachable") from e
 
     if response.status_code >= 400:
-        log.error(f"gateway error status={response.status_code} body={response.text}")
-        raise GatewayError(response.status_code, f"gateway returned {response.status_code}")
-    return response.json()
+        log.error(f"gateway error call_id={call_id} status={response.status_code} body={response.text}")
+        raise GatewayError(response.status_code, f"gateway returned {response.status_code} call_id={call_id}")
+    result = response.json()
+    result["call_id"] = call_id
+    return result

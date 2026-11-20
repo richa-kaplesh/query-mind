@@ -213,7 +213,27 @@ def test_timeout_is_unreachable_and_fatal(monkeypatch):
 
 def test_success_returns_json(monkeypatch):
     fake_httpx(monkeypatch, _Resp(200, {"content": "hi"}))
-    assert call() == {"content": "hi"}
+    result = call()
+    assert result["content"] == "hi" and result["call_id"]
+
+
+def test_each_call_in_a_question_gets_its_own_request_id(monkeypatch):
+    sent = []
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        async def post(self, *a, **k):
+            sent.append(k["headers"]["X-Request-ID"])
+            return _Resp(200, {"content": "hi"})
+
+    monkeypatch.setattr(gateway_client.httpx, "AsyncClient", FakeClient)
+    token = gateway_client.request_id_var.set("run-u03-q2")
+    try:
+        gateway_client.start_call_budget(5)
+        ids = [call()["call_id"], call()["call_id"]]
+    finally:
+        gateway_client.request_id_var.reset(token)
+    assert sent == ids == ["run-u03-q2-c1", "run-u03-q2-c2"]
 
 
 def test_call_budget_stops_the_request_without_hitting_the_gateway(monkeypatch):

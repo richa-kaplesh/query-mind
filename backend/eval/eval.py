@@ -113,12 +113,13 @@ def upload_and_wait(client, csv_path):
     return False
 
 
-def ask(client, question):
+def ask(client, question, request_id):
     start = time.perf_counter()
     parts = []
     error = None
     try:
-        with client.stream("POST", f"{BASE}/query/stream", json={"question": question}) as r:
+        with client.stream("POST", f"{BASE}/query/stream", json={"question": question},
+                           headers={"X-Request-ID": request_id}) as r:
             if r.status_code >= 400:
                 error = f"http_{r.status_code}"
             else:
@@ -163,6 +164,7 @@ def summarize(trace):
         "errors": 0, "prompt_tokens": 0, "completion_tokens": 0,
     }
     models = set()
+    llm_calls = []
     for s in steps:
         typ = s["type"]
         data = s.get("data") or {}
@@ -192,6 +194,12 @@ def summarize(trace):
             out["completion_tokens"] += data.get("completion_tokens") or 0
         if data.get("model"):
             models.add(data["model"])
+        if "usage" in data:
+            llm_calls.append({"step": typ, "model": data.get("model"),
+                              "deployment_id": data.get("deployment_id"),
+                              "call_id": data.get("call_id")})
+    out["llm_calls"] = llm_calls
+    out["model_switch"] = len({c["model"] for c in llm_calls}) > 1
     out["calls"] = calls
     out["total_calls"] = sum(calls.values())
     out["used_tool"] = out["generator_tools"] > 0
@@ -243,15 +251,17 @@ def check_behavior(answer, item):
 
 
 # ---------- 5. one question, start to finish ----------
-def run_question(client, item):
+def run_question(client, item, run_id):
     question = item["question"]
-    result = ask(client, question)
+    request_id = f"{run_id}-{item['id']}"
+    result = ask(client, question, request_id)
     trace = get_trace(client, question)
     record = {
         "id": item["id"],
         "category": item["category"],
         "expected_behavior": item["expected_behavior"],
         "question": question,
+        "request_id": request_id,
         "golden_answer": item["golden_answer"],
         "answer": result["answer"],
         "error": result["error"],
@@ -313,6 +323,14 @@ def summarize_calls(records):
     print(f"  revisions that changed the answer: {changed}/{revisions}")
     print(f"  questions answered with no tool: {no_tool}/{n}")
     print(f"  questions with a repeated tool call: {sum(1 for s in summaries if s['duplicate_tool_calls'])}/{n}")
+    model_counts = {}
+    for s in summaries:
+        for c in s.get("llm_calls", []):
+            label = f"{c['model']} / {c['deployment_id']}"
+            model_counts[label] = model_counts.get(label, 0) + 1
+    for label, count in sorted(model_counts.items()):
+        print(f"  calls served by {label}: {count}")
+    print(f"  questions answered by more than one model: {sum(1 for s in summaries if s.get('model_switch'))}/{n}")
     print(f"  est. tokens per question: {sum(s['prompt_tokens'] + s['completion_tokens'] for s in summaries) / n:.0f}")
 
 
@@ -338,6 +356,8 @@ def main():
     print(f"this batch: {len(retry)} re-run after an error, {len(new)} new")
 
     records = []
+    run_id = "run-" + datetime.now().strftime("%Y%m%d%H%M%S")
+    print("run id:", run_id)
     with httpx.Client(timeout=120) as client:
         print("backend awake:", wake_up(client, BASE))
         print("gateway awake:", wake_up(client, GATEWAY_URL))
@@ -355,7 +375,7 @@ def main():
                 print("upload failed, skipping", csv_name)
                 continue
             for item in items:
-                rec = run_question(client, item)
+                rec = run_question(client, item, run_id)
                 rec["dataset_file"] = csv_name
                 rec["key"] = item["key"]
                 rec["set"] = item["set"]
@@ -363,7 +383,7 @@ def main():
                 baseline[item["key"]] = rec
                 save_baseline(baseline)
                 records.append(rec)
-                print(rec["id"], "|", rec["category"], "| passed:", rec["passed"],
+                print(rec["request_id"], "|", rec["category"], "| passed:", rec["passed"],
                       "| ms:", rec["total_ms"], "| error:", rec["error"])
                 if rec["error"] and "429" in str(rec["error"]):
                     streak += 1

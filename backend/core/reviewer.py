@@ -136,6 +136,8 @@ class Reviewer:
             completion_tokens = estimate_tokens(result.get("content") or "")
             record(f"review_response_{iteration}", {
                 "model": result.get("model_used"),
+                "deployment_id": result.get("deployment_id"),
+                "call_id": result.get("call_id"),
                 "usage": result.get("usage"),
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
@@ -249,6 +251,8 @@ class RAGReviewer:
             completion_tokens = estimate_tokens(result.get("content") or "")
             record(f"review_response_{iteration}", {
                 "model": result.get("model_used"),
+                "deployment_id": result.get("deployment_id"),
+                "call_id": result.get("call_id"),
                 "usage": result.get("usage"),
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
