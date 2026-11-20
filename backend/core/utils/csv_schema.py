@@ -1,6 +1,8 @@
 import pandas as pd
 
-from core.models import CSVSchema, ColumnSchema
+from core.models import CSVSchema, ColumnSchema, LABEL_ROLE
+
+LABEL_COLUMN_NAMES = frozenset({"class", "label", "target", "y", "outcome"})
 
 
 def _build_columns(df: pd.DataFrame, warnings: list[str]) -> list[ColumnSchema]:
@@ -25,6 +27,9 @@ def _build_columns(df: pd.DataFrame, warnings: list[str]) -> list[ColumnSchema]:
             null_count = null_count,
             samples    = samples,
         )
+
+        if str(col_name).strip().lower() in LABEL_COLUMN_NAMES:
+            col.role = LABEL_ROLE
 
         if pd.api.types.is_numeric_dtype(series):
             col.min  = float(series.min())

@@ -289,3 +289,34 @@ def test_in_flight_calls_never_exceed_the_limit(monkeypatch):
     results = run(many_calls())
     assert len(results) == 8
     assert state["peak"] == 2
+
+NO_VERDICT_TEXT = {"content": "I think it looks fine.", "tool_calls": None, "model_used": "m"}
+
+
+def test_csv_reviewer_no_verdict_is_inconclusive_and_unverified(script):
+    script(NO_VERDICT_TEXT, NO_VERDICT_TEXT)
+    r = Reviewer(inspect_tool=None, max_iterations=2)
+    res = run(r.review(question="q", schema="s", draft_answer="a", tool_log=[],
+                       conversation_id="c", user_id="u", tracer=None, token_tracker=None))
+    assert (res.passed, res.unverified, res.inconclusive, res.reason) == (True, True, True, "no_verdict")
+
+
+def test_rag_reviewer_no_verdict_is_inconclusive_and_unverified(script):
+    script(NO_VERDICT_TEXT, NO_VERDICT_TEXT)
+    r = RAGReviewer(max_iterations=2)
+    res = run(r.review(question="q", draft_answer="a", tool_log=[],
+                       conversation_id="c", user_id="u", tracer=None, token_tracker=None))
+    assert (res.passed, res.unverified, res.inconclusive, res.reason) == (True, True, True, "no_verdict")
+
+
+def test_no_verdict_marks_draft_unverified_with_its_reason(gen):
+    async def review_fn(ans, tlog):
+        return ReviewResult(passed=True, feedback="", iterations=2, tool_calls=0,
+                            unverified=True, inconclusive=True, reason="no_verdict")
+
+    records = []
+    args = review_args(gen, review_fn)
+    args["record"] = lambda step, data: records.append((step, data))
+    answer, revisions = run(gen._review_and_revise(**args))
+    assert answer == "draft" + generator_mod.UNVERIFIED_NOTE
+    assert ("review_skipped", {"reason": "no_verdict", "revisions_used": 0}) in records

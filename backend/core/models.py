@@ -1,6 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 
+LABEL_ROLE = "label"
+
 class QueryRequest(BaseModel):
     question: str
     conversation_history: list = []
@@ -28,6 +30,7 @@ class ColumnSchema(BaseModel):
     mean: Optional[float] = None
     unique_count: Optional[int] = None
     unique_values: Optional[List[str]] = None
+    role: Optional[str] = None
 
 class CSVSchema(BaseModel):
     source: str
@@ -54,6 +57,8 @@ class CSVSchema(BaseModel):
                 line += f" | Unique: {col.unique_count}"
             if col.unique_values is not None:
                 line += f" | Values: {col.unique_values}"
+            if col.role is not None:
+                line += f" | Role: {col.role}"
             return line
 
         lines = [
@@ -80,6 +85,14 @@ class CSVSchema(BaseModel):
         else:
             for col in self.columns:
                 lines.append(_format_col(col))
+
+        label_names = [c.name for c in self.columns if c.role == LABEL_ROLE]
+        if label_names:
+            lines.append(
+                f"Label column(s): {', '.join(label_names)}. This is the target / category id, not a feature. "
+                "Leave it out when a question is about features (e.g. the feature with the highest standard "
+                "deviation), unless the question names it."
+            )
 
         if self.warnings:
             lines.append("Warnings: " + "; ".join(self.warnings))
