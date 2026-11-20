@@ -256,7 +256,9 @@ DECLINE_HINTS = ["not in the dataset", "not in the data", "not contain", "doesn'
                  "do not have", "not possible", "not specified", "isn't available", "no data"]
 DECLINE_MAX_CHARS = 1000
 CORRECTION_HINTS = ["actually", "however", "in fact", "contrary", "incorrect", "isn't",
-                    "is not", "not normalized", "not normalised", "no missing", "there are no"]
+                    "is not", "not normalized", "not normalised", "no missing", "there are no",
+                    "premise", "not true", "not the case", "far fewer", "far more", "much lower",
+                    "much higher", "much fewer", "much more"]
 
 def check_behavior(answer, item):
     a = answer.lower().replace("\u2019", "'")

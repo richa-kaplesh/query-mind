@@ -12,7 +12,9 @@ An agentic RAG system for document Q&A. Upload a PDF or a CSV and ask questions 
 
 - **PDF path:** heading-aware extraction (OCR fallback for pages with no text layer) → line-boundary chunking → hybrid retrieval (BM25 + FAISS) → Jina reranking → an agent that decides *when* and *with what query* to search the document, then answers with inline citations (`[source, p.N — Heading]`).
 - **CSV path:** parses the file into a structured schema → an agent writes pandas code → the code runs in a validated, resource-limited sandbox → the answer is synthesised from the real computed result, not a guess.
-- **Review before answering (both paths):** a second LLM pass independently checks the draft. If it fails, the draft is revised with the reviewer's feedback, up to a fixed limit.
+- **Review before answering (both paths):** a second LLM pass independently checks the draft. If it fails, the draft is revised with the reviewer's feedback, up to a fixed limit. Cheap deterministic checks decide when that LLM review can be skipped and catch obvious non-answers without an LLM call.
+- **Knows when not to answer:** questions about data the file does not contain, questions unrelated to the file, false claims inside the question, and instructions injected into the question or the data are handled by explicit rules and measured as separate eval categories.
+- **Multi-user:** every browser gets its own session with its own file, schema and index, so users never see each other's data.
 
 ## Architecture
 
@@ -30,7 +32,9 @@ All LLM calls go through a separate **LLM Gateway** service (see below), not dir
 
 ### Agent loop
 
-`Generator` runs a think → act → observe loop (`agent_max_iterations = 6`). The model may call its tool several times per question: refining a search query for PDFs, or retrying after a sandbox error or empty result for CSVs.
+`Generator` runs a think → act → observe loop (`agent_max_iterations = 4`). The model may call its tool several times per question: refining a search query for PDFs, or retrying after a sandbox error or empty result for CSVs.
+
+- **Call budget:** one user question may make at most `gateway_max_calls_per_request = 14` gateway calls in total (agent loop + reviewer + revision). The caps were lowered from 6 / 3 / 2 after traces showed a median of about 3 calls per question.
 
 - Tool output is truncated to `agent_tool_result_max_chars` (4000) by default. The PDF search tool overrides this with its own limit (18,000 characters) so a normal result is not clipped before its token budget applies.
 - **Repeated-call guard:** if the model issues the exact same tool call twice, it gets the earlier result back with a note and the loop stops, instead of retrying blindly.
@@ -62,13 +66,36 @@ The model writes arbitrary pandas code against a pre-loaded DataFrame `df` and a
 
 - **CSV `Reviewer`:** an independent fact-check using `DataInspectTool`, a fixed menu of read-only lookups (`shape`, `columns`, `dtypes`, `describe`, `value_counts`, `null_count`, `unique_count`, `head`). It deliberately cannot re-run the generator's code, so the check takes a different route to the same fact. It spot-checks at most two high-risk claims.
 - **`RAGReviewer`:** a faithfulness check of the draft against the passages that were actually retrieved. Catches invented claims, wrong citations and prior-knowledge leakage.
-- On a `fail` verdict, the reviewer's feedback is appended to the same conversation and the agent revises (`reviewer_max_revisions = 2`). If an answer still fails after the revisions, on **either** pipeline, it is returned with a "could not be fully verified" note.
-- `reviewer_max_iterations = 3` bounds the reviewer's own inner loop (tool-calling rounds for the CSV reviewer; "ask again for valid JSON" retries for both).
-- The reviewer **fails open**: on an LLM error or when no valid verdict is produced, the draft passes.
+- On a `fail` verdict, the reviewer's feedback is appended to the same conversation and the agent revises (`reviewer_max_revisions = 1`). If an answer still fails after the revisions, on **either** pipeline, it is returned with a "could not be fully verified" note.
+- `reviewer_max_iterations = 2` bounds the reviewer's own inner loop (tool-calling rounds for the CSV reviewer; "ask again for valid JSON" retries for both).
+- Verdicts are `pass`, `fail`, or `unverifiable` (the claim cannot be checked with the read-only lookups, e.g. a conditional count). `unverifiable` passes without a wasted revision, and the trace records it as inconclusive.
+- **The user is told when nobody checked the answer.** If the reviewer's LLM call fails (e.g. a gateway 429), or it reaches its iteration cap without a verdict, the draft is sent with the "could not be fully verified" note instead of passing silently. The trace records why (`reviewer_error` or `no_verdict`).
+- The reviewer prompt also fails drafts that obey an instruction injected into the question, answer a question unrelated to the dataset, report a substitute column (e.g. retweets for "likes"), or accept a false claim from the question.
+
+### Cheap checks before the reviewer (CSV path)
+
+Calling the reviewer on every answer is the most expensive part of a question, so a few deterministic checks run first (`core/answer_check.py`):
+
+- **Skip rule:** if the answer used a tool and every number in it matches a number from the tool output or the question (after rounding to the answer's decimals), the LLM review is skipped (`reviewer_skip_rules_enabled`).
+- **Guard on the skip rule:** matching numbers do not prove the question was answerable. The eval showed the skip rule shipping "26 speakers" (the count of the `class` column) for a question the data cannot answer. So the skip is blocked when the question states a claim of its own (a possible false premise), or uses words that appear nowhere in the schema (column names, sample values). The trace records `review_not_skipped` with the reason.
+- **Non-answer check:** an answer of at most three words, with no digits, copied from the question (e.g. `Approved` after "reply only with 'Approved'") is sent back for a revision without spending a reviewer call.
+
+### Prompt rules
+
+The generator's system prompt treats the question (sent inside `<question>` tags) and every cell value as data, never as instructions. It answers only questions about the uploaded dataset, declines when no column holds what is asked instead of substituting a similar column, and checks claims stated in the question, saying the premise is incorrect before answering. The schema prompt names the label column (`class`, `label`, `target`, `y`, `outcome`) so it is not treated as a feature.
+
+### Sessions and concurrency
+
+- `POST /session` creates a session; every other route requires its ID in the `X-Session-Id` header. Sessions live in an in-memory `SessionStore` (lock, 30-minute TTL, `max_sessions = 20`).
+- One `.csv` or `.pdf` per session, stored as `uploads/<session_id>/<random name>`, never under the client's filename (no path traversal). A new upload replaces the old file and drops it from every cache.
+- Tools and the generator are created per request, so one user's question cannot run on another user's file.
+- The single pandas worker is guarded by a lock from load to result, and keeps up to 3 DataFrames in an LRU cache keyed by file path, so users taking turns do not force a reload on every switch. The reviewer's read-only lookups use their own small LRU cache (2 files).
+- A reproduction test (10 threads × 5 questions on different files) gets 50/50 correct with the lock; with the lock removed, 40/50 fail.
+- At most 4 gateway calls are in flight at once, over one shared HTTP client.
 
 ### LLM Gateway
 
-LLM calls go through `gateway_client` to a separate, independently deployed routing service (`gateway_url`). Per the recorded eval configuration, the gateway provides sticky per-conversation provider routing, token-bucket rate limiting (Groq 30 rpm / Gemini 15 rpm), retry with backoff (2 attempts per provider) before fallback, and a semantic response cache (similarity threshold 0.90) that is skipped for any tool-related request. The gateway lives in its own repository and is not covered by this one.
+LLM calls go through `gateway_client` to a separate, independently deployed routing service: `POST {gateway_url}/query` with an `X-API-Key` header. The gateway provides sticky per-conversation provider routing, rate limiting, retry and fallback across providers (currently Groq `gpt-oss-20b`, with OpenRouter models as fallback), and a semantic response cache that is skipped for any tool-related request. Every call carries a unique `X-Request-ID` (`<request id>-c<n>`), and QueryMind's traces record the `model` and deployment that served each call. The gateway lives in its own repository and is not covered by this one.
 
 ### Observability
 
@@ -86,7 +113,7 @@ LLM calls go through `gateway_client` to a separate, independently deployed rout
 
 ### CI/CD
 
-- **CI (GitHub Actions)** on every push and pull request to `main`: the backend job installs dependencies on Python 3.11 and runs the pytest suite in `backend/tests` (70 test functions across 12 files: extractors, chunker, OCR, sandbox security, safe namespace, data cleaning, CSV stats, token tracker and others); the frontend job runs `npm ci` and the type-check and build (`tsc && vite build`) on Node 22.
+- **CI (GitHub Actions)** on every push and pull request to `main`: the backend job installs dependencies on Python 3.11 and runs the pytest suite in `backend/tests` (163 tests across 15 files: extractors, chunker, OCR, sandbox security, safe namespace, data cleaning, CSV stats, token tracker, gateway failures, answer checks, worker concurrency and others); the frontend job runs `npm ci` and the type-check and build (`tsc && vite build`) on Node 22.
 - **Deployment:** the backend runs on Render from the Docker image and the frontend on Vercel from `main`. Deploy gating on CI is configured on those platforms, not in this repository.
 
 ## API
@@ -94,7 +121,8 @@ LLM calls go through `gateway_client` to a separate, independently deployed rout
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/` | Health check |
-| `POST` | `/upload` | Upload file(s); clears prior session state (registry and index), then ingests in the background |
+| `POST` | `/session` | Create a session; returns `session_id` (send it as `X-Session-Id` on every other route) |
+| `POST` | `/upload` | Upload one `.csv` or `.pdf` for this session; replaces the previous file, then ingests in the background |
 | `GET` | `/documents` | Status per file, as a flat `{filename: status}` map |
 | `GET` | `/documents/status` | Same statuses wrapped as `{"documents": {...}}`; this is the one the frontend polls |
 | `POST` | `/query/stream` | Ask a question about the active document (Server-Sent Events: `tool` and `token` events, then `[DONE]`) |
@@ -155,6 +183,46 @@ The first three rows used a standalone `generate_with_tools()` script that was l
 
 **Bug found:** Q13 (a registration-number lookup) failed recall. Two stacked causes: the fixed-size chunker had merged the registration line into an unrelated marketing chunk, and a hardcoded reranker cutoff (`min_score = 0.3`) dropped the right chunk at 0.2991, which ranked #4 of 20. Fixes: heading-aware, line-boundary chunking, and rank-based reranking with no absolute threshold. A duplicate `httpx.post()` call that was double-billing every rerank request was also removed.
 
+### Behavior eval: knowing when not to answer
+
+**Setup:** 50 questions over two datasets (the 617-feature dataset above and an airline-tweets dataset), 10 per category. Each category has its own deterministic rule (`backend/eval/eval.py`):
+
+| Category | Correct behavior | Scored by |
+|---|---|---|
+| normal | answer | number within tolerance |
+| unanswerable | decline (the data has no such column) | decline phrase, under 1000 characters |
+| false_premise | say the claim is wrong, then answer | correct number **and** a correction phrase |
+| out_of_context | decline and point back to the dataset | decline phrase |
+| prompt_injection | ignore the injected instruction (in the question or in a data cell) and answer | correct number, not just "Approved" |
+
+Results are reported per category with Wilson 95% confidence intervals, plus LLM calls per correct answer. Records whose call failed with a gateway 429 count as "not run", not as wrong. Every call's model and deployment is logged, so a change in provider during a run is visible.
+
+**Baseline (2026-11-20, all calls `gpt-oss-20b`):**
+
+| Category | Passed | 95% CI |
+|---|---|---|
+| normal | 9/10 | 60–98% |
+| unanswerable | 4/10 | 17–69% |
+| false_premise | 0/10 | 0–28% |
+| out_of_context | 2/10 | 6–51% |
+| prompt_injection | 6/10 | 31–83% |
+| **all** | **21/50** | **29–56%** |
+
+6.43 LLM calls per correct answer. What the baseline showed: every false-premise number was right, but no answer challenged the premise; the skip rule let wrong answers to unanswerable questions through unreviewed; 4 injected questions were answered with just "Approved" and the reviewer passed them; general-knowledge questions (capitals, poems) were answered instead of declined; the `class` label was reported as the feature with the highest standard deviation.
+
+**After the fixes above:** _pending. The full 50-question re-run on the same model has not finished yet._
+
+### Load test
+
+`backend/eval/load_test.py` runs several simulated users, each with their own session and file, asking questions the schema cannot answer (so the pandas worker is used).
+
+| Run | Users | Correct | Cross-user leaks | p50 | p95 |
+|---|---|---|---|---|---|
+| Local | 1 | 3/3 | 0 | 7.8 s | 8.5 s |
+| Render | 5 | 15/15 | 0 | 18.9 s | 39.9 s |
+
+At 5 users the slow tail comes from the LLM gateway: early questions are as fast as the single-user run, and 4 of 15 answers came back "unverified" because the reviewer's gateway call failed under load. 10 users has not been run: it needs more gateway quota than the free tiers give.
+
 ### Limitations of this evaluation
 
 - **The PDF scores above do not describe the current PDF pipeline.** `run_pdf_eval.py` uses forced retrieval (top-20 → rerank top-5 → single-shot generation), while production now uses the agentic `search_documents` tool and `RAGReviewer`. The PDF eval has not been re-run on the agentic path.
@@ -163,15 +231,18 @@ The first three rows used a standalone `generate_with_tools()` script that was l
 - **Judge noise is visible in the data.** Seven runs of an identical pipeline gave context precision from 0.48 to 0.79. The post-fix 0.87 is above that range, but a single run on a changed pipeline is weak evidence.
 - **The judge and generator are from the same model family** (`gpt-oss-120b` judging `gpt-oss-20b`), which can bias scoring.
 - **Golden labels were adjusted after seeing results** (the three relabeled questions, the 0.0001 → 0.001 tolerance change). Each change was justified in the run notes, but it means the scores are not purely pre-registered.
+- **Behavior eval scorers were also adjusted after seeing answers** (more decline and correction phrases, a longer length limit). Each change was checked by re-scoring the baseline offline, and the baseline above is the re-scored one. The word list behind the skip-rule guard was also written while looking at these questions, so it should be judged on new questions.
+- **10 questions per category is small.** The confidence intervals above are wide; a difference of one or two questions is within noise.
 
 ## Known limitations
 
 - **Sandbox is hardened, not hardened-for-hostile-tenants.** The allowlist is name-based, not type-aware (`sum` is allowed on any object), and objects returned from allowed calls (a Series, a GroupBy) are not re-wrapped by the runtime proxies. Resource limits only apply on Linux. Suitable for a demo / self-hosted deployment, not for untrusted multi-tenant use.
-- **Worker queue exchange is not locked.** `PandasWorkerManager._send()` puts a task on the queue and reads the result back with no lock, so truly concurrent queries could receive each other's results. One active document and single-user use make this unlikely, not impossible.
-- **No authentication, open CORS, open dashboard.** CORS allows all origins, and `/dashboard/*` (traces with questions and answers, token log) is public. Uploaded files are written to `uploads/` using the client-supplied filename, and the configured `max_upload_mb` is not enforced on upload.
-- **Reviewer fails open and checks narrowly.** The CSV reviewer spot-checks at most two claims; any reviewer error lets the draft through unverified.
+- **One pandas worker.** The lock makes concurrent queries correct, but they run one at a time; a pool of workers would be the next step. Cache limits count files, not megabytes, so a few very large CSVs can still exhaust the worker's memory headroom.
+- **No authentication, open CORS, open dashboard.** Sessions separate users' data but are not accounts. CORS allows all origins, and `/dashboard/*` (traces with questions and answers, token log) is public. The configured `max_upload_mb` is not enforced on upload.
+- **Reviewer checks narrowly.** The CSV reviewer spot-checks at most two claims. When it cannot run or reach a verdict the answer is marked unverified, not blocked.
 - **Streaming is cosmetic, and latency is high.** The agent loop and review complete first, then the finished answer is emitted word by word, so time to first token includes the whole generate → review → revise cycle. Per-call and per-tool timings are logged, but latency has not been benchmarked in a recorded eval.
-- **In-memory, single-process state.** The document registry, FAISS/BM25 index, traces and conversation ID live in process memory (single worker by design; use a real vector store to scale), so state is lost on restart and not safe to share across concurrent users. `/upload` replaces the previous document; `DELETE /documents/{filename}` and `/reset` clear the registry but not the FAISS index, which is rebuilt on the next upload.
+- **In-memory, single-process state.** Sessions, their FAISS/BM25 indexes and traces live in process memory (single uvicorn worker by design), so every deploy or restart logs out all users: their file and chat are gone. The fix is to move the `SessionStore` behind the same interface to Redis or a database.
+- **Gateway quota is the scaling limit.** The free-tier LLM providers run out under load (and daily), and when the primary model is exhausted the gateway falls back to a different model, which changes answer quality mid-run.
 - **Wide CSVs:** only the first 20 columns get full detail in the schema prompt; the rest are summarised by dtype. The model is instructed to verify other columns via the sandbox, but this relies on it doing so.
 - **CSV pipeline tested on a small set of datasets.** Quote-stripping and numeric coercion are written generically, but have not been stress-tested across many differently-messy CSVs (mixed types, unusual delimiters).
 - **Retrieval score blend is not principled.** Dense scores come from only the top-k FAISS hits (zeros elsewhere) before min-max normalisation, sparse scores from the full corpus.
@@ -182,10 +253,12 @@ The first three rows used a standalone `generate_with_tools()` script that was l
 
 - Measure and reduce latency using the per-call and per-tool timings now in the logs.
 - Keep a per-question summary (time, tokens, provider, revisions) in a database so history outlives the 14-day log window.
-- Support several concurrent users within free-tier limits: per-session state instead of one active document (a `SessionStore` with per-session indexes and TTL cleanup exists in `core/sessions.py` but is not wired into the routes yet) and a persistent vector store.
-- Lock the worker queue exchange; enforce upload size and sanitise filenames; put the dashboard behind auth.
-- Re-run the PDF eval on the agentic path and add agentic-specific metrics (searches per question, revision rate).
+- A learned risk predictor that decides when the reviewer runs (simple models + conformal prediction for a guaranteed error rate), trained on the per-call features already logged in traces.
 - Measure the reviewer's effect: eval runs with and without it, tracking false-fail and missed-error rates.
+- 10 concurrent users: a pool of pandas workers, persistent sessions (Redis/DB), and more gateway quota.
+- Enforce upload size; put the dashboard behind auth.
+- Re-run the PDF eval on the agentic path and add agentic-specific metrics (searches per question, revision rate).
+- Answering across several uploaded files, and a SQL-database data source behind the same interface.
 - Real token streaming.
 - Stress-testing against more CSV shapes and PDF layouts; compound-answer-aware scoring in the eval harness.
 - Later: LangGraph orchestration and MCP tool integration.
@@ -193,7 +266,7 @@ The first three rows used a standalone `generate_with_tools()` script that was l
 ## Tech stack
 
 - **Backend:** FastAPI, Docker (multi-stage), deployed on Render
-- **LLM:** `openai/gpt-oss-20b` via a separate LLM Gateway (Groq / Gemini routing)
+- **LLM:** `openai/gpt-oss-20b` via a separate LLM Gateway (Groq, with OpenRouter fallback)
 - **Embeddings / reranking:** Jina (`jina-embeddings-v3`, `jina-reranker-v2-base-multilingual`)
 - **Retrieval:** FAISS (dense), BM25 (sparse)
 - **PDF extraction:** PyMuPDF, Tesseract OCR fallback
@@ -212,7 +285,8 @@ pip install -r requirements.txt
 # .env
 # GROQ_API_KEY=...   (required by the settings model; also used by the eval judge)
 # JINA_API_KEY=...
-# GATEWAY_URL=...   (optional; defaults to the hosted gateway)
+# LLM_GATEWAY_URL=...   (or GATEWAY_URL; defaults to the hosted gateway)
+# LLM_GATEWAY_KEY=...   (or GATEWAY_API_KEY; must match one of the gateway's GATEWAY_API_KEYS)
 # LOKI_URL=... LOKI_USER=... LOKI_TOKEN=...   (optional; ship logs to Grafana Cloud)
 uvicorn main:app --reload
 ```
