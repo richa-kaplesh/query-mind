@@ -12,6 +12,7 @@ from core.retriever import HybridRetriever
 from core.reranker import Reranker
 from core.generator import Generator
 from config import settings
+from core.eval_runs import meta_from_env, scored_questions, write_run
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_PATH = r"D:\query-mind\backend\eval\Leaflet - HDFC International Funds - GIFT Outbound Retail - Class B.pdf"
@@ -195,6 +196,21 @@ def save_new_results(output: dict):
     with open(NEW_RESULTS_PATH, "w") as f:
         json.dump(run_record, f, indent=2)
     print(f"Saved run to {NEW_RESULTS_PATH}")
+    save_run_file(output, run_record["config"])
+
+
+def save_run_file(output: dict, config: dict):
+    name, notes, changes = meta_from_env("PDF eval")
+    path = write_run(
+        name=name,
+        eval_set_id="pdf_hdfc_v1",
+        averages=output["averages"],
+        questions=scored_questions(output["per_question"], lambda i, q: f"q{i + 1:02d}"),
+        config=config,
+        config_changes=changes,
+        notes=notes,
+    )
+    print(f"Saved run file to {path}")
 
 
 def save_to_history(output: dict):

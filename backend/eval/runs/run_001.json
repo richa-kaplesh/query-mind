@@ -1,0 +1,209 @@
+{
+  "id": "run_001",
+  "name": "Baseline",
+  "created_at": "2026-08-26T09:10:01Z",
+  "doc_type": "pdf",
+  "eval_set": {
+    "id": "pdf_workout_v1",
+    "name": "Workout plan PDF v1",
+    "question_count": 15
+  },
+  "baseline_id": null,
+  "metrics": [
+    {
+      "key": "faithfulness",
+      "label": "Faithfulness",
+      "value": 0.9333,
+      "higher_is_better": true
+    },
+    {
+      "key": "answer_relevancy",
+      "label": "Answer relevancy",
+      "value": 1.0,
+      "higher_is_better": true
+    },
+    {
+      "key": "context_precision",
+      "label": "Context precision",
+      "value": 0.4833,
+      "higher_is_better": true
+    },
+    {
+      "key": "context_recall",
+      "label": "Context recall",
+      "value": 0.8667,
+      "higher_is_better": true
+    }
+  ],
+  "questions": [
+    {
+      "id": "q01",
+      "text": "How many days per week is this workout plan designed for?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.5,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q02",
+      "text": "How many sets and reps are prescribed for Banded Glute Bridges?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.6,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q03",
+      "text": "What is the recommended rest time between sets?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.6,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q04",
+      "text": "How long should the Plank hold be held per set on Day 3?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q05",
+      "text": "What activity is recommended on rest days, and for how long?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.4,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q06",
+      "text": "According to the document, is it possible to lose fat in just one specific body area like the waist?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.8,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q07",
+      "text": "What muscles or goals do Wall Angels target?",
+      "scores": {
+        "faithfulness": 0.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.3,
+        "context_recall": 0.0
+      }
+    },
+    {
+      "id": "q08",
+      "text": "Why does the document recommend walking on rest days instead of more intense cardio?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.75,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q09",
+      "text": "Within what timeframe does the plan expect visible progress?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.9,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q10",
+      "text": "Which exercises on Day 2 specifically target hip dips?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.3,
+        "context_recall": 0.0
+      }
+    },
+    {
+      "id": "q11",
+      "text": "What protein sources does the document recommend?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.6,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q12",
+      "text": "How many exercises are in Day 1 â€” Upper Body + Posture?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q13",
+      "text": "Does the document specify a daily calorie intake or calorie targets?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q14",
+      "text": "Does the workout plan require any dumbbells or barbells?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.5,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q15",
+      "text": "Does the document include a warm-up or cool-down routine?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    }
+  ],
+  "config_changes": [],
+  "notes": null,
+  "config": {
+    "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
+    "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+    "chunker": {
+      "method": "fixed-size char split",
+      "chunk_size": 500,
+      "chunk_overlap": 50
+    },
+    "embedding_model": "jina-embeddings-v3",
+    "retriever": {
+      "method": "hybrid BM25 + FAISS",
+      "alpha": 0.5,
+      "top_k": 20
+    },
+    "reranker": "jina-reranker-v2-base-multilingual",
+    "generator_model": "openai/gpt-oss-20b"
+  }
+}

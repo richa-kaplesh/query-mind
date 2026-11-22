@@ -1,0 +1,171 @@
+{
+  "id": "run_010",
+  "name": "Scoring fixes",
+  "created_at": "2026-09-08T13:01:50Z",
+  "doc_type": "csv",
+  "eval_set": {
+    "id": "csv_golden_v1",
+    "name": "CSV golden set v1",
+    "question_count": 15
+  },
+  "baseline_id": "run_009",
+  "metrics": [
+    {
+      "key": "tool_appropriateness",
+      "label": "Tool appropriateness",
+      "value": 0.7333,
+      "higher_is_better": true
+    },
+    {
+      "key": "answer_correctness",
+      "label": "Answer correctness",
+      "value": 0.6,
+      "higher_is_better": true
+    }
+  ],
+  "questions": [
+    {
+      "id": "schema_01",
+      "text": "How many columns does this dataset have in total (including the label column)?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "schema_02",
+      "text": "How many feature columns are there, excluding the class/label column?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "schema_03",
+      "text": "What is the name of the label/target column?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "schema_06",
+      "text": "Are the feature columns (f1...f617) numeric or categorical?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "count_03",
+      "text": "How many samples belong to class 6?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "count_05",
+      "text": "Which class has the fewest samples, and how many?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "count_07",
+      "text": "Is the dataset perfectly class-balanced (same number of rows per class)?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "stat_std_f1",
+      "text": "What is the standard deviation of column f1?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "stat_mean_f10",
+      "text": "What is the mean value of column f10?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f100",
+      "text": "What are the min and max values of column f100?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "stat_range_f10",
+      "text": "What are the min and max values of column f10?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f617",
+      "text": "What are the min and max values of column f617?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "filter_01",
+      "text": "How many rows have a value of f1 greater than 0?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "corr_01",
+      "text": "What is the Pearson correlation coefficient between f1 and f2?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "groupby_02",
+      "text": "What is the average value of f300 for rows in class 20?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    }
+  ],
+  "config_changes": [
+    "number regex: letter-boundary check",
+    "tolerance 0.0001 -> 0.001",
+    "Call 2 falls back to tool result",
+    "tracer wired into eval"
+  ],
+  "notes": {
+    "problem": "Answer correctness was 20% although many answers were visibly right.",
+    "root_cause": "Number extraction matched digits inside column names (the 1 in f1), and a 0.0001 tolerance demanded 4+ decimal places.",
+    "fix": "Letter-boundary check in the number regex, tolerance loosened to 0.001, Call 2 falls back to the raw tool result when it fails.",
+    "result": "Correct answers now score as correct. Found next: columns 21-617 never reach the model's prompt."
+  },
+  "config": {
+    "csv_extractor": "CSVExtractor (discriminated union, structured CSVSchema)",
+    "schema_serialization": "to_prompt_string() with THRESHOLD=20 truncation + dtype-grouped summary for remaining columns (KNOWN BUG: summary lines computed but never appended to output -- columns past 20 are fully invisible to the model, not just vaguely summarized)",
+    "generator_model": "openai/gpt-oss-20b",
+    "tool_registration": "generator.tools set explicitly in eval script to match production's per-request mutation",
+    "synthesis_call": "fresh system+user messages, no tools/tool_choice passed, explicit no-tool/no-function-call instruction; wrapped in try/except with raw-tool-result fallback on synthesis failure (Groq's gpt-oss-20b can attempt an unprompted 'python' tool call even with no tools declared)",
+    "scoring": "deterministic numeric/range/string match (via compute_golden_value using golden_pandas_code) with LLM-judge fallback for categorical/fuzzy answers; extract_number/extract_all_numbers now use a negative lookbehind to avoid matching digits embedded in column names",
+    "tolerance": "0.001 globally (raised from 0.0001 across all golden_dataset.json questions)",
+    "tracer": "generate_with_tools()'s existing tracer hook now wired from the eval script, capturing per-question pandas_code and raw_tool_result alongside the final answer",
+    "sample_size": "15 of 45 golden questions (schema/count/stat categories sampled)"
+  }
+}

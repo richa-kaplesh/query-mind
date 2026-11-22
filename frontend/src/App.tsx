@@ -5,6 +5,8 @@ import remarkGfm from "remark-gfm";
 import { useStream } from "./hooks/useStream";
 import type { Source } from "./hooks/useStream";
 import { apiFetch } from "./session";
+import EmptyState from "./EmptyState";
+import type { Sample } from "./EmptyState";
 import "./App.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -239,6 +241,9 @@ export default function App() {
 
   // ── Concurrent upload + query queue ────────────────────────────────────
   const [pendingQuery, setPendingQuery] = useState<string | null>(null);
+  const pendingQueryRef = useRef<string | null>(null);
+  pendingQueryRef.current = pendingQuery;
+  const fireQueryRef = useRef<(q: string) => void>(() => {});
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Confirmation popover state ────────────────────────────────────────
@@ -393,12 +398,12 @@ export default function App() {
           setSuccessToast(`"${targetFilename}" ready`);
 
           // Auto-fire queued query
-          setPendingQuery((queued) => {
-            if (queued) {
-              setTimeout(() => fireQuery(queued), 50);
-            }
-            return null;
-          });
+          const queued = pendingQueryRef.current;
+          pendingQueryRef.current = null;
+          setPendingQuery(null);
+          if (queued) {
+            setTimeout(() => fireQueryRef.current(queued), 50);
+          }
         } else if (status === "failed") {
           stopPolling();
           setDocStatus("failed");
@@ -523,6 +528,20 @@ export default function App() {
       setError((err as Error).message);
     }
   }, [messages, resetStream, startStream]);
+  fireQueryRef.current = fireQuery;
+
+  const runSample = useCallback(async (sample: Sample) => {
+    try {
+      const res = await fetch(sample.path);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const file = new File([blob], sample.file, { type: sample.mime });
+      setPendingQuery(sample.question);
+      await uploadFile(file);
+    } catch {
+      setError(`Could not load sample "${sample.file}".`);
+    }
+  }, [uploadFile]);
 
   const handleSubmit = async () => {
     const question = inputValue.trim();
@@ -646,7 +665,7 @@ export default function App() {
       return "Type a question — will send once document is ready…";
     if (isDocReady && docName)
       return `Ask anything about ${docName}…`;
-    return "Ask QueryMind or attach a CSV/PDF dataset…";
+    return "Pick a sample or upload a file to start";
   })();
 
   // ─────────────────────────────────────────────────────────────────────
@@ -728,6 +747,7 @@ export default function App() {
 
           {/* New Conversation */}
           <div className="topbar-btn-wrap">
+            {messages.length > 0 && (
             <button
               className="topbar-action-btn"
               onClick={handleNewConversation}
@@ -738,6 +758,7 @@ export default function App() {
               <PlusIcon />
               <span>New</span>
             </button>
+            )}
             {confirmPopover === "new" && (
               <ConfirmPopover
                 message="Start a new conversation? Current chat will be cleared."
@@ -750,6 +771,7 @@ export default function App() {
 
           {/* Delete Conversation — button hidden on mobile, wrapper stays for popover */}
           <div className="topbar-btn-wrap">
+            {messages.length > 0 && (
             <button
               className="topbar-action-btn topbar-action-btn--danger topbar-btn--desktop"
               onClick={handleDeleteConversation}
@@ -760,6 +782,7 @@ export default function App() {
               <TrashIcon />
               <span>Delete</span>
             </button>
+            )}
             {confirmPopover === "delete" && (
               <ConfirmPopover
                 message="Delete this conversation? This cannot be undone."
@@ -792,6 +815,7 @@ export default function App() {
                 >
                   <LogsIcon /><span>Logs</span>
                 </button>
+                {messages.length > 0 && (
                 <button
                   className="topbar-more-item topbar-more-item--danger"
                   role="menuitem"
@@ -800,6 +824,7 @@ export default function App() {
                 >
                   <TrashIcon /><span>Delete</span>
                 </button>
+                )}
               </div>
             )}
           </div>
@@ -848,77 +873,18 @@ export default function App() {
 
         {/* Rich empty state */}
         {messages.length === 0 && !isStreaming && (
-          <div className="empty-center-state">
-            <h1 className="empty-center-brand">QueryMind</h1>
-            <p className="empty-center-sub">Upload a CSV or PDF and ask questions about it with AI.</p>
-
-            {/* Upload zone — acts as a large drag target / click-to-upload */}
-            <div
-              className="upload-zone-inline"
-              role="button"
-              tabIndex={0}
-              aria-label="Upload a file"
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-            >
-              <UploadCloudIcon />
-              <span className="upload-zone-inline-label">
-                {uploading ? "Uploading…" : "Drop a file here, or click to upload"}
-              </span>
-              <span className="upload-zone-inline-hint">CSV or PDF, up to 50 MB</span>
-            </div>
-
-            {/* Try a sample */}
-            <div className="sample-files-row">
-              <button
-                className="sample-file-card"
-                onClick={async () => {
-                  const res = await fetch("/samples/titanic.csv");
-                  const blob = await res.blob();
-                  const file = new File([blob], "titanic.csv", { type: "text/csv" });
-                  uploadFile(file);
-                }}
-                disabled={uploading}
-              >
-                <CsvIcon />
-                <div className="sample-file-info">
-                  <span className="sample-file-name">titanic.csv</span>
-                  <span className="sample-file-desc">Classic passenger dataset — survival analysis</span>
-                </div>
-              </button>
-              <button
-                className="sample-file-card"
-                onClick={async () => {
-                  const res = await fetch("/samples/sample_report.pdf");
-                  const blob = await res.blob();
-                  const file = new File([blob], "sample_report.pdf", { type: "application/pdf" });
-                  uploadFile(file);
-                }}
-                disabled={uploading}
-              >
-                <PdfIcon />
-                <div className="sample-file-info">
-                  <span className="sample-file-name">sample_report.pdf</span>
-                  <span className="sample-file-desc">Sample report — document Q&amp;A</span>
-                </div>
-              </button>
-            </div>
-
-            {/* Suggested questions — appear once a document is ready */}
-            {docStatus === "ready" && docType && (
-              <div className="suggested-chips">
-                <span className="suggested-label">Try asking:</span>
-                <div className="chips">
-                  {(docType === "csv"
-                    ? ["Summarise this dataset", "Which columns have missing values?", "Show the top 5 rows", "What is the distribution of the data?"]
-                    : ["Summarise this document", "What are the key figures?", "List the main findings", "What conclusions are drawn?"]
-                  ).map((q) => (
-                    <button key={q} className="chip" onClick={() => fireQuery(q)}>{q}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <EmptyState
+            busy={uploading || isDocProcessing}
+            loadingFile={isDocProcessing ? docName : null}
+            onRunSample={runSample}
+            onUpload={() => fileInputRef.current?.click()}
+            suggestions={docStatus === "ready" && docType
+              ? (docType === "csv"
+                ? ["Summarise this dataset", "Which columns have missing values?", "Show the top 5 rows", "What is the distribution of the data?"]
+                : ["Summarise this document", "What are the key figures?", "List the main findings", "What conclusions are drawn?"])
+              : null}
+            onAsk={(q) => fireQuery(q)}
+          />
         )}
 
         {/* Message thread */}
@@ -1211,18 +1177,6 @@ export default function App() {
               )}
             </button>
           </div>
-        </div>
-
-        <div className="input-footer">
-          {isDocProcessing && pendingQuery ? (
-            <span className="input-hint input-hint--processing">
-              Query queued: &ldquo;{pendingQuery.slice(0, 40)}{pendingQuery.length > 40 ? "…" : ""}&rdquo; — auto-sending once ready
-            </span>
-          ) : (
-            <span className="input-hint">
-              QueryMind analyzes datasets with AI · Attach CSV or PDF to begin
-            </span>
-          )}
         </div>
       </div>
     </div>

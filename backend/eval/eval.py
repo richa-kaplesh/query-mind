@@ -9,6 +9,9 @@ from datetime import datetime
 
 import httpx
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.eval_runs import meta_from_env, write_run
+
 # ---------- settings ----------
 BASE = "https://query-mind.onrender.com"
 GATEWAY_URL = "https://llm-gateway-qewa.onrender.com/"   # put your gateway address here
@@ -404,10 +407,51 @@ def print_progress(questions, baseline):
     print(f"baseline: {done}/{len(questions)} answered, {errored} errored (re-run next), {never} not run yet")
 
 
+# ---------- save one run file ----------
+BEHAVIOR_CATEGORIES = ["normal", "unanswerable", "false_premise", "out_of_context", "prompt_injection"]
+
+
+def save_run_file(questions, baseline):
+    records = [baseline[q["key"]] for q in questions if q["key"] in baseline]
+    ran = [r for r in records if r.get("status") == "ran"]
+    averages = {}
+    for cat in BEHAVIOR_CATEGORIES:
+        rows = [r for r in ran if r.get("category") == cat]
+        if rows:
+            averages[cat] = sum(1 for r in rows if r.get("passed")) / len(rows)
+    averages["overall"] = sum(1 for r in ran if r.get("passed")) / len(ran) if ran else 0.0
+    run_questions = [
+        {
+            "id": r["id"],
+            "text": r.get("question", ""),
+            "scores": {"passed": 1.0 if r.get("passed") else 0.0} if r.get("status") == "ran" else {},
+        }
+        for r in records
+    ]
+    name, notes, changes = meta_from_env(os.path.splitext(os.path.basename(BASELINE_PATH))[0])
+    path = write_run(
+        name=name,
+        eval_set_id="csv_behavior_v1",
+        averages=averages,
+        questions=run_questions,
+        config_changes=changes or [],
+        notes=notes,
+        question_count=len(questions),
+    )
+    print("saved run file to", path)
+
+
+def is_complete(questions, baseline):
+    return all(q["key"] in baseline and not needs_rerun(baseline[q["key"]]) for q in questions)
+
+
 # ---------- run one batch ----------
 def main():
     questions = load_all_questions(CATEGORY)
     baseline = load_baseline()
+    if sys.argv[1:] == ["save"]:
+        save_run_file(questions, baseline)
+        return
     if sys.argv[1:] == ["rescore"]:
         rescore_baseline(questions, baseline)
         records = [baseline[q["key"]] for q in questions if q["key"] in baseline]
@@ -473,6 +517,8 @@ def main():
     summarize_run(in_baseline)
     summarize_calls(in_baseline)
     print("saved to", BASELINE_PATH)
+    if is_complete(questions, baseline):
+        save_run_file(questions, baseline)
 
 
 if __name__ == "__main__":

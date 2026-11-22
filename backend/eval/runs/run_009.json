@@ -1,0 +1,164 @@
+{
+  "id": "run_009",
+  "name": "CSV baseline after fixes",
+  "created_at": "2026-09-01T10:28:22Z",
+  "doc_type": "csv",
+  "eval_set": {
+    "id": "csv_golden_v1",
+    "name": "CSV golden set v1",
+    "question_count": 15
+  },
+  "baseline_id": null,
+  "metrics": [
+    {
+      "key": "tool_appropriateness",
+      "label": "Tool appropriateness",
+      "value": 0.5333,
+      "higher_is_better": true
+    },
+    {
+      "key": "answer_correctness",
+      "label": "Answer correctness",
+      "value": 0.2,
+      "higher_is_better": true
+    }
+  ],
+  "questions": [
+    {
+      "id": "schema_01",
+      "text": "How many columns does this dataset have in total (including the label column)?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "schema_02",
+      "text": "How many feature columns are there, excluding the class/label column?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "schema_03",
+      "text": "What is the name of the label/target column?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "schema_06",
+      "text": "Are the feature columns (f1...f617) numeric or categorical?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "count_03",
+      "text": "How many samples belong to class 6?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "count_05",
+      "text": "Which class has the fewest samples, and how many?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "count_07",
+      "text": "Is the dataset perfectly class-balanced (same number of rows per class)?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "stat_std_f1",
+      "text": "What is the standard deviation of column f1?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "stat_mean_f10",
+      "text": "What is the mean value of column f10?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "stat_range_f100",
+      "text": "What are the min and max values of column f100?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "stat_range_f10",
+      "text": "What are the min and max values of column f10?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "stat_range_f617",
+      "text": "What are the min and max values of column f617?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "filter_01",
+      "text": "How many rows have a value of f1 greater than 0?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "corr_01",
+      "text": "What is the Pearson correlation coefficient between f1 and f2?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "groupby_02",
+      "text": "What is the average value of f300 for rows in class 20?",
+      "scores": {
+        "tool_appropriateness": 0.0,
+        "answer_correctness": 0.0
+      }
+    }
+  ],
+  "config_changes": [],
+  "notes": {
+    "problem": "The CSV eval could not run end to end.",
+    "root_cause": "The eval generator had no tools registered, the schema prompt printed all 617 columns (~40k tokens), Call 2 still allowed tool calls, and the scorer could not compare (min, max) answers.",
+    "fix": "Registered the pandas sandbox tool in the eval, cut the schema to 20 detailed columns plus a summary, rebuilt Call 2 without tools, added range scoring.",
+    "result": "First working run on 15 questions. Still open: schema_02 fails because the label column is hidden by the schema cutoff."
+  },
+  "config": {
+    "csv_extractor": "CSVExtractor (discriminated union, structured CSVSchema)",
+    "schema_serialization": "to_prompt_string() with THRESHOLD=20 truncation + dtype-grouped summary for remaining columns (known gap: doesn't guarantee label/target column visibility)",
+    "generator_model": "openai/gpt-oss-20b",
+    "tool_registration": "generator.tools set explicitly in eval script to match production's per-request mutation",
+    "synthesis_call": "fresh system+user messages, no tools/tool_choice passed, explicit no-further-computation instruction",
+    "scoring": "deterministic numeric/range/string match (via compute_golden_value using golden_pandas_code) with LLM-judge fallback for categorical/fuzzy answers",
+    "sample_size": "15 of 45 golden questions (schema/count/stat categories sampled)"
+  }
+}

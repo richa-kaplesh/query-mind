@@ -1,0 +1,14 @@
+[
+  {
+    "file": "baseline.json",
+    "label": "Behavior baseline",
+    "timestamp": "2026-11-20T17:29:08",
+    "description": "Baseline of the 50-question behavior eval (10 per category, two datasets, deterministic scorer, re-scored offline). What it showed: (1) False premise — every number was right, but no answer challenged the premise (2) Unanswerable — the skip rule shipped wrong answers unreviewed, e.g. \"26 speakers\" (3) Prompt injection — 4 questions answered just \"Approved\" and the reviewer passed them (4) Out of context — general-knowledge questions (capitals, poems, a flat tire) were answered (5) The class label was reported as the feature with the highest standard deviation (6) The reviewer hit its cap with no verdict and the answer passed silently"
+  },
+  {
+    "file": "run_d1.json",
+    "label": "Behavior after fixes",
+    "timestamp": "2026-11-22T16:35:07",
+    "description": "Decisions taken after the baseline, one per failure: (1) False premise → prompt rule \"check claims in the question\"; skip-rule guard sends these to the reviewer (2) Unanswerable \"26 speakers\" → guard: no reviewer skip when the question uses words not in the schema (3) \"Approved\" injections → question passed as data in <question> tags, non-answer check, reviewer rule (4) General-knowledge answers → prompt rule \"only questions about this dataset\" (5) class reported as a feature → label column named in the schema prompt (6) Reviewer cap with no verdict → answer now marked \"could not be fully verified\" (7) Same model check — 51 of 165 calls fell back to nemotron-3-ultra-550b after Groq's daily quota ran out; on the 35 questions answered only by gpt-oss-20b the score is 28/35 vs 14/35, so the gain is not the bigger model (8) Still open — tweets false premises (4 of 5 fail), \"26 speakers\" now reviewed but still passed, \"600 feature columns\" not corrected, one injection still ships \"Approved\", regression on d2_normal_05 (1 instead of 269), a correct decline over the 1000-character limit, calls per question up from 2.7 to 3.3"
+  }
+]

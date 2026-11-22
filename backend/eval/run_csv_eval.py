@@ -3,6 +3,8 @@ import os
 import json
 import re
 import pandas as pd
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.eval_runs import meta_from_env, scored_questions, write_run
 from groq import Groq
 from core.generator import Generator
 from core.extractors.csv_extractor import CSVExtractor
@@ -354,6 +356,21 @@ def finalize_csv_eval_run():
         json.dump(history, f, indent=2)
 
     print(f"Finalized run with {len(results)} questions saved to {history_path}")
+    save_run_file(run_record)
+
+def save_run_file(run_record: dict, config_changes=None):
+    name, notes, changes = meta_from_env(run_record.get("label", "CSV eval"))
+    path = write_run(
+        name=name,
+        eval_set_id="csv_golden_v1",
+        averages=run_record["averages"],
+        questions=scored_questions(run_record["per_question"], lambda i, q: q["id"]),
+        config=run_record.get("config"),
+        config_changes=changes if changes is not None else config_changes,
+        notes=notes,
+    )
+    print(f"Saved run file to {path}")
+
 def recompute_last_run_scores():
     """Re-scores the most recent eval run using the corrected golden dataset,
     WITHOUT re-querying any LLM — the generated answers/tool_used values
@@ -402,6 +419,7 @@ def recompute_last_run_scores():
         json.dump(history, f, indent=2)
 
     print(f"Corrected scores: tool={avg_tool:.2f}, correctness={avg_correctness:.2f}")
+    save_run_file(corrected_run, ["re-score only, no new LLM calls"])
 if __name__ == "__main__":
     
     # run_single_csv_eval("schema_01")
@@ -472,3 +490,4 @@ if __name__ == "__main__":
         with open(history_path, "w") as f:
             json.dump(history, f, indent=2)
         print(f"Saved run to {history_path}")
+        save_run_file(run_record)

@@ -1,0 +1,165 @@
+{
+  "id": "run_015",
+  "name": "Live gateway pass, re-scored",
+  "created_at": "2026-09-24T09:46:19Z",
+  "doc_type": "csv",
+  "eval_set": {
+    "id": "csv_golden_v1",
+    "name": "CSV golden set v1",
+    "question_count": 15
+  },
+  "baseline_id": "run_009",
+  "metrics": [
+    {
+      "key": "tool_appropriateness",
+      "label": "Tool appropriateness",
+      "value": 1.0,
+      "higher_is_better": true
+    },
+    {
+      "key": "answer_correctness",
+      "label": "Answer correctness",
+      "value": 0.8667,
+      "higher_is_better": true
+    }
+  ],
+  "questions": [
+    {
+      "id": "schema_01",
+      "text": "How many columns does this dataset have in total (including the label column)?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "schema_02",
+      "text": "How many feature columns are there, excluding the class/label column?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "schema_03",
+      "text": "What is the name of the label/target column?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "schema_06",
+      "text": "Are the feature columns (f1...f617) numeric or categorical?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "count_03",
+      "text": "How many samples belong to class 6?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "count_05",
+      "text": "Which class has the fewest samples, and how many?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 0.0
+      }
+    },
+    {
+      "id": "count_07",
+      "text": "Is the dataset perfectly class-balanced (same number of rows per class)?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "stat_std_f1",
+      "text": "What is the standard deviation of column f1?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "stat_mean_f10",
+      "text": "What is the mean value of column f10?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f100",
+      "text": "What are the min and max values of column f100?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f10",
+      "text": "What are the min and max values of column f10?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "stat_range_f617",
+      "text": "What are the min and max values of column f617?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "filter_01",
+      "text": "How many rows have a value of f1 greater than 0?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "corr_01",
+      "text": "What is the Pearson correlation coefficient between f1 and f2?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    },
+    {
+      "id": "groupby_02",
+      "text": "What is the average value of f300 for rows in class 20?",
+      "scores": {
+        "tool_appropriateness": 1.0,
+        "answer_correctness": 1.0
+      }
+    }
+  ],
+  "config_changes": [
+    "re-score only, no new LLM calls"
+  ],
+  "notes": null,
+  "config": {
+    "csv_extractor": "CSVExtractor (discriminated union, structured CSVSchema)",
+    "execution_path": "generate_stream() -> gateway_client.complete() -> LLM Gateway /query -> persistent pandas worker (module-level singleton, boots once at FastAPI startup via lifespan, self-healing on file-load and liveness)",
+    "sandbox_security": "AST allowlist (ALLOWED_ATTRIBUTES) + runtime SafeModuleProxy/SafeDataFrameProxy defense-in-depth + POSIX resource.setrlimit guarded for Windows dev",
+    "gateway_caching": "Jina text-matching embeddings, semantic similarity threshold 0.90; disabled for any request where tools is not None OR is_tool_related is True",
+    "gateway_routing": "sticky per-conversation provider (token bucket, Groq 30rpm/Gemini 15rpm), retry-with-backoff (2 attempts/provider) before fallback",
+    "data_cleaning": "shared strip_stray_quotes() utility, used by both CSVExtractor._load() and the persistent worker's CSV load",
+    "schema_serialization": "to_prompt_string() with THRESHOLD=20 truncation + dtype-grouped summary for remaining columns",
+    "generator_model": "openai/gpt-oss-20b",
+    "scoring": "deterministic numeric/range/string match (via compute_golden_value using golden_pandas_code) with LLM-judge fallback; word-boundary regex match for the non-tolerance string path (fixed from raw substring match, which risked false positives on short numeric golden values like single-digit class labels)",
+    "tolerance": "0.001 globally",
+    "sample_size": "15 of 45 golden questions (schema/count/stat/filter/groupby categories sampled)"
+  }
+}

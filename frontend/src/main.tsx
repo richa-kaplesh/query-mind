@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import App from './App.tsx'
-import LogsPage from './LogsPage.tsx'
+import LogsPage from './logs/LogsPage.tsx'
 import './App.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

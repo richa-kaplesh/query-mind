@@ -1,0 +1,209 @@
+{
+  "id": "run_006",
+  "name": "Baseline rerun 5",
+  "created_at": "2026-08-29T08:13:42Z",
+  "doc_type": "pdf",
+  "eval_set": {
+    "id": "pdf_hdfc_v1",
+    "name": "HDFC fund leaflet PDF v1",
+    "question_count": 15
+  },
+  "baseline_id": "run_002",
+  "metrics": [
+    {
+      "key": "faithfulness",
+      "label": "Faithfulness",
+      "value": 1.0,
+      "higher_is_better": true
+    },
+    {
+      "key": "answer_relevancy",
+      "label": "Answer relevancy",
+      "value": 1.0,
+      "higher_is_better": true
+    },
+    {
+      "key": "context_precision",
+      "label": "Context precision",
+      "value": 0.72,
+      "higher_is_better": true
+    },
+    {
+      "key": "context_recall",
+      "label": "Context recall",
+      "value": 1.0,
+      "higher_is_better": true
+    }
+  ],
+  "questions": [
+    {
+      "id": "q01",
+      "text": "What is the minimum investment required for this fund?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q02",
+      "text": "What is the exit load if redeemed before 1 year?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q03",
+      "text": "What is the exit load after 2 years?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q04",
+      "text": "What is the base currency of the fund?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q05",
+      "text": "What is the Total Expense Ratio (TER) for Regular Plan Class B?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q06",
+      "text": "What was the 5-year CAGR return for Developed Markets?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q07",
+      "text": "What was the 10-year CAGR return for Emerging Markets?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q08",
+      "text": "What was the 1-year CAGR return for Nifty 50?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q09",
+      "text": "How many developed markets and constituents does the Developed Markets Equity Fund cover?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q10",
+      "text": "How many emerging markets and constituents does the Emerging Markets Equity Fund cover?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.2,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q11",
+      "text": "Is there a lock-in period for this fund?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.8,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q12",
+      "text": "What index does the Developed Markets Equity Fund track?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.9,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q13",
+      "text": "What is HDFC AMC International's IFSCA registration number?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.9,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q14",
+      "text": "Does this document guarantee any specific rate of return?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0
+      }
+    },
+    {
+      "id": "q15",
+      "text": "What is the minimum age requirement to invest in this fund?",
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "context_precision": 0.0,
+        "context_recall": 1.0
+      }
+    }
+  ],
+  "config_changes": [],
+  "notes": null,
+  "config": {
+    "pdf_extractor": "PyMuPDF (layout-aware, font-size heading detection)",
+    "csv_extractor": "pandas schema-only (CSVSchema/ColumnSchema)",
+    "chunker": {
+      "method": "fixed-size char split",
+      "chunk_size": 500,
+      "chunk_overlap": 50
+    },
+    "embedding_model": "jina-embeddings-v3",
+    "retriever": {
+      "method": "hybrid BM25 + FAISS",
+      "alpha": 0.5,
+      "top_k": 20
+    },
+    "reranker": "jina-reranker-v2-base-multilingual",
+    "generator_model": "openai/gpt-oss-20b"
+  }
+}

@@ -11,6 +11,7 @@ from core.retriever import HybridRetriever
 from core.reranker import Reranker
 from api.router import router
 from api.dashboard_routes import router as dashboard_router
+from api.eval_routes import router as eval_router
 from core.token_tracker import TokenTracker
 from core.tools.pandas_worker_manager import worker_manager
 import uuid
@@ -99,3 +100,4 @@ log.info("All components loaded ✓")
 
 app.include_router(router)
 app.include_router(dashboard_router)
+app.include_router(eval_router)

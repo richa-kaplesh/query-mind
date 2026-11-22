@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "D:\\query-mind\\backend\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "main:app", "--app-dir", "D:\\query-mind\\backend", "--port", "8000"],
+      "port": 8000
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set VITE_API_BASE=http://127.0.0.1:8000&& npm --prefix D:\\query-mind\\frontend run dev -- --port 5173"],
+      "port": 5173
+    }
+  ]
+}
