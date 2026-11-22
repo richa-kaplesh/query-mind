@@ -12,6 +12,20 @@
       "runtimeExecutable": "cmd",
       "runtimeArgs": ["/c", "set VITE_API_BASE=http://127.0.0.1:8000&& npm --prefix D:\\query-mind\\frontend run dev -- --port 5173"],
       "port": 5173
+    },
+    {
+      "name": "backend-verify",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd /d D:\\query-mind\\backend&& set GATEWAY_URL=http://127.0.0.1:8020&& .venv\\Scripts\\python.exe -m uvicorn main:app --port 8010"],
+      "port": 8010,
+      "autoPort": false
+    },
+    {
+      "name": "frontend-verify",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set VITE_API_BASE=http://127.0.0.1:8010&& npm --prefix D:\\query-mind\\frontend run dev -- --port 5180 --strictPort"],
+      "port": 5180,
+      "autoPort": false
     }
   ]
 }

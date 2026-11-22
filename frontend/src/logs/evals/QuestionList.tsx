@@ -4,6 +4,18 @@ import { deltaTone, formatDelta, isBelowThreshold } from "../thresholds";
 import { meanScore, prettyKey, questionColumns } from "./evalMath";
 
 const MEAN = "__mean";
+const PASSED = "passed";
+
+function PassCell({ passed }: { passed: boolean }) {
+  return (
+    <span className={`lg-pass lg-pass--${passed ? "yes" : "no"}`}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {passed ? <polyline points="20 6 9 17 4 12" /> : <path d="M18 6L6 18M6 6l12 12" />}
+      </svg>
+      {passed ? "Pass" : "Fail"}
+    </span>
+  );
+}
 
 export default function QuestionList({ questions, baselineQuestions, metrics }: {
   questions: RunQuestion[];
@@ -14,6 +26,7 @@ export default function QuestionList({ questions, baselineQuestions, metrics }: 
   const columns = useMemo(() => questionColumns(questions, metrics.map(m => m.key)), [questions, metrics]);
   const labelOf = (k: string) => metrics.find(m => m.key === k)?.label ?? prettyKey(k);
   const higherOf = (k: string) => metrics.find(m => m.key === k)?.higher_is_better ?? true;
+  const passMode = columns.includes(PASSED);
   const baseById = useMemo(
     () => new Map((baselineQuestions ?? []).map(q => [q.id, q])),
     [baselineQuestions],
@@ -53,7 +66,7 @@ export default function QuestionList({ questions, baselineQuestions, metrics }: 
             <tr>
               <th scope="col" className="lg-col-q">Question</th>
               {columns.map(k => <th key={k} scope="col" className="lg-num">{labelOf(k)}</th>)}
-              {baselineQuestions && <th scope="col" className="lg-num">Δ mean</th>}
+              {baselineQuestions && <th scope="col" className="lg-num">{passMode ? "Δ" : "Δ mean"}</th>}
             </tr>
           </thead>
           <tbody>
@@ -71,6 +84,9 @@ export default function QuestionList({ questions, baselineQuestions, metrics }: 
                   {columns.map(k => {
                     const v = q.scores[k];
                     if (v === undefined) return <td key={k} className="lg-num lg-muted">—</td>;
+                    if (k === PASSED) {
+                      return <td key={k} className="lg-num"><PassCell passed={v >= 1} /></td>;
+                    }
                     const low = isBelowThreshold(v, higherOf(k));
                     return (
                       <td key={k} className={`lg-num ${low ? "lg-low" : ""}`}>
@@ -78,7 +94,19 @@ export default function QuestionList({ questions, baselineQuestions, metrics }: 
                       </td>
                     );
                   })}
-                  {baselineQuestions && (
+                  {baselineQuestions && passMode && (
+                    <td className="lg-num">
+                      {(() => {
+                        const now = q.scores[PASSED];
+                        const before = base?.scores[PASSED];
+                        if (now === undefined || before === undefined || (now >= 1) === (before >= 1)) return null;
+                        return now >= 1
+                          ? <span className="lg-delta lg-delta--success">new pass</span>
+                          : <span className="lg-delta lg-delta--danger">new fail</span>;
+                      })()}
+                    </td>
+                  )}
+                  {baselineQuestions && !passMode && (
                     <td className="lg-num">
                       {d === null ? (
                         <span className="lg-muted">—</span>

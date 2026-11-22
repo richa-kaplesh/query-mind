@@ -89,9 +89,7 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .es-tag {
@@ -183,8 +181,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
 }
 
 @media (max-width: 640px) {

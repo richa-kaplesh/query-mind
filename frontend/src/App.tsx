@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useStream } from "./hooks/useStream";
 import type { Source } from "./hooks/useStream";
 import { apiFetch } from "./session";
 import EmptyState from "./EmptyState";
 import type { Sample } from "./EmptyState";
+import { AnswerMarkdown, SourceCards, CodeRan, citeCardId, needsExpand } from "./AnswerParts";
 import "./App.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -18,6 +17,7 @@ interface Message {
   timestamp: Date;
   toolUsed?: string | null;
   sources?: Source[];
+  code?: string[];
   isUploadEvent?: boolean;
   fileName?: string;       // generic: works for CSV and PDF
   fileType?: "csv" | "pdf";
@@ -128,12 +128,6 @@ const ChartIcon = () => (
   </svg>
 );
 
-const ChevronIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
-
 const CheckCircleIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
@@ -227,6 +221,8 @@ export default function App() {
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [backendDown, setBackendDown] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+  const [activeCite, setActiveCite] = useState<{ msgId: string; n: number } | null>(null);
+  const citeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // ── Upload / document state ─────────────────────────────────────────────
@@ -265,7 +261,7 @@ export default function App() {
 
   // ── Stream hook ──────────────────────────────────────────────────────────
   const {
-    streamedAnswer, streamedSources, streamedTool, isStreaming,
+    streamedAnswer, streamedSources, streamedTool, streamedCode, isStreaming,
     startStream, reset: resetStream, stop: stopStream,
   } = useStream(API_BASE);
 
@@ -370,10 +366,11 @@ export default function App() {
           timestamp: new Date(),
           toolUsed: streamedTool ?? null,
           sources: streamedSources.length > 0 ? streamedSources : undefined,
+          code: streamedCode.length > 0 ? streamedCode : undefined,
         },
       ]);
     }
-  }, [isStreaming, streamedAnswer, streamedTool, streamedSources]);
+  }, [isStreaming, streamedAnswer, streamedTool, streamedSources, streamedCode]);
 
   // ── Document status polling ───────────────────────────────────────────
   const stopPolling = useCallback(() => {
@@ -627,6 +624,18 @@ export default function App() {
       n.has(key) ? n.delete(key) : n.add(key);
       return n;
     });
+  };
+
+  const handleCite = (msgId: string, n: number) => {
+    if (needsExpand(n)) {
+      setExpandedSources((prev) => new Set(prev).add(msgId));
+    }
+    setActiveCite({ msgId, n });
+    requestAnimationFrame(() => {
+      document.getElementById(citeCardId(msgId, n))?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    if (citeTimerRef.current) clearTimeout(citeTimerRef.current);
+    citeTimerRef.current = setTimeout(() => setActiveCite(null), 2400);
   };
 
   // ── Drag events ───────────────────────────────────────────────────────
@@ -923,7 +932,6 @@ export default function App() {
               if ((msg as Message & { isPending?: boolean }).isPending) {
                 return (
                   <div key={msg.id} className="msg-row user">
-                    <div className="avatar user-av">U</div>
                     <div className="msg-body">
                       <div className="msg-bubble msg-bubble--pending">
                         <SpinnerIcon size={12} />
@@ -938,13 +946,8 @@ export default function App() {
               // Regular message bubble
               return (
                 <div key={msg.id} className={`msg-row ${msg.role}`}>
-                  {/* Fix 2: Assistant avatar before msg-body (stays left) */}
                   {msg.role === "assistant" && (
                     <div className="avatar ai-av">QM</div>
-                  )}
-                  {/* Fix 2: User avatar also before msg-body — row-reverse places it right of bubble */}
-                  {msg.role === "user" && (
-                    <div className="avatar user-av">U</div>
                   )}
                   <div className="msg-body">
                     <div className="msg-bubble">
@@ -958,9 +961,11 @@ export default function App() {
                         </div>
                       )}
                       {msg.role === "assistant" ? (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {msg.content}
-                        </ReactMarkdown>
+                        <AnswerMarkdown
+                          content={msg.content}
+                          sources={msg.sources}
+                          onCite={(n) => handleCite(msg.id, n)}
+                        />
                       ) : (
                         msg.content
                       )}
@@ -971,38 +976,17 @@ export default function App() {
                     )}
 
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
-                      <div className="sources-panel">
-                        <button className="sources-toggle" onClick={() => toggleSource(msg.id)} aria-expanded={expandedSources.has(msg.id)}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
-                          {msg.sources.length} source{msg.sources.length > 1 ? "s" : ""}
-                          <span className={`sources-chevron ${expandedSources.has(msg.id) ? "open" : ""}`}>
-                            <ChevronIcon />
-                          </span>
-                        </button>
-                        <div className={`sources-list-wrap ${expandedSources.has(msg.id) ? "open" : ""}`}>
-                          <div className="sources-list">
-                            {msg.sources.map((src, i) => (
-                              <div key={i} className="source-item">
-                                <div className="source-header">
-                                  <FileIcon />
-                                  <span className="source-name">{src.source}</span>
-                                  {src.page !== "N/A" && (
-                                    <span className="source-page">p.{src.page}</span>
-                                  )}
-                                  <div className="source-score-bar-track">
-                                    <div
-                                      className="source-score-bar-fill"
-                                      style={{ width: `${Math.round(src.rerank_score * 100)}%` }}
-                                    />
-                                  </div>
-                                  <span className="source-score">{(src.rerank_score * 100).toFixed(0)}%</span>
-                                </div>
-                                <p className="source-text">{src.text.slice(0, 220)}{src.text.length > 220 ? "…" : ""}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                      <SourceCards
+                        msgId={msg.id}
+                        sources={msg.sources}
+                        expanded={expandedSources.has(msg.id)}
+                        highlighted={activeCite?.msgId === msg.id ? activeCite.n : null}
+                        onToggle={() => toggleSource(msg.id)}
+                      />
+                    )}
+
+                    {msg.role === "assistant" && !msg.sources && msg.code && msg.code.length > 0 && (
+                      <CodeRan code={msg.code} />
                     )}
 
                     {/* Copy + Retry actions — appear on hover / always on touch */}
@@ -1075,9 +1059,7 @@ export default function App() {
                   )}
                   {streamedAnswer ? (
                     <div className="msg-bubble">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {streamedAnswer}
-                      </ReactMarkdown>
+                      <AnswerMarkdown content={streamedAnswer} sources={streamedSources} />
                       <span className="stream-cursor" />
                     </div>
                   ) : (

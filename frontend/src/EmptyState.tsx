@@ -21,8 +21,8 @@ export const SAMPLES: Sample[] = [
     primary: true,
   },
   {
-    file: "sample_report.pdf",
-    path: "/samples/sample_report.pdf",
+    file: "report.pdf",
+    path: "/samples/report.pdf",
     mime: "application/pdf",
     type: "pdf",
     question: "What are the top barriers to AI adoption?",
@@ -91,7 +91,7 @@ export default function EmptyState({ busy, loadingFile, onRunSample, onUpload, s
             <div key={s.file} className={`es-card ${s.primary ? "es-card--primary" : ""}`}>
               <div className="es-card-head">
                 <span className="es-card-icon">{s.type === "pdf" ? <PdfIcon /> : <CsvIcon />}</span>
-                <span className="es-card-file">{s.file}</span>
+                <span className="es-card-file" title={s.file}>{s.file}</span>
                 <span className="es-tag">{s.tag}</span>
               </div>
               <p className="es-card-q">{s.question}</p>

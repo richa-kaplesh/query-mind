@@ -224,7 +224,10 @@
   font-weight: 500;
 }
 
-.lg-metric-row { display: flex; align-items: baseline; gap: var(--space-2); }
+.lg-metric-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-2); }
+.lg-metric-row .lg-metric-value { white-space: nowrap; }
+.lg-metric-row .lg-delta { white-space: nowrap; }
+.lg-metrics--evals { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 
 .lg-metric-value {
   font-size: var(--fs-xl);
@@ -233,6 +236,25 @@
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
+
+.lg-metric-sub {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.lg-metrics-more { align-self: flex-start; }
+
+.lg-pass {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.lg-pass--yes { color: var(--success); }
+.lg-pass--no { color: var(--danger); }
 
 .lg-kpi { border-left: 3px solid var(--accent); }
 .lg-kpi .lg-metric-value { font-size: var(--fs-lg); margin-top: var(--space-1); }
@@ -293,6 +315,8 @@
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
+
+.lg-fix-item .lg-tags { margin-top: var(--space-1); }
 
 .lg-tag {
   font-size: var(--fs-xs);

@@ -52,9 +52,48 @@ def _read_all():
     return runs
 
 
+SCORE_METRICS = {"faithfulness", "answer_relevancy", "context_precision", "context_recall"}
+_CATEGORY_RE =re.compile(r"^(?:d\d+_)?(.+?)_\d+$")
+
+
+def _category(question_id):
+    m = _CATEGORY_RE.match(question_id or "")
+    return m.group(1) if m else None
+
+
+def _metric_counts(key, questions):
+    if key in SCORE_METRICS:
+        return None
+    scored = [q.get("scores") or {} for q in questions]
+    if any(key in s for s in scored):
+        pool = [s[key] for s in scored if key in s]
+    elif key == "overall":
+        pool = [s["passed"] for s in scored if "passed" in s]
+    else:
+        pool = [
+            (q.get("scores") or {})["passed"] for q in questions
+            if "passed" in (q.get("scores") or {}) and _category(q.get("id")) == key
+        ]
+    if not pool or any(v not in (0, 1) for v in pool):
+        return None
+    return int(sum(pool)), len(pool)
+
+
+def _with_counts(run):
+    questions = run.get("questions") or []
+    metrics = []
+    for m in run.get("metrics") or []:
+        entry = dict(m)
+        counts = _metric_counts(m["key"], questions)
+        if counts and abs(counts[0] / counts[1] - m["value"]) < 0.01:
+            entry["passed"], entry["total"] = counts
+        metrics.append(entry)
+    return {**run, "metrics": metrics}
+
+
 def list_runs():
     runs = sorted(_read_all(), key=lambda r: r["created_at"], reverse=True)
-    return [{k: r.get(k) for k in SUMMARY_KEYS} for r in runs]
+    return [{k: r.get(k) for k in SUMMARY_KEYS} for r in map(_with_counts, runs)]
 
 
 def get_run(run_id):
@@ -64,7 +103,7 @@ def get_run(run_id):
     if not os.path.exists(path):
         return None
     with open(path, "r", encoding="utf-8") as f:
-        run = json.load(f)
+        run = _with_counts(json.load(f))
     return {k: run.get(k) for k in DETAIL_KEYS}
 
 

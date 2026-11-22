@@ -7,6 +7,7 @@ from core.token_utils import estimate_tokens
 from core.models import CSVSchema
 from core.answer_check import is_trivially_verified, is_non_answer, skip_blocker
 from core.reviewer import ReviewResult
+from core.citations import finalize_citations
 from config import settings
 import json
 import asyncio
@@ -47,9 +48,9 @@ Rules you MUST follow:
 2. You may call search_documents more than once with a refined or different query if the first search \
    doesn't return what you need, or if the question has multiple parts requiring separate searches.
 3. Answer ONLY from passages returned by search_documents. Do not use prior knowledge.
-4. Cite your sources inline using the format [source, p.N] or [source, p.N — Heading] when a heading \
-   is available.
-5. If multiple passages support the answer, cite all of them.
+4. Each passage starts with a number in brackets, like [1]. Cite passages inline with that number only, \
+   e.g. "Revenue grew 12% [1]." Never write file names, page numbers or "Source:" in the answer.
+5. If multiple passages support the answer, cite all of them, e.g. [1][3].
 6. If, after searching, the answer cannot be found in the returned passages, respond exactly with: \
    "The information was not found in the document."
 7. Be concise, accurate, and structured. Use bullet points or numbered lists when helpful.
@@ -655,10 +656,16 @@ class Generator:
         for tool_name in tools_used:
             yield f"__tool__:{tool_name}"
 
+        code_ran = list(dict.fromkeys(
+            tool_input for name, tool_input, _ in tool_log if name == "pandas_sandbox" and tool_input
+        ))
+        if code_ran:
+            yield "__code__:" + json.dumps(code_ran)
+
         for word in answer.split(" "):
             yield word + " "
             await asyncio.sleep(0.02)
-            
+
     # ── RAG streaming (PDF context-stuffing path) ─────────────────────────────
 
     def _build_rag_context(self, chunks: list[dict]) -> str:
@@ -777,13 +784,19 @@ class Generator:
             }},
         )
 
+        rag_tool = self._get_tool_by_name("search_documents")
+        answer, sources = finalize_citations(answer, getattr(rag_tool, "registry", None))
+        record("citations", {"answer": answer, "sources": sources})
+
         for tool_name in tools_used:
             yield f"__tool__:{tool_name}"
+
+        yield "__sources__:" + json.dumps(sources)
 
         for word in answer.split(" "):
             yield word + " "
             await asyncio.sleep(0.02)
-            
+
     def generate_rag(self, query: str, chunks: list[dict]) -> dict:
         context = self._build_rag_context(chunks)
         messages = [

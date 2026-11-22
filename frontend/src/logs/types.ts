@@ -11,6 +11,8 @@ export interface Metric {
   label: string;
   value: number;
   higher_is_better: boolean;
+  passed?: number;
+  total?: number;
 }
 
 export interface RunSummary {

@@ -66,9 +66,9 @@ NOTES = {
     },
     "2026-11-22T16:35:07": {
         "problem": "The behavior baseline failed on false premises, unanswerable questions, prompt injections and off-topic questions.",
-        "root_cause": "The reviewer skip rule let unreviewed answers through, the prompt had no rule for premises or scope, the question was not isolated as data, and the label column was not named.",
+        "root_cause": "The reviewer skip rule let unchecked answers through, and the prompt had no rules for premises, scope or the label column and did not isolate the question as data.",
         "fix": "Prompt rules to check claims and stay on the dataset, a reviewer guard for words not in the schema, the question wrapped in <question> tags with a non-answer check, the label column named, and capped reviews marked 'could not be fully verified'.",
-        "result": "On the 35 questions answered only by gpt-oss-20b: 28/35 vs 14/35. Still open: tweet false premises, one injection, a regression on d2_normal_05.",
+        "result": "All 50 questions: 41/50 vs 21/50. Subset: 35 questions answered only by gpt-oss-20b. 28/35 vs 14/35. Still open: tweet false premises, one injection, a regression on d2_normal_05.",
     },
 }
 

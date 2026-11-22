@@ -9,21 +9,24 @@ export interface ConversationTurn {
 }
 
 export interface Source {
-  source: string;
-  page: string | number;
-  text: string;
-  rerank_score: number;
+  n: number;
+  filename: string;
+  page: number | null;
+  section: string | null;
+  snippet: string;
+  score: number | null;
 }
 
 interface StreamEvent {
-  type: "token" | "sources" | "tool";
-  content: string | Source[];
+  type: "token" | "sources" | "tool" | "code";
+  content: string | Source[] | string[];
 }
 
 interface UseStreamReturn {
   streamedAnswer: string;
   streamedSources: Source[];
   streamedTool: string | null;
+  streamedCode: string[];
   isStreaming: boolean;
   startStream: (question: string, conversationHistory?: ConversationTurn[]) => Promise<void>;
   reset: () => void;
@@ -36,6 +39,7 @@ export function useStream(apiBase: string): UseStreamReturn {
   const [streamedAnswer, setStreamedAnswer] = useState("");
   const [streamedSources, setStreamedSources] = useState<Source[]>([]);
   const [streamedTool, setStreamedTool] = useState<string | null>(null);
+  const [streamedCode, setStreamedCode] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -45,6 +49,7 @@ export function useStream(apiBase: string): UseStreamReturn {
     setStreamedAnswer("");
     setStreamedSources([]);
     setStreamedTool(null);
+    setStreamedCode([]);
     setIsStreaming(false);
   }, []);
 
@@ -62,6 +67,7 @@ export function useStream(apiBase: string): UseStreamReturn {
       setStreamedAnswer("");
       setStreamedSources([]);
       setStreamedTool(null);
+      setStreamedCode([]);
       setIsStreaming(true);
 
       try {
@@ -114,6 +120,8 @@ export function useStream(apiBase: string): UseStreamReturn {
               setStreamedAnswer((prev) => prev + event.content);
             } else if (event.type === "sources" && Array.isArray(event.content)) {
               setStreamedSources(event.content as Source[]);
+            } else if (event.type === "code" && Array.isArray(event.content)) {
+              setStreamedCode(event.content as string[]);
             } else if (event.type === "tool" && typeof event.content === "string") {
               setStreamedTool(event.content);
             }
@@ -129,5 +137,5 @@ export function useStream(apiBase: string): UseStreamReturn {
     [apiBase]
   );
 
-  return { streamedAnswer, streamedSources, streamedTool, isStreaming, startStream, reset, stop };
+  return { streamedAnswer, streamedSources, streamedTool, streamedCode, isStreaming, startStream, reset, stop };
 }

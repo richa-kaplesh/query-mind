@@ -188,6 +188,7 @@ async def query_document_stream(body: QueryRequest, request: Request,session:Ses
             retriever=retriever,
             embedder=request.app.state.embedder,
             reranker=request.app.state.reranker,
+            display_name=session.filename,
         )])
         rag_reviewer = RAGReviewer(max_iterations=settings.reviewer_max_iterations)
 
@@ -206,6 +207,9 @@ async def query_document_stream(body: QueryRequest, request: Request,session:Ses
                     if token.startswith("__tool__:"):
                         tool_used = token.split(":", 1)[1]
                         yield f"data: {json.dumps({'type': 'tool', 'content': tool_used})}\n\n"
+                    elif token.startswith("__sources__:"):
+                        sources = json.loads(token.split(":", 1)[1])
+                        yield f"data: {json.dumps({'type': 'sources', 'content': sources})}\n\n"
                     else:
                         final_answer_parts.append(token)
                         yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
@@ -246,6 +250,9 @@ async def query_document_stream(body: QueryRequest, request: Request,session:Ses
                 if token.startswith("__tool__:"):
                     tool_used = token.split(":", 1)[1]
                     yield f"data: {json.dumps({'type': 'tool', 'content': tool_used})}\n\n"
+                elif token.startswith("__code__:"):
+                    code = json.loads(token.split(":", 1)[1])
+                    yield f"data: {json.dumps({'type': 'code', 'content': code})}\n\n"
                 else:
                     final_answer_parts.append(token)
                     yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"

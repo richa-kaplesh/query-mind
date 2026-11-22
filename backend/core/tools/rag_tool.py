@@ -3,28 +3,19 @@ from core.embedder import Embedder
 from core.retriever import HybridRetriever
 from core.reranker import Reranker
 from core.token_utils import estimate_tokens
+from core.citations import PassageRegistry
 
 MAX_RESULT_TOKENS = 3000
 
 
-def format_passages(chunks: list[dict]) -> str:
+def format_passages(chunks: list[dict], registry: PassageRegistry | None = None) -> str:
     if not chunks:
         return "No passages found for this search query. Try a different or broader query."
+    registry = registry or PassageRegistry(None)
     parts = []
     for chunk in chunks:
-        meta = chunk.get("metadata", {})
-        source = meta.get("source", "unknown")
-        page = meta.get("page")
-        heading = meta.get("heading")
-
-        citation = f"[Source: {source}"
-        if page is not None:
-            citation += f" | Page: {page}"
-        if heading:
-            citation += f" | Section: {heading}"
-        citation += "]"
-
-        parts.append(f"{citation}\n{chunk['text'].strip()}")
+        idx = registry.add(chunk)
+        parts.append(f"{registry.label(idx)}\n{chunk['text'].strip()}")
     return "\n\n---\n\n".join(parts)
 
 
@@ -41,7 +32,9 @@ class RAGTool(BaseTool):
     # result before the token budget above even kicks in.
     max_result_chars = 18000
 
-    def __init__(self, retriever: HybridRetriever, embedder: Embedder, reranker: Reranker):
+    def __init__(self, retriever: HybridRetriever, embedder: Embedder, reranker: Reranker,
+                 display_name: str | None = None):
+        self.registry = PassageRegistry(display_name)
         self.retriever = retriever
         self.embedder = embedder
         self.reranker = reranker
@@ -79,7 +72,7 @@ class RAGTool(BaseTool):
             selected.append(chunk)
             tokens_so_far += chunk_tokens
 
-        passages = format_passages(selected)
+        passages = format_passages(selected, self.registry)
         if selected and len(selected) >= total_chunks:
             passages = (
                 "[This is the ENTIRE content of the document — every indexed passage. If what "

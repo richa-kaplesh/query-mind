@@ -3,7 +3,6 @@ import type { RunNotes } from "../types";
 const FIELDS: { key: keyof RunNotes; label: string }[] = [
   { key: "problem", label: "Problem" },
   { key: "root_cause", label: "Root cause" },
-  { key: "fix", label: "Fix" },
 ];
 
 export function ChangeTags({ changes }: { changes: string[] }) {
@@ -26,6 +25,12 @@ export default function FixCard({ notes, changes }: { notes: RunNotes; changes: 
             <dd>{notes[f.key]}</dd>
           </div>
         ))}
+        {(changes.length > 0 || notes.fix) && (
+          <div className="lg-fix-item">
+            <dt>Fix</dt>
+            <dd>{changes.length > 0 ? <ChangeTags changes={changes} /> : notes.fix}</dd>
+          </div>
+        )}
       </dl>
       {notes.result && (
         <div className="lg-fix-result">
@@ -33,7 +38,6 @@ export default function FixCard({ notes, changes }: { notes: RunNotes; changes: 
           <p>{notes.result}</p>
         </div>
       )}
-      <ChangeTags changes={changes} />
     </div>
   );
 }

@@ -196,5 +196,86 @@
     "completion_tokens": 9,
     "total_tokens": 809,
     "estimated": true
+  },
+  {
+    "timestamp": 1795367253.4828467,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "rag_call1",
+    "prompt_tokens": 302,
+    "completion_tokens": 0,
+    "total_tokens": 302,
+    "estimated": false
+  },
+  {
+    "timestamp": 1795367258.9389493,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "rag_call2",
+    "prompt_tokens": 1263,
+    "completion_tokens": 156,
+    "total_tokens": 1419,
+    "estimated": false
+  },
+  {
+    "timestamp": 1795367260.7866552,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "rag_review_call1",
+    "prompt_tokens": 1267,
+    "completion_tokens": 9,
+    "total_tokens": 1276,
+    "estimated": true
+  },
+  {
+    "timestamp": 1795367329.9602547,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "rag_call1",
+    "prompt_tokens": 302,
+    "completion_tokens": 0,
+    "total_tokens": 302,
+    "estimated": false
+  },
+  {
+    "timestamp": 1795367334.9967995,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "rag_call2",
+    "prompt_tokens": 1269,
+    "completion_tokens": 105,
+    "total_tokens": 1374,
+    "estimated": false
+  },
+  {
+    "timestamp": 1795367336.7196736,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "rag_review_call1",
+    "prompt_tokens": 1223,
+    "completion_tokens": 12,
+    "total_tokens": 1235,
+    "estimated": true
+  },
+  {
+    "timestamp": 1795367394.2171085,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call1",
+    "prompt_tokens": 1335,
+    "completion_tokens": 0,
+    "total_tokens": 1335,
+    "estimated": false
+  },
+  {
+    "timestamp": 1795367396.0180833,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "csv_call2",
+    "prompt_tokens": 1517,
+    "completion_tokens": 33,
+    "total_tokens": 1550,
+    "estimated": false
+  },
+  {
+    "timestamp": 1795367398.161222,
+    "model": "openai/gpt-oss-20b",
+    "purpose": "review_call1",
+    "prompt_tokens": 1500,
+    "completion_tokens": 31,
+    "total_tokens": 1531,
+    "estimated": true
   }
 ]

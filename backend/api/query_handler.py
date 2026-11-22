@@ -1,6 +1,7 @@
 import logging
 from typing import List
 from core.tools.csv_stats_tool import CSVStatsTool
+from core.citations import PassageRegistry
 
 log = logging.getLogger("query_handler")
 
@@ -39,13 +40,8 @@ def resolve_query(request, query: str, documents: dict, conversation_history: li
     return generator.generate(query=query, chunks=[], conversation_history=conversation_history), []
 
 
-def build_sources(chunks: List[dict]) -> List[dict]:
-    return [
-        {
-            "source": chunk["metadata"].get("source", "unknown"),
-            "page": chunk["metadata"].get("page", "N/A"),
-            "text": chunk["text"],
-            "rerank_score": chunk.get("rerank_score", 0)
-        }
-        for chunk in chunks
-    ]
+def build_sources(chunks: List[dict], display_name: str | None = None) -> List[dict]:
+    registry = PassageRegistry(display_name)
+    for chunk in chunks:
+        registry.add(chunk)
+    return [dict(p, n=i) for i, p in enumerate(registry.passages, start=1)]
